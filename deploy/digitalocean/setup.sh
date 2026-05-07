@@ -47,7 +47,7 @@ echo "==> SSH key: $SSH_KEY_PATH"
 if ! command -v doctl >/dev/null 2>&1; then
     # Windows: auto-detect doctl from the winget install location.
     if [[ "${OSTYPE:-}" == "msys"* || "${OSTYPE:-}" == "cygwin"* ]]; then
-        for d in "/c/Users/$USER/AppData/Local/Microsoft/WinGet/Packages/DigitalOcean.Doctl_"*/; do
+        for d in "$HOME/AppData/Local/Microsoft/WinGet/Packages/DigitalOcean.Doctl_"*/; do
             if [[ -f "$d/doctl.exe" ]]; then
                 export PATH="$d:$PATH"
                 break
