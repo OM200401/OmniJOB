@@ -22,6 +22,9 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ model: config.ollama.embedModel, input: cleaned }),
+    // Fail fast if Ollama wedges. Without a timeout, the API's worker pool
+    // can be exhausted by a single hung model load.
+    signal: AbortSignal.timeout(config.ollama.timeoutMs),
   });
 
   if (!res.ok) {
