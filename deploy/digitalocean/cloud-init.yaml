@@ -1,0 +1,82 @@
+#cloud-config
+# Bootstrap for the OmniJob DigitalOcean droplet. Provisions a clean
+# Ubuntu 22.04 box into a runnable state in ~4-5 minutes from
+# `doctl compute droplet create`.
+#
+# Customize: replace the GitHub URL if your fork lives elsewhere.
+
+users:
+  - name: om
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [docker]
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXcJV5gQRGMqgXOjUQu1H/UiCPABguNRX9abkKDBCFs ommistry012004@gmail.com
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - lsb-release
+  - unzip
+  - jq
+  - golang-go
+  - debian-keyring
+  - debian-archive-keyring
+  - apt-transport-https
+  - awscli
+
+write_files:
+  - path: /etc/caddy/Caddyfile
+    permissions: "0644"
+    content: |
+      # Replaced after first boot by `cp deploy/Caddyfile`.
+      :80 { respond "OmniJob bootstrap - Caddyfile not yet copied" }
+
+runcmd:
+  # Docker
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  # Caddy
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+  - apt-get update
+  - apt-get install -y caddy
+
+  # Bun (as the om user)
+  - sudo -u om bash -c 'curl -fsSL https://bun.sh/install | bash'
+
+  # Repo + first compose up
+  - sudo -u om git clone https://github.com/OM200401/OmniJOB.git /home/om/omnijob
+  - mkdir -p /var/lib/omnijob/{qdrant,redis,ollama,backups}
+  - chown -R om:om /var/lib/omnijob
+  - sudo -u om touch /var/lib/omnijob/users.db
+  - cd /home/om/omnijob && docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
+
+  # Pull the embedding model into the Ollama container.
+  - sleep 30
+  - docker exec omnijob-ollama ollama pull nomic-embed-text
+
+  # API + crawler systemd units (shared across providers)
+  - cp /home/om/omnijob/deploy/systemd/*.service /etc/systemd/system/
+  - cp /home/om/omnijob/deploy/systemd/*.timer /etc/systemd/system/
+  - systemctl daemon-reload
+  - systemctl enable --now omnijob-api.service
+  - systemctl enable --now omnijob-crawler.timer
+
+  # Backup cron (root crontab; the script runs as om via su -c).
+  - echo "0 3 * * * om cd /home/om/omnijob && /home/om/.bun/bin/bun run apps/api/scripts/backup.ts >> /var/log/omnijob-backup.log 2>&1" > /etc/cron.d/omnijob-backup
+  - chmod 644 /etc/cron.d/omnijob-backup
+
+  # Caddy: copy the real Caddyfile and reload (shared across providers)
+  - cp /home/om/omnijob/deploy/Caddyfile /etc/caddy/Caddyfile
+  - systemctl reload caddy
+  - echo "OmniJob bootstrap complete at $(date -u)" > /var/log/omnijob-bootstrap.log
