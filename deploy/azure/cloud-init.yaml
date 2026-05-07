@@ -10,8 +10,7 @@ users:
     shell: /bin/bash
     groups: [docker]
     ssh_authorized_keys:
-      # Replace with your SSH public key, or pass --ssh-key-values to az vm create.
-      - ssh-rsa REPLACE_WITH_YOUR_PUBLIC_KEY
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXcJV5gQRGMqgXOjUQu1H/UiCPABguNRX9abkKDBCFs ommistry012004@gmail.com
 
 package_update: true
 package_upgrade: true

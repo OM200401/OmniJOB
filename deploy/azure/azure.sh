@@ -23,7 +23,19 @@ RG="${RG:-omnijob}"
 VM_NAME="${VM_NAME:-omnijob-vm}"
 VM_SIZE="${VM_SIZE:-Standard_B2s}"
 ADMIN_USER="${ADMIN_USER:-om}"
-SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa.pub}"
+# Prefer ed25519 (modern), fall back to RSA. Override with SSH_KEY_PATH env.
+if [[ -n "${SSH_KEY_PATH:-}" ]]; then
+    :
+elif [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then
+    SSH_KEY_PATH="$HOME/.ssh/id_ed25519.pub"
+elif [[ -f "$HOME/.ssh/id_rsa.pub" ]]; then
+    SSH_KEY_PATH="$HOME/.ssh/id_rsa.pub"
+else
+    echo "ERROR: no SSH public key found at ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub"
+    echo "Generate one: ssh-keygen -t ed25519"
+    exit 1
+fi
+echo "==> SSH key: $SSH_KEY_PATH"
 STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-omnijobbackups$RANDOM}"
 APPINSIGHTS="${APPINSIGHTS:-omnijob-insights}"
 GITHUB_REPO="${GITHUB_REPO:-https://github.com/OM200401/OmniJOB}"
