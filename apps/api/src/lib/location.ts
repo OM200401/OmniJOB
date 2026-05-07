@@ -13,6 +13,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   "united kingdom": "GB",
   "u.k.": "GB",
   "great britain": "GB",
+  "britain": "GB",
   "england": "GB",
   "scotland": "GB",
   "wales": "GB",
@@ -145,29 +146,83 @@ const SORTED_CITY_KEYS = Object.keys(CITY_COUNTRY).sort(
   (a, b) => b.length - a.length,
 );
 
+// Word-boundary substring test that avoids matching country names embedded
+// in longer words (e.g. "india" inside "indianapolis", "usa" inside
+// "Sausalito"). Matches if the needle appears as a sequence flanked by
+// non-letter characters or string boundaries.
+function containsWord(haystack: string, needle: string): boolean {
+  let from = 0;
+  while (true) {
+    const idx = haystack.indexOf(needle, from);
+    if (idx === -1) return false;
+    const before = idx > 0 ? haystack.charCodeAt(idx - 1) : 0;
+    const afterIdx = idx + needle.length;
+    const after = afterIdx < haystack.length ? haystack.charCodeAt(afterIdx) : 0;
+    const isLetter = (c: number) =>
+      (c >= 0x61 && c <= 0x7a) || (c >= 0x30 && c <= 0x39);
+    if (!isLetter(before) && !isLetter(after)) return true;
+    from = idx + 1;
+  }
+}
+
+// 2-letter codes that are simultaneously US state postal codes AND ISO-2
+// country codes. For these we need disambiguation via context (city in the
+// leading token, or fallback ordering).
+const AMBIGUOUS_STATE_ISO2: Record<string, string> = {
+  ca: "CA", // California vs Canada
+  co: "CO", // Colorado vs Colombia
+  de: "DE", // Delaware vs Germany
+  in: "IN", // Indiana vs India
+};
+
+function lookupCity(text: string): string | null {
+  for (const city of SORTED_CITY_KEYS) {
+    if (containsWord(text, city)) return CITY_COUNTRY[city]!;
+  }
+  return null;
+}
+
 export function classifyCountry(loc: string | undefined | null): string | null {
   if (!loc) return null;
   const l = loc.toLowerCase();
 
   for (const name of SORTED_COUNTRY_KEYS) {
-    if (l.includes(name)) return COUNTRY_NAMES[name]!;
+    if (containsWord(l, name)) return COUNTRY_NAMES[name]!;
   }
 
-  // Trailing comma / pipe / dot tokens. Walk back-to-front.
+  // Trailing comma / pipe / dash / slash tokens. Walk back-to-front.
+  // Resolution priority is: US states → CA provinces → ISO-2 trail.
+  // Real-world ATS strings overwhelmingly use "City, ST" for US/CA states,
+  // so when an ambiguous 2-letter token like "CA" appears we prefer the
+  // state interpretation (California → US) over the country code (Canada).
+  //
+  // For tokens that are BOTH a US state AND an ISO-2 code (CA/CO/DE/IN), we
+  // disambiguate using the leading tokens: if any of them resolves to a
+  // known city of a non-US country, the trailing token is the country code,
+  // not the state. Example: "Berlin, DE" → DE (Berlin is a German city, so
+  // DE is Germany not Delaware); "San Francisco, CA" → US (SF is a US city,
+  // so CA is California not Canada).
   const parts = l
-    .split(/[,·|/]/)
+    .split(/[,·|/]|\s-\s/)
     .map((p) => p.trim())
     .filter(Boolean);
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i]!;
-    if (ISO2_TRAIL.has(p)) return p === "uk" ? "GB" : p.toUpperCase();
+    if (AMBIGUOUS_STATE_ISO2[p] !== undefined) {
+      // Disambiguate via city context in the *leading* tokens (everything
+      // to the left of this position).
+      const leading = parts.slice(0, i).join(" ");
+      const cityCountry = leading ? lookupCity(leading) : null;
+      if (cityCountry && cityCountry !== "US") return cityCountry;
+      // Default for ambiguous code: treat as US state. Real-world ATS
+      // strings overwhelmingly use "City, ST" form for US states, and the
+      // country-name pass above already caught explicit "Berlin, Germany".
+      return "US";
+    }
     if (US_STATES.has(p)) return "US";
     if (CA_PROVINCES.has(p)) return "CA";
+    if (ISO2_TRAIL.has(p)) return p === "uk" ? "GB" : p.toUpperCase();
   }
 
-  for (const city of SORTED_CITY_KEYS) {
-    if (l.includes(city)) return CITY_COUNTRY[city]!;
-  }
-
-  return null;
+  return lookupCity(l);
 }

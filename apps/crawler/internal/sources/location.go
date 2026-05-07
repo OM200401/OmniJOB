@@ -19,6 +19,7 @@ var countryNames = map[string]string{
 	"united kingdom": "GB",
 	"u.k.":           "GB",
 	"great britain":  "GB",
+	"britain":        "GB",
 	"england":        "GB",
 	"scotland":       "GB",
 	"wales":          "GB",
@@ -163,47 +164,77 @@ var iso2Trail = map[string]bool{
 	"cl": true, "co": true, "il": true, "ae": true, "za": true, "ng": true,
 }
 
+// 2-letter codes that are simultaneously US state postal codes AND ISO-2
+// country codes. For these we need disambiguation via context (city in the
+// leading token, or fallback ordering).
+var ambiguousStateIso2 = map[string]string{
+	"ca": "CA", // California vs Canada
+	"co": "CO", // Colorado vs Colombia
+	"de": "DE", // Delaware vs Germany
+	"in": "IN", // Indiana vs India
+}
+
 func classifyCountry(loc string) string {
 	if loc == "" {
 		return ""
 	}
 	l := strings.ToLower(loc)
 
-	// 1. Direct country-name substring match (longest-first via ordering: we
-	// do "united states of america" before "united states", etc., naturally
-	// because we iterate the map and take the first hit — but Go maps are
-	// unordered. So handle the few overlaps explicitly.)
-	if strings.Contains(l, "united states of america") {
+	// 1. Direct country-name word-boundary match (longest-first). Handle the
+	// few overlaps explicitly because Go map iteration is unordered.
+	if containsWord(l, "united states of america") {
 		return "US"
 	}
-	if strings.Contains(l, "united kingdom") {
+	if containsWord(l, "united kingdom") {
 		return "GB"
 	}
-	if strings.Contains(l, "northern ireland") {
+	if containsWord(l, "northern ireland") {
 		return "GB"
 	}
 	for name, code := range countryNames {
-		if strings.Contains(l, name) {
+		if containsWord(l, name) {
 			return code
 		}
 	}
 
-	// 2. Trailing comma-separated tokens: ", US" / ", UK" / ", CA" /
-	//    ", California, US" / "San Francisco, CA" (US state) / "Toronto, ON"
+	// 2. Trailing comma / pipe / dash / slash tokens. Walk back-to-front.
+	// Resolution priority is: US states → CA provinces → ISO-2 trail.
+	// Real-world ATS strings overwhelmingly use "City, ST" for US/CA states,
+	// so when an ambiguous 2-letter token like "CA" appears we prefer the
+	// state interpretation (California → US) over the country code (Canada).
+	//
+	// For tokens that are BOTH a US state AND an ISO-2 code (CA/CO/DE/IN),
+	// disambiguate using leading tokens: if any of them looks like a city of
+	// a non-US country, the trailing token is the country code, not the
+	// state. Example: "Berlin, DE" → DE (Berlin is a German city);
+	// "San Francisco, CA" → US (SF is a US city, so CA is California).
 	parts := splitClean(l)
 	for i := len(parts) - 1; i >= 0; i-- {
 		p := parts[i]
-		if iso2Trail[p] {
-			if p == "uk" {
-				return "GB"
+		if _, isAmbiguous := ambiguousStateIso2[p]; isAmbiguous {
+			// Disambiguate via city context in the leading tokens.
+			leading := strings.Join(parts[:i], " ")
+			if leading != "" {
+				if c := cityLookup(leading); c != "" && c != "US" {
+					return c
+				}
 			}
-			return strings.ToUpper(p)
+			// Default for ambiguous codes: treat as US state. The
+			// country-name pass above already caught explicit
+			// "Berlin, Germany" / "Mumbai, India" forms.
+			return "US"
 		}
 		if usStates[p] {
 			return "US"
 		}
 		if caProvinces[p] {
 			return "CA"
+		}
+		if iso2Trail[p] {
+			if p == "uk" {
+				return "GB"
+			}
+			return strings.ToUpper(p)
 		}
 	}
 
@@ -216,6 +247,10 @@ func classifyCountry(loc string) string {
 }
 
 func splitClean(s string) []string {
+	// Normalize the " - " separator first so "WA - Vancouver" splits into
+	// ["wa", "vancouver"] — many ATS strings use a hyphen as a top-level
+	// region delimiter (e.g. "United States - Remote", "WA - Seattle").
+	s = strings.ReplaceAll(s, " - ", ",")
 	raw := strings.FieldsFunc(s, func(r rune) bool {
 		return r == ',' || r == '·' || r == '|' || r == '/'
 	})
@@ -242,9 +277,39 @@ func cityLookup(l string) string {
 		}
 	}
 	for _, k := range keys {
-		if strings.Contains(l, k) {
+		if containsWord(l, k) {
 			return cityCountry[k]
 		}
 	}
 	return ""
+}
+
+// containsWord checks if needle occurs in haystack flanked by non-letter,
+// non-digit characters or at string boundaries. Avoids matching "india"
+// inside "indianapolis", "usa" inside "Sausalito", etc.
+func containsWord(haystack, needle string) bool {
+	from := 0
+	for {
+		idx := strings.Index(haystack[from:], needle)
+		if idx < 0 {
+			return false
+		}
+		idx += from
+		var before byte
+		if idx > 0 {
+			before = haystack[idx-1]
+		}
+		var after byte
+		end := idx + len(needle)
+		if end < len(haystack) {
+			after = haystack[end]
+		}
+		isLetter := func(c byte) bool {
+			return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+		}
+		if !isLetter(before) && !isLetter(after) {
+			return true
+		}
+		from = idx + 1
+	}
 }
