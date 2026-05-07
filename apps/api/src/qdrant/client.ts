@@ -123,8 +123,13 @@ export async function searchJobs(
   const out: Array<{ id: string; score: number; payload: JobMetadata }> = [];
   for (const p of res) {
     const payload = p.payload as StoredJobPayload;
-    const level: Level = payload.experience_level ?? classifyTitle(payload.title);
-    const country = payload.country ?? classifyCountry(payload.location) ?? undefined;
+    // Re-classify on read. The stored payload was written by whatever
+    // classifier was current at ingest time, which for the bulk of the index
+    // pre-dates the location/seniority audit fixes (e.g. it tagged
+    // "San Francisco, CA" as country=CA / Canada). Trust the live classifier;
+    // fall back to stored country only when the classifier can't resolve it.
+    const level: Level = classifyTitle(payload.title);
+    const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
 
     if (wantLevels.size > 0 && !wantLevels.has(level)) continue;
     if (wantCountries.size > 0 && (!country || !wantCountries.has(country))) continue;
@@ -181,10 +186,11 @@ export async function getJob(externalId: string): Promise<(JobMetadata & { quali
   const p = res[0];
   if (!p) return null;
   const payload = p.payload as StoredJobPayload;
-  const country = payload.country ?? classifyCountry(payload.location) ?? undefined;
+  // Re-classify on read (see search()). Stored payload pre-dates the audit.
+  const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
   const enriched: JobMetadata = {
     ...payload,
-    experience_level: payload.experience_level ?? classifyTitle(payload.title),
+    experience_level: classifyTitle(payload.title),
     ...(country ? { country } : {}),
   };
   const quality = qualityBreakdown(enriched);
