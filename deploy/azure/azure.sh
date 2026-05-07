@@ -47,7 +47,19 @@ GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 TAG="project=omnijob"
 
 echo "==> Resource group $RG in $LOCATION"
-az group create -n "$RG" -l "$LOCATION" --tags "$TAG" -o none
+# RG location is metadata-only and can't be changed once created. If a
+# previous run created it in a different region, reuse it (resources
+# inside can still target $LOCATION) rather than erroring out.
+EXISTING_RG_LOC=$(az group show -n "$RG" --query location -o tsv 2>/dev/null || echo "")
+if [[ -n "$EXISTING_RG_LOC" ]]; then
+    if [[ "$EXISTING_RG_LOC" != "$LOCATION" ]]; then
+        echo "    NOTE: RG already exists in '$EXISTING_RG_LOC'; resources will deploy to '$LOCATION' inside it."
+    else
+        echo "    RG already exists in '$LOCATION'."
+    fi
+else
+    az group create -n "$RG" -l "$LOCATION" --tags "$TAG" -o none
+fi
 
 echo "==> VM $VM_NAME ($VM_SIZE)"
 if ! az vm show -g "$RG" -n "$VM_NAME" -o none 2>/dev/null; then
