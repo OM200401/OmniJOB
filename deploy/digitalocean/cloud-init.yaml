@@ -23,7 +23,6 @@ packages:
   - lsb-release
   - unzip
   - jq
-  - golang-go
   - debian-keyring
   - debian-archive-keyring
   - apt-transport-https
@@ -64,6 +63,14 @@ runcmd:
   - apt-get update
   - apt-get install -y caddy
 
+  # Go: install from official tarball at /usr/local/go (matches the
+  # systemd unit's ExecStart path). apt's golang-go is 1.18 on Ubuntu
+  # 22.04, too old for the crawler's go.mod (requires 1.23+).
+  - curl -fLsS -o /tmp/go.tgz https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
+  - rm -rf /usr/local/go
+  - tar -C /usr/local -xzf /tmp/go.tgz
+  - rm /tmp/go.tgz
+
   # Bun (as the om user)
   - sudo -u om bash -c 'curl -fsSL https://bun.sh/install | bash'
 
@@ -78,6 +85,11 @@ runcmd:
   # boot with "Cannot find module @sinclair/typebox" or "no such table: users".
   - sudo -u om bash -c 'cd /home/om/omnijob/apps/api && /home/om/.bun/bin/bun install'
   - sudo -u om SQLITE_PATH=/var/lib/omnijob/users.db bash -c 'cd /home/om/omnijob/apps/api && /home/om/.bun/bin/bun run scripts/init-sqlite.ts'
+
+  # Crawler module deps: pre-fetch so the systemd 'go run' doesn't have
+  # to do it on every timer fire. Costs ~150 MB once, saves a network
+  # roundtrip per crawl.
+  - sudo -u om bash -c 'cd /home/om/omnijob/apps/crawler && /usr/local/go/bin/go mod download'
 
   # Pull the embedding model. Wait for ollama to be reachable on its mapped
   # host port before exec-ing into the container.
