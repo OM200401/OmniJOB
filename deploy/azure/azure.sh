@@ -77,6 +77,14 @@ else
 fi
 
 echo "==> VM $VM_NAME ($VM_SIZE)"
+# Region-suffix the auto-derived scaffolding (VNET, subnet, NSG, public IP)
+# so a failed attempt in region A doesn't block a retry in region B.
+# az defaults these to ${VM_NAME}{VNET,NSG,PublicIP} which are RG-unique
+# but location-bound — cross-region retries trip InvalidResourceLocation.
+VNET_NAME="${VM_NAME}-${LOCATION}-vnet"
+SUBNET_NAME="${VM_NAME}-${LOCATION}-subnet"
+NSG_NAME="${VM_NAME}-${LOCATION}-nsg"
+PIP_NAME="${VM_NAME}-${LOCATION}-pip"
 if ! az vm show -g "$RG" -n "$VM_NAME" -o none 2>/dev/null; then
     az vm create \
         --resource-group "$RG" \
@@ -88,6 +96,10 @@ if ! az vm show -g "$RG" -n "$VM_NAME" -o none 2>/dev/null; then
         --ssh-key-values "$SSH_KEY_PATH" \
         --custom-data deploy/azure/cloud-init.yaml \
         --public-ip-sku Standard \
+        --vnet-name "$VNET_NAME" \
+        --subnet "$SUBNET_NAME" \
+        --nsg "$NSG_NAME" \
+        --public-ip-address "$PIP_NAME" \
         --assign-identity \
         --tags "$TAG" \
         -o none
