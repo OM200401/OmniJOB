@@ -1,0 +1,46 @@
+# Production overlay applied on top of docker-compose.yml on the deploy host.
+# Run as:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
+#
+# Differences from the dev compose:
+#   - All ports bind only to 127.0.0.1 (Caddy is the single public entrypoint).
+#   - Named volumes get host bind-mounts under /var/lib/omnijob so the
+#     backup script can read snapshots and SQLite directly off disk.
+
+services:
+  qdrant:
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - /var/lib/omnijob/qdrant:/qdrant/storage
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - /var/lib/omnijob/redis:/data
+
+  ollama:
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - /var/lib/omnijob/ollama:/root/.ollama
+    # Ollama benefits from CPU pinning on B-series; let it use both vCPU
+    # but cap memory so the API process always has headroom.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+# Override the dev volume entries so docker-compose doesn't auto-create them.
+volumes:
+  qdrant_data:
+    external: true
+    name: noop_qdrant
+  redis_data:
+    external: true
+    name: noop_redis
+  ollama_models:
+    external: true
+    name: noop_ollama

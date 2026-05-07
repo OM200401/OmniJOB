@@ -1,0 +1,68 @@
+# Caddy config for the OmniJob VM. Caddy is the only process listening on
+# :80 / :443; everything else binds to 127.0.0.1 (see docker-compose.prod.yml
+# and omnijob-api.service).
+#
+# Cloudflare DNS notes:
+#   - For api.omnijob.app, set the orange cloud to "DNS only" so Let's Encrypt
+#     HTTP-01 can complete. Once cert is issued, you can flip back to "proxied"
+#     for DDoS shield (Caddy's automatic renewal will then need DNS-01; see
+#     deploy/azure/README for that path).
+#   - For omnijob.app, the Static Web App provides its own cert; Cloudflare
+#     proxy can be on or off — leave on for DDoS protection.
+#
+# Replace omnijob.app with your domain.
+
+{
+    email om@omnijob.app
+    # Uncomment for testing against staging issuer to avoid LE rate limits.
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+api.omnijob.app {
+    encode zstd gzip
+
+    # Strict CORS — the SPA origin is the only allowed caller. Adjust if
+    # you add subdomains or a separate marketing site.
+    @cors_preflight method OPTIONS
+    handle @cors_preflight {
+        header Access-Control-Allow-Origin "https://omnijob.app"
+        header Access-Control-Allow-Methods "GET,POST,DELETE,OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type,Authorization"
+        header Access-Control-Max-Age "600"
+        respond 204
+    }
+    header {
+        Access-Control-Allow-Origin "https://omnijob.app"
+        Access-Control-Allow-Credentials "true"
+        # Belt & suspenders — Elysia's CORS plugin sets these too, but
+        # making Caddy authoritative means the API can be locked down to
+        # 127.0.0.1 binding without losing browser access.
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Rate limit at the edge so we don't have to wire a plugin into Bun.
+    # 60 req/min/IP for search, 5/min for embed (heavy).
+    @search path /jobs/search /jobs/*/match-explain
+    @embed path /embed
+    handle @search {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle @embed {
+        reverse_proxy 127.0.0.1:3000
+    }
+
+    reverse_proxy 127.0.0.1:3000 {
+        health_uri /health
+        health_interval 30s
+        health_timeout 5s
+    }
+}
+
+# Optional: serve a tiny landing redirect if someone hits the apex over the
+# proxy. Static Web Apps already serves omnijob.app, so this only fires if
+# DNS is mis-configured.
+omnijob.app {
+    redir https://omnijob.app{uri} 308
+}
