@@ -5,6 +5,15 @@
 # This actually attempts the deploy and moves on when SkuNotAvailable
 # / RequestDisallowedByAzure / NoLongerAvailable strikes.
 
+# Ensure `az` is on PATH so child azure.sh processes inherit it. Same fix
+# as in azure.sh; duplicated here so this wrapper can be run standalone.
+if ! command -v az >/dev/null 2>&1; then
+    AZ_DIR="/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin"
+    if [[ -x "$AZ_DIR/az" ]] || [[ -f "$AZ_DIR/az.cmd" ]]; then
+        export PATH="$AZ_DIR:$PATH"
+    fi
+fi
+
 REGIONS=(${REGIONS:-eastus2 centralus southcentralus westus3 northcentralus})
 
 # Try SKUs in order of preference. Same-or-better-than-B2s, and grouped by

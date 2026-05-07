@@ -18,6 +18,20 @@
 
 set -euo pipefail
 
+# Ensure `az` is on PATH. The Windows MSI installer puts az under
+# C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\ but doesn't always
+# update the active shell's PATH (especially git bash / MSYS).
+if ! command -v az >/dev/null 2>&1; then
+    AZ_DIR="/c/Program Files/Microsoft SDKs/Azure/CLI2/wbin"
+    if [[ -x "$AZ_DIR/az" ]] || [[ -f "$AZ_DIR/az.cmd" ]]; then
+        export PATH="$AZ_DIR:$PATH"
+    else
+        echo "ERROR: az CLI not found on PATH and not at $AZ_DIR" >&2
+        echo "Install: winget install Microsoft.AzureCLI" >&2
+        exit 1
+    fi
+fi
+
 LOCATION="${LOCATION:-eastus2}"
 SWA_LOCATION="${SWA_LOCATION:-eastus2}"  # SWA + VM in the same region cuts SPA->API latency
 RG="${RG:-omnijob}"
