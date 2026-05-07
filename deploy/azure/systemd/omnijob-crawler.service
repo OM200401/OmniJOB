@@ -1,0 +1,22 @@
+[Unit]
+Description=OmniJob crawler — single full pass
+Documentation=https://github.com/OM200401/OmniJOB
+After=omnijob-api.service
+Requires=omnijob-api.service
+OnSuccess=omnijob-dedupe.service
+
+[Service]
+Type=oneshot
+User=om
+WorkingDirectory=/home/om/omnijob/apps/crawler
+ExecStart=/usr/local/go/bin/go run ./cmd/crawler
+# Concurrent embed/ingest workers. B2s has 2 vCPU; 3 saturates Ollama
+# without starving the API.
+Environment=API_URL=http://localhost:3000
+Environment=EMBED_CONCURRENCY=3
+TimeoutStartSec=4h
+StandardOutput=append:/var/log/omnijob-crawler.log
+StandardError=append:/var/log/omnijob-crawler.log
+
+[Install]
+WantedBy=multi-user.target

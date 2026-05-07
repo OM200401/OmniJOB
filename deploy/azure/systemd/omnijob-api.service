@@ -1,0 +1,32 @@
+[Unit]
+Description=OmniJob API (Bun + Elysia)
+Documentation=https://github.com/OM200401/OmniJOB
+After=network-online.target docker.service
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=om
+WorkingDirectory=/home/om/omnijob/apps/api
+ExecStartPre=/usr/bin/env bash -c 'until curl -fsS http://localhost:6333/healthz >/dev/null && curl -fsS http://localhost:11434/api/tags >/dev/null; do sleep 2; done'
+ExecStart=/home/om/.bun/bin/bun run src/index.ts
+Restart=on-failure
+RestartSec=5
+# Production env. SQLITE_PATH points at host-mounted dir; QDRANT_URL /
+# OLLAMA_URL hit the docker-compose containers on the same host.
+Environment=PORT=3000
+Environment=QDRANT_URL=http://localhost:6333
+Environment=OLLAMA_URL=http://localhost:11434
+Environment=SQLITE_PATH=/var/lib/omnijob/users.db
+Environment=NODE_ENV=production
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/omnijob
+ProtectSystem=strict
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

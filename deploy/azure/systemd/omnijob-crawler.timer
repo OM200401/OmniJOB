@@ -1,0 +1,14 @@
+[Unit]
+Description=Run OmniJob crawler every 12 hours
+Documentation=https://github.com/OM200401/OmniJOB
+
+[Timer]
+# 02:00 and 14:00 UTC daily. Persistent=true means a missed run (host
+# rebooted across the slot) fires on next boot rather than skipping.
+OnCalendar=*-*-* 02,14:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=omnijob-crawler.service
+
+[Install]
+WantedBy=timers.target
