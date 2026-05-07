@@ -1,0 +1,1 @@
+0 3 * * * cd /home/om/omnijob && /home/om/.bun/bin/bun run apps/api/scripts/backup.ts >> /var/log/omnijob-backup.log 2>&1

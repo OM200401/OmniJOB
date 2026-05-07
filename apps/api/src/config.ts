@@ -27,6 +27,9 @@ export const config = {
     embedModel: env("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
   },
   sqlite: {
+    // Local dev default is relative — production sets SQLITE_PATH=
+    // /var/lib/omnijob/users.db via infra/docker-compose.prod.yml so the
+    // file lives on the host bind-mount rather than container CWD.
     path: env("SQLITE_PATH", "./data/omnijob.sqlite"),
   },
 } as const;
