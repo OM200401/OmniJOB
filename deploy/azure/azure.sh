@@ -66,6 +66,7 @@ if ! az vm show -g "$RG" -n "$VM_NAME" -o none 2>/dev/null; then
     az vm create \
         --resource-group "$RG" \
         --name "$VM_NAME" \
+        --location "$LOCATION" \
         --image Ubuntu2204 \
         --size "$VM_SIZE" \
         --admin-username "$ADMIN_USER" \
