@@ -30,6 +30,16 @@ packages:
   - awscli
 
 write_files:
+  # Pin Docker daemon DNS to public resolvers. Without this, containers
+  # inherit the host's systemd-resolved stub (127.0.0.53) which is unreachable
+  # from container netns - manifests as "network is unreachable" on first
+  # outbound DNS lookup. Must land before docker installs so the daemon
+  # picks it up on first start.
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {"dns": ["8.8.8.8", "1.1.1.1"]}
+
   - path: /etc/caddy/Caddyfile
     permissions: "0644"
     content: |
@@ -45,7 +55,10 @@ runcmd:
   - apt-get update
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-  # Caddy
+  # Caddy. Pre-create the system user explicitly because the package's
+  # postinst occasionally exits cleanly without creating it under cloud-init,
+  # and the resulting unit file then dies with status=217/USER on first start.
+  - id caddy >/dev/null 2>&1 || useradd --system --home /var/lib/caddy --create-home --shell /usr/sbin/nologin --comment "Caddy" caddy
   - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
   - apt-get update
@@ -54,16 +67,23 @@ runcmd:
   # Bun (as the om user)
   - sudo -u om bash -c 'curl -fsSL https://bun.sh/install | bash'
 
-  # Repo + first compose up
+  # Repo + first compose up. Use bash explicitly for brace expansion in mkdir.
   - sudo -u om git clone https://github.com/OM200401/OmniJOB.git /home/om/omnijob
-  - mkdir -p /var/lib/omnijob/{qdrant,redis,ollama,backups}
+  - bash -c 'mkdir -p /var/lib/omnijob/{qdrant,redis,ollama,backups}'
   - chown -R om:om /var/lib/omnijob
   - sudo -u om touch /var/lib/omnijob/users.db
   - cd /home/om/omnijob && docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
 
-  # Pull the embedding model into the Ollama container.
-  - sleep 30
+  # API dependencies and DB schemas. Without these the API exits on first
+  # boot with "Cannot find module @sinclair/typebox" or "no such table: users".
+  - sudo -u om bash -c 'cd /home/om/omnijob/apps/api && /home/om/.bun/bin/bun install'
+  - sudo -u om SQLITE_PATH=/var/lib/omnijob/users.db bash -c 'cd /home/om/omnijob/apps/api && /home/om/.bun/bin/bun run scripts/init-sqlite.ts'
+
+  # Pull the embedding model. Wait for ollama to be reachable on its mapped
+  # host port before exec-ing into the container.
+  - bash -c 'for i in $(seq 1 60); do curl -sf http://localhost:11434/api/tags >/dev/null && break; sleep 2; done'
   - docker exec omnijob-ollama ollama pull nomic-embed-text
+  - sudo -u om QDRANT_URL=http://localhost:6333 bash -c 'cd /home/om/omnijob/apps/api && /home/om/.bun/bin/bun run scripts/init-qdrant.ts'
 
   # API + crawler systemd units (shared across providers)
   - cp /home/om/omnijob/deploy/systemd/*.service /etc/systemd/system/
@@ -76,7 +96,9 @@ runcmd:
   - echo "0 3 * * * om cd /home/om/omnijob && /home/om/.bun/bin/bun run apps/api/scripts/backup.ts >> /var/log/omnijob-backup.log 2>&1" > /etc/cron.d/omnijob-backup
   - chmod 644 /etc/cron.d/omnijob-backup
 
-  # Caddy: copy the real Caddyfile and reload (shared across providers)
+  # Caddy: copy the real Caddyfile and reload (shared across providers).
+  # Note: deploy/Caddyfile is hardcoded to omnijob.tech; if your domain
+  # differs, sed-replace it before copying or fork a per-domain Caddyfile.
   - cp /home/om/omnijob/deploy/Caddyfile /etc/caddy/Caddyfile
   - systemctl reload caddy
   - echo "OmniJob bootstrap complete at $(date -u)" > /var/log/omnijob-bootstrap.log
