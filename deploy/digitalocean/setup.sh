@@ -98,9 +98,18 @@ echo "    droplet public IPv4: $DROPLET_IP"
 echo "==> Reserved IP"
 RESERVED_IP=$(doctl compute reserved-ip list --format IP,DropletID --no-header | awk -v d="$DROPLET_ID" '$2 == d {print $1}')
 if [[ -z "$RESERVED_IP" ]]; then
-    RESERVED_IP=$(doctl compute reserved-ip create --region "$REGION" --format IP --no-header)
-    doctl compute reserved-ip-action assign "$RESERVED_IP" "$DROPLET_ID" --wait >/dev/null
-    echo "    reserved $RESERVED_IP and assigned to droplet"
+    # Reclaim any orphan reserved IP in the same region (left over from a failed prior run).
+    RESERVED_IP=$(doctl compute reserved-ip list --format IP,Region,DropletID --no-header | awk -v r="$REGION" '$2 == r && ($3 == "" || $3 == "0") {print $1}' | head -1)
+    if [[ -n "$RESERVED_IP" ]]; then
+        echo "    reclaiming orphan reserved IP $RESERVED_IP from prior run"
+    else
+        RESERVED_IP=$(doctl compute reserved-ip create --region "$REGION" --format IP --no-header)
+        echo "    created reserved IP $RESERVED_IP"
+    fi
+    # --wait is not supported on reserved-ip-action assign in current doctl;
+    # the action returns synchronously so it's fine without.
+    doctl compute reserved-ip-action assign "$RESERVED_IP" "$DROPLET_ID" >/dev/null
+    echo "    assigned $RESERVED_IP to droplet"
 else
     echo "    droplet already has reserved IP $RESERVED_IP"
 fi
