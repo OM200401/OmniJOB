@@ -6,6 +6,9 @@
 #   - All ports bind only to 127.0.0.1 (Caddy is the single public entrypoint).
 #   - Named volumes get host bind-mounts under /var/lib/omnijob so the
 #     backup script can read snapshots and SQLite directly off disk.
+#   - Hard memory ceilings on every container so a runaway query can't OOM
+#     the whole VM. B2s has 4 GB total — Bun + system overhead consumes ~1 GB,
+#     leaving ~3 GB to split between Qdrant (1G), Ollama (2G), Redis (256M).
 
 services:
   qdrant:
@@ -14,12 +17,32 @@ services:
       - "127.0.0.1:6334:6334"
     volumes:
       - /var/lib/omnijob/qdrant:/qdrant/storage
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - /var/lib/omnijob/redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   ollama:
     ports:
@@ -32,6 +55,12 @@ services:
       resources:
         limits:
           memory: 2g
+          cpus: "2.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 # Override the dev volume entries so docker-compose doesn't auto-create them.
 volumes:
