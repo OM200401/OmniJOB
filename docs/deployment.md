@@ -1,66 +1,64 @@
-# OmniJOB — Azure Deployment Runbook
+# OmniJOB — Deployment Runbook
 
-This runs you from a fresh Azure free-trial signup to a working
-`https://omnijob.app` in roughly 90 minutes of clock time. Most of it is
-Azure waiting on itself; the human-attended steps total ~30 minutes.
+Primary target is **DigitalOcean** (via the GitHub Student Pack's $200 credit) with **Cloudflare Pages** for the SPA. End-to-end provisioning takes ~15 minutes of clock time, ~10 of which is cloud-init running on its own.
+
+The Azure path is preserved as an alternative — see `docs/deployment-azure.md`-equivalent inline at the bottom.
 
 ## What we're deploying
 
 | Component | Hosted on | Cost |
 |---|---|---|
-| Web SPA (`apps/web`) | Azure Static Web Apps free tier | $0 always |
-| API + Qdrant + Ollama + crawler | Azure VM B2s (2 vCPU / 4 GB) | ~$30/mo, $200 credit ≈ 6 months |
-| Daily backups | Azure Blob Storage (LRS, <5 GB) | $0 first 12 months |
-| Telemetry | Application Insights | $0 under 5 GB/mo |
+| Web SPA (`apps/web`) | Cloudflare Pages free tier | $0 always |
+| API + Qdrant + Ollama + crawler | DO droplet `s-2vcpu-4gb` (2 vCPU / 4 GB) | ~$24/mo, $200 credit ≈ 7 months |
+| Daily backups | DO Spaces (250 GB) | $5/mo (free under credit window) |
 | DNS + edge | Cloudflare (free) | $0 |
 | Domain | `omnijob.app` (Porkbun, Namecheap, etc.) | ~$12/year |
 
-Privacy-moat note: Ollama lives on the VM. No résumé text leaves our
-infrastructure. When the $200 credit runs out, the same VM image and the
-same compose files redeploy onto Hetzner CX22 (~$8/mo) without code
-changes.
+Privacy-moat note: Ollama lives on the droplet. No résumé text leaves our infrastructure. When the $200 credit runs out, the same compose files redeploy onto Hetzner CX22 (~€6/mo) without code changes.
 
 ---
 
 ## Prerequisites
 
-- Azure free account (https://azure.microsoft.com/free) — requires a credit card; no auto-charge after credit.
-- `az` CLI — `brew install azure-cli` or `winget install Microsoft.AzureCLI`.
-- An SSH keypair at `~/.ssh/id_rsa.pub`. Generate with `ssh-keygen -t rsa -b 4096` if missing.
+- DigitalOcean account — redeem $200 student credit at https://education.github.com/pack (search "DigitalOcean").
+- `doctl` CLI — `winget install DigitalOcean.doctl` on Windows, or https://docs.digitalocean.com/reference/doctl/how-to/install/.
+- DO API token with read+write scope: https://cloud.digitalocean.com/account/api/tokens.
+- An SSH keypair at `~/.ssh/id_ed25519.pub` (preferred) or `~/.ssh/id_rsa.pub`. Generate with `ssh-keygen -t ed25519` if missing.
 - A domain registered. The runbook assumes `omnijob.app`; substitute your own everywhere.
 - A Cloudflare account with the domain added (free).
-- This repo cloned locally; you'll run `az` commands from the repo root.
+- This repo cloned locally; you'll run commands from the repo root.
 
 ---
 
-## Step 1 — Provision Azure resources (~10 min, mostly waiting)
+## Step 1 — Provision the droplet (~5 min)
 
 ```sh
-az login
-az account show --query name   # confirm you're on "Free Trial"
-bash deploy/azure/azure.sh
+doctl auth init     # paste the API token
+doctl account get   # confirm
+bash deploy/digitalocean/setup.sh
 ```
 
 The script is idempotent — re-run safely after any failure. It creates:
 
-- Resource group `omnijob` in `eastus` (cheapest B-series region)
-- VM `omnijob-vm` (Ubuntu 22.04, B2s, system-assigned managed identity)
-- NSG rule opening 80 + 443
-- Storage account `omnijobbackups<random>` with `backups` container
-- Application Insights `omnijob-insights`
-- Role assignment letting the VM upload to Blob Storage via its identity
+- Droplet `omnijob-vm` (Ubuntu 22.04, `s-2vcpu-4gb`, NYC3 by default)
+- Reserved IP, assigned to the droplet (free while attached)
+- Cloud firewall `omnijob-fw` allowing 22/80/443 inbound
+- Tag `omnijob` applied to the droplet (so the firewall auto-applies)
 
-Cloud-init runs in the background after the VM boots (~6-8 min). It
-installs Docker, Caddy, Bun, Go, Azure CLI, clones this repo, and brings
-up `docker-compose.yml + docker-compose.prod.yml`.
+Cloud-init runs in the background after the droplet boots (~4-5 min). It installs Docker, Caddy, Bun, Go, awscli, clones this repo, brings up `docker-compose.yml + docker-compose.prod.yml`, pulls the Ollama embedding model, and enables the systemd timers.
 
 **Watch progress (optional):**
 ```sh
-ssh om@$(az vm show -d -g omnijob -n omnijob-vm --query publicIps -o tsv)
+ssh om@<RESERVED_IP>
 sudo tail -f /var/log/cloud-init-output.log
 ```
 
 You'll see the bootstrap finish with `OmniJob bootstrap complete at ...`.
+
+Override defaults via env if needed:
+```sh
+REGION=sfo3 SIZE=s-2vcpu-2gb-amd bash deploy/digitalocean/setup.sh
+```
 
 ---
 
@@ -70,14 +68,11 @@ In Cloudflare's DNS panel:
 
 | Type | Name | Content | Proxy |
 |---|---|---|---|
-| A | `api` | (VM public IP from step 1) | **DNS only** for first run, can flip to Proxied after cert issues |
-| CNAME | `@` | (Static Web App default hostname, e.g. `<id>.azurestaticapps.net`) | Proxied |
+| A | `api` | (Reserved IP from step 1) | **DNS only** for first run; flip to Proxied after cert issues |
+| CNAME | `@` | (Cloudflare Pages hostname from step 3) | Proxied |
 | CNAME | `www` | `omnijob.app` | Proxied |
 
-The "DNS only" setting on the `api` record is mandatory the first time —
-Caddy needs Let's Encrypt's HTTP-01 challenge to reach the VM directly.
-Once the cert is issued you can flip to Proxied (DNS-01 is a follow-up
-fix tracked in `deploy/azure/Caddyfile`).
+The "DNS only" setting on the `api` record is mandatory the first time — Caddy needs Let's Encrypt's HTTP-01 challenge to reach the droplet directly.
 
 After DNS propagates (~1-5 min), confirm:
 
@@ -90,88 +85,138 @@ If `qdrant` or `ollama` is `false`, SSH in and check `docker ps`.
 
 ---
 
-## Step 3 — Static Web Apps GitHub Action (~5 min)
+## Step 3 — Cloudflare Pages (~5 min)
 
-1. The `azure.sh` script created the Static Web App. Get the deployment token:
-   ```sh
-   az staticwebapp secrets list -g omnijob -n omnijob-web --query properties.apiKey -o tsv
-   ```
-2. In the GitHub repo, **Settings → Secrets and variables → Actions → New secret**:
-   - Name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
-   - Value: (paste from step above)
-3. Make a trivial change to `apps/web/` (e.g. update `apps/web/README.md`) and push to `main`. The workflow at
-   `.github/workflows/azure-static-web-app.yml` runs `bun install + bun run build` with `VITE_API_URL=https://api.omnijob.app`, then deploys.
-4. Confirm via Actions tab; build should land in ~2 min.
+1. https://dash.cloudflare.com → your account → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+2. Select the `OmniJOB` repo.
+3. Build settings:
+   - Framework preset: **None**
+   - Build command: `cd apps/web && bun install && bun run build`
+   - Build output directory: `apps/web/dist`
+   - Root directory: (leave blank)
+4. Environment variables (Production):
+   - `VITE_API_URL` = `https://api.omnijob.app`
+   - `VITE_EMBEDDING_DIM` = `768`
+5. Save. First deploy runs immediately; ~2 minutes.
+6. After the first deploy, **Custom domains** → add `omnijob.app` and `www.omnijob.app`. Cloudflare wires up DNS automatically.
+
+Pages does its own SPA fallback via `apps/web/public/_redirects` — no `staticwebapp.config.json` needed.
 
 ---
 
-## Step 4 — Smoke test (~5 min)
+## Step 4 — API env vars on the droplet
+
+The API refuses to start in production without `ALLOWED_ORIGINS` set. SSH in and configure:
+
+```sh
+ssh om@<RESERVED_IP>
+sudo tee /etc/systemd/system/omnijob-api.service.d/override.conf <<'EOF'
+[Service]
+Environment=ALLOWED_ORIGINS=https://omnijob.app,https://www.omnijob.app
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart omnijob-api.service
+sudo journalctl -u omnijob-api.service --since "1 min ago"
+```
+
+Already set by cloud-init / the systemd unit:
+```
+NODE_ENV=production
+PORT=3000
+QDRANT_URL=http://localhost:6333
+OLLAMA_URL=http://localhost:11434
+SQLITE_PATH=/var/lib/omnijob/users.db
+```
+
+---
+
+## Step 5 — (Optional) DO Spaces for offsite backups
+
+Local-disk backups under `/var/lib/omnijob/backups` always run. To also push to DO Spaces:
+
+```sh
+# From your laptop:
+doctl spaces create omnijob-backups --region nyc3
+# Generate access keys at https://cloud.digitalocean.com/account/api/spaces
+
+# Then on the droplet:
+ssh om@<RESERVED_IP>
+sudo tee -a /etc/systemd/system/omnijob-api.service.d/override.conf <<'EOF'
+Environment=DO_SPACES_BUCKET=omnijob-backups
+Environment=DO_SPACES_REGION=nyc3
+Environment=DO_SPACES_KEY=<access-key>
+Environment=DO_SPACES_SECRET=<secret>
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart omnijob-api.service
+```
+
+The backup cron picks these up on its next run (03:00 UTC).
+
+---
+
+## Step 6 — Smoke test (~5 min)
 
 1. **API reachability:** `curl -fsS https://api.omnijob.app/health` → ok JSON.
 2. **Web SPA:** `https://omnijob.app/` loads the React build with valid TLS.
-3. **Deep-link routing:** `https://omnijob.app/privacy` directly visited does NOT 404 (proves `staticwebapp.config.json` fallback works).
+3. **Deep-link routing:** `https://omnijob.app/privacy` directly visited does NOT 404 (proves `_redirects` fallback works).
 4. **CORS:** open the SPA in a browser, log in, hit `/jobs/search` — no CORS error in DevTools console.
 5. **Onboarding flow:** create a test account, paste a small résumé, save the recovery key, log out, log back in, confirm matches load.
 6. **Crawler scheduled:**
    ```sh
-   ssh om@<VM_IP>
+   ssh om@<RESERVED_IP>
    systemctl list-timers omnijob-crawler.timer
-   # → next run at 02:00 UTC
+   # → next run at 02:00 / 14:00 UTC
    ```
    Force-run a crawl to seed initial data:
    ```sh
    sudo systemctl start omnijob-crawler.service
-   tail -f /var/log/omnijob-crawler.log   # ~30-60 min
+   sudo journalctl -u omnijob-crawler.service -f   # ~30-60 min
    ```
    When done, the chained `omnijob-dedupe.service` runs automatically.
-7. **Backup ran:** wait until 03:00 UTC the first night, then:
+7. **Backup ran:** wait until 03:00 UTC, then:
    ```sh
-   az storage blob list --account-name <STORAGE_ACCOUNT> --container backups -o table
+   ssh om@<RESERVED_IP> ls -lh /var/lib/omnijob/backups/
+   # If DO Spaces configured:
+   aws s3 ls s3://omnijob-backups/ --endpoint-url https://nyc3.digitaloceanspaces.com
    ```
-   You should see `users.db` and `jobs.snapshot` / `users.snapshot` blobs from the previous night.
-8. **App Insights ingesting:** in Azure portal → `omnijob-insights` → Logs, run `requests | take 10` and confirm `/health` probes are landing.
 
 ---
 
-## Step 5 — Soft launch
+## Step 7 — Soft launch
 
 1. Tag the deployed commit:
    ```sh
    git tag v0.1.0-beta -m "first public deploy"
    git push --tags
    ```
-2. Update PROJECT.md §9 — resolve "Hosting target for the Bun/Elysia API" with the Hetzner-compatible Azure plan.
-3. Send the first 5-10 invites. Watch App Insights `requests` and `exceptions` for the first hour.
-4. Have a feedback channel ready — `mailto:feedback@omnijob.app` via Cloudflare Email Routing (free) or a self-hosted Plausible analytics dashboard on the same VM.
+2. Send the first 5-10 invites. Tail `/var/lib/omnijob/audit.log` for the first hour to spot abuse.
+3. Have a feedback channel ready — `mailto:feedback@omnijob.app` via Cloudflare Email Routing (free).
 
 ---
 
 ## Cost & runway
 
 ```sh
-az consumption usage list --top 10 -o table
-az consumption budget show -g omnijob 2>/dev/null   # set a budget for safety
+doctl balance get
+doctl invoice list
 ```
 
-The B2s VM burns ~$1/day. With the $200 credit you have ~180 days of runway. Budget-alert at $150 spent so you have a 30-day window to migrate.
+The droplet burns ~$0.80/day. With the $200 credit you have ~7 months of runway. Set a billing alert at $150 spent so you have a 30-day window to migrate.
 
 When the credit ends, two clean exits:
-- **Cheaper, no Azure**: provision a Hetzner CX22 (~€6/mo), `scp` the `/var/lib/omnijob/` dir over, `git clone` the repo, run docker-compose. Same Caddyfile, same systemd units. ~30 minutes of work.
-- **Stay on Azure**: pay-as-you-go kicks in at ~$30/mo for the same B2s. Lower-friction; higher cost.
+- **Cheaper, no DO**: provision a Hetzner CX22 (~€6/mo), `scp` the `/var/lib/omnijob/` dir over, `git clone` the repo, run docker-compose. Same Caddyfile, same systemd units. ~30 minutes of work.
+- **Stay on DO**: pay-as-you-go kicks in at ~$24/mo. Lower-friction; higher cost.
 
 ---
 
 ## Rollback
 
-**Bad web deploy (Static Web App)**:
-```sh
-git revert <bad-commit> && git push
-# Workflow auto-deploys the revert.
-```
+**Bad web deploy (Cloudflare Pages)**: in the Pages dashboard → Deployments → previous deploy → **Rollback to this deployment**. Or `git revert <bad-commit> && git push` and let Pages auto-redeploy.
 
 **Bad API deploy (cloud-init wedged or systemd broken)**:
 ```sh
-ssh om@<VM_IP>
+ssh om@<RESERVED_IP>
 cd /home/om/omnijob
 git fetch && git reset --hard <last-good-sha>
 sudo systemctl restart omnijob-api.service
@@ -180,7 +225,8 @@ sudo systemctl restart omnijob-api.service
 **Index corrupted**:
 ```sh
 # Restore the most recent Qdrant snapshot.
-az storage blob download-batch --account-name <STORAGE_ACCOUNT> --source backups -d /tmp/restore --pattern "<DATE>/*"
+ssh om@<RESERVED_IP>
+ls /var/lib/omnijob/backups/   # pick a date dir
 # Stop the crawler timer, restore each collection via Qdrant snapshot API,
 # then re-enable.
 sudo systemctl stop omnijob-crawler.timer
@@ -193,16 +239,19 @@ sudo systemctl start omnijob-crawler.timer
 ## Tear-down
 
 ```sh
-az group delete -n omnijob --yes --no-wait
+doctl compute droplet delete omnijob-vm --force
+doctl compute reserved-ip delete <ip> --force
+doctl compute firewall delete <fw-id> --force
+doctl spaces delete omnijob-backups --force   # if used
 ```
 
-One command, ~30 seconds, removes every Azure resource including the VM, storage, IPs, and Static Web App. Cloudflare DNS + the registered domain persist (delete those manually if abandoning the project).
+Cloudflare DNS + the registered domain persist (delete those manually if abandoning the project).
 
 ---
 
 ## Beta hardening
 
-Hardening that ships in the API for the public beta. Most of these are off-by-default in dev and only activate when `NODE_ENV=production` is set on the VM.
+Hardening that ships in the API for the public beta. Most of these are off-by-default in dev and only activate when `NODE_ENV=production` is set.
 
 ### What's enforced
 
@@ -229,9 +278,9 @@ Hardening that ships in the API for the public beta. Most of these are off-by-de
 
 A blocked request returns `429` with `Retry-After` and a JSON body `{"error":"rate_limited","retry_after_sec":N}`. The SPA already surfaces 4xx errors via the existing toast pipeline; no client change needed.
 
-### Required env vars on the VM
+### Required env vars on the droplet
 
-Add these to `/home/om/omnijob/.env` (or the systemd unit's `Environment=` lines). Without them the API will refuse to start in production mode:
+Add these via the systemd override (Step 4 above). Without them the API will refuse to start in production mode:
 
 ```
 NODE_ENV=production
@@ -241,7 +290,7 @@ QDRANT_URL=http://localhost:6333
 OLLAMA_URL=http://localhost:11434
 ```
 
-Optional tunables (defaults are sane for a B2s):
+Optional tunables (defaults are sane for a 4 GB droplet):
 
 ```
 MAX_BODY_BYTES=1048576
@@ -249,12 +298,20 @@ OLLAMA_TIMEOUT_MS=30000
 AUDIT_LOG_PATH=/var/lib/omnijob/audit.log
 ```
 
+Optional offsite backups (Step 5):
+```
+DO_SPACES_BUCKET=omnijob-backups
+DO_SPACES_REGION=nyc3
+DO_SPACES_KEY=...
+DO_SPACES_SECRET=...
+```
+
 ### Audit log inspection
 
 The auth audit log lives at `/var/lib/omnijob/audit.log` (one JSON object per line). Tail it during the first week of beta to spot abuse patterns:
 
 ```sh
-ssh om@<VM_IP>
+ssh om@<RESERVED_IP>
 tail -f /var/lib/omnijob/audit.log | jq -c '{ts, event, ip}'
 
 # How many distinct IPs registered in the last hour?
@@ -270,3 +327,22 @@ Logrotate is not configured for this file by default — for a long beta, add a 
 - No Redis-backed distributed rate limiter — single-instance only. Migrate when scaling the API horizontally.
 - No CAPTCHA on `/users/register`. The 5/hour/IP cap is the primary brake; revisit if signup floods materialize.
 - No mTLS or auth on the internal Qdrant/Ollama ports. They bind to 127.0.0.1 only (see `docker-compose.prod.yml`), so the VM perimeter is the trust boundary.
+
+---
+
+## Alternative: Azure (capacity-constrained)
+
+The earlier Azure tooling lives at `deploy/azure/` (`azure.sh`, `cloud-init.yaml`, `deploy-with-retry.sh`). It works in principle, but the Azure-for-Students UBC subscription used during initial development exhibits two practical problems:
+
+1. **B-series capacity exhaustion** in all 5 US regions the sub is allowed (eastus2, centralus, southcentralus, westus3, northcentralus). `deploy/azure/deploy-with-retry.sh` tries 4 SKU classes × 5 regions and consistently fails at the time of writing.
+2. **Basic SKU public IP quota = 0** (Microsoft retiring Basic; Standard SKU costs ~$3.65/mo per IP).
+
+If you want to attempt Azure anyway:
+
+```sh
+az login
+az account show --query name
+bash deploy/azure/deploy-with-retry.sh
+```
+
+The same `cloud-init.yaml`, Caddyfile, systemd units, and backup script work — only the provisioning script (`azure.sh` vs `setup.sh`) differs. Backup script honors `AZURE_STORAGE_ACCOUNT` for Blob upload via the VM's managed identity.
