@@ -197,3 +197,76 @@ Every match shows *why*. The "Why this matched" panel surfaces top-K résumé↔
 Email is never stored — `uid = SHA-256(email)`. The profile blob (résumé text, skill vector, saved jobs, applications, saved searches) is AES-256-GCM encrypted client-side; the server only ever holds ciphertext. Password reset is structurally impossible without the recovery key — there is no support backdoor, the math forbids it.
 
 **Why:** 74% of seekers say they would withdraw an application if they knew their data was offshored. The privacy posture is not a marketing claim; it's enforced by the cryptography. The "What we never see" page (`/privacy`) is the operationalised promise.
+
+
+# UPDATES v1.0.1 — Volume Phase
+
+## 1. Mission
+
+Index every job a tech worker would consider — in one place. The product loses the moment a candidate has to maintain a tab graveyard across LinkedIn, Indeed, Workday portals, and twenty branded career sites. **Highest possible volume** is the operating principle; everything else (filters, freshness, salary transparency, E2EE) makes that volume usable rather than overwhelming.
+
+## 2. Volume — current state (2026-05-07)
+
+### 2.1 What's indexed
+
+- **~16,000 active postings** after the last full crawl (ingested=16016, skipped=0, failed=267 / 1.6%).
+- **24 source adapters live across five categories:**
+  - **Direct ATS:** Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, Workable (gated), Workday, BambooHR, Breezy, Pinpoint, Personio (opt-in), Teamtailor (opt-in).
+  - **Curated employer programs:** Hacker News "Who is hiring?", Y Combinator Work-at-a-Startup.
+  - **Aggregator public APIs:** The Muse (default rotation), Adzuna, Jooble, Reed, Careerjet (opt-in via env keys).
+  - **Remote-first:** RemoteOK, We Work Remotely.
+  - **Public sector:** USAJobs.gov (opt-in via free API key).
+- **8 stub-documented inaccessible boards** committed as institutional knowledge: LinkedIn, Indeed, Glassdoor, ZipRecruiter, Monster, SimplyHired, Dice, CareerBuilder. Each file's top-of-file comment captures the exact deprecation event or partner-program gate so future-us doesn't re-investigate the same dead ends.
+
+### 2.2 Volume gaps and how we close them
+
+| Cohort | Status | Path |
+|---|---|---|
+| LinkedIn / Indeed / Glassdoor (≈70% of public listing volume) | Stubbed as inaccessible | Paid: SerpApi Google Jobs (~$75–$250/mo, captures 60–80% of these via Google's index) or Bright Data / Coresignal datasets ($300–$3000/mo). Defer until commercial revenue justifies the spend. |
+| Taleo (Oracle) — ~40% of Fortune 500 | Not started | Per-tenant session-cookie scraping. Large effort, fragile to tenant-side changes. |
+| iCIMS — ~12% of Fortune 500 | Not started | HTML / structured-data scrape per tenant. |
+| SuccessFactors (SAP) — DACH and European corporates | Not started | Reverse-engineered XHR endpoints per tenant. |
+| EU public sector (EURES) | Not started | Documented public API. Low effort. |
+
+Principle: exhaust the legitimate-API surface area before crossing into the scraping gray zone, and keep paid-aggregator coverage on the table for the day revenue exists.
+
+## 3. Phase 1 — High-Volume Ingestion (Go) — DONE
+
+- Adapter-per-source architecture: each ATS / aggregator is one Go file in `apps/crawler/internal/sources/` implementing the `Source` interface (`Name()`, `Fetch(ctx, out)`).
+- Producer-consumer pipeline: source goroutines stream `JobJSON` into a channel; embed + ingest workers fan out to Ollama and the API.
+- ID format `{adapter}:{tenant}:{job_id}` enables idempotent re-ingest (Qdrant upsert by ID).
+- Shared heuristics — `classifyCountry`, `classifyRemote`, `classifyLevel`, `ApplySalary` — give every source identical downstream metadata regardless of input schema.
+
+The `playwright-go` + sitemap + Common Crawl URL discovery path from the original v1.0.1 draft is **not** the chosen architecture. ADR-0006 codifies "public APIs only" — no LinkedIn / Indeed scraping. `apps/crawler/internal/fetcher` retains a Colly + interface seam in case a non-API source becomes worth the legal and maintenance cost later.
+
+## 4. Phase 2 — Intelligence & Deduplication — PARTIAL
+
+- ✅ Qdrant 768-dim HNSW cosine, sub-50ms vector search (`apps/api/src/qdrant/client.ts`).
+- ✅ Embedding via local Ollama `nomic-embed-text`. Note: the original v1.0.1 draft referenced 1536-dim — superseded by the choice in §9 of the main doc.
+- ✅ Within-source dedup at insert time via deterministic point IDs.
+- ❌ **Cross-source deduplication is the open Phase 2 task.** The same role posted by the same company through two adapters (e.g., a Workday tenant + The Muse syndication) will currently appear twice. Target: cosine ≥0.98 over a `(company, title-normalized)` key, with canonical-link preference (direct ATS over aggregator).
+- ✅ Quality score (`apps/api/src/lib/quality.ts`) ranks near-duplicates by salary disclosure × freshness × description depth × source reliability — partial mitigation until cross-source dedup ships.
+
+## 5. Phase 3 — E2EE Security Vault — DONE (web)
+
+- ✅ Argon2id client-side master-key derivation (`apps/web/src/lib/crypto/argon2.ts`, hash-wasm, t=3 / m=64MiB / p=1).
+- ✅ AES-256-GCM profile-blob encryption (`apps/web/src/lib/crypto/aes-gcm.ts`), 96-bit IV per encryption.
+- ✅ DEK + 32-byte recovery key dual-wrap; recovery key shown once at signup.
+- ✅ `uid = SHA-256(lowercased_email)` — server stores neither plaintext email nor any PII.
+- ✅ Skill vector lives in Qdrant unlinked from identity (random point IDs, no email or hash association).
+- ❌ **React Native parity deferred.** Web Crypto in RN is partial (RNQC issue #569: `subtle.generateKey('AES-GCM')` unimplemented). Web (`apps/web`) ships first; mobile crypto path tracked in §9 of the main doc.
+
+## 6. Phase 4 — High-Performance API — DONE (local) / OPEN (deploy)
+
+- ✅ Elysia 1.4 router on Bun, TypeBox-validated.
+- ✅ `/jobs/search` over-fetches and post-filters; sub-50ms p50 at the current index size.
+- ✅ `/jobs/:id/match-explain` for algorithmic accountability (Trust First §11.3).
+- ❌ **Edge / cloud deployment still open.** Cost-analysis options sketched (Hetzner CX21 ~€6/mo, Cloudflare Tunnel + dev box €0/mo, Cloudflare Workers + Qdrant Cloud free tier ~$3/mo with privacy compromise via Voyage embeddings). Deferred until the index outgrows the dev box.
+
+## 7. Volume backlog — priority order
+
+1. **Cross-source deduplication.** Required before paid aggregators land, since aggregator data overlaps direct ATS data heavily.
+2. **Taleo / iCIMS / SuccessFactors.** Biggest single-cohort uplift among legitimate paths.
+3. **EURES (EU public sector).** Low-effort public API, complementary to USAJobs.
+4. **Direct-apply for Greenhouse / Ashby.** The volume index is wasted if the apply step bounces the user out — completing the loop is the point. (Phase 3 of the Trust First roadmap.)
+5. **Paid aggregator (SerpApi or Bright Data) for the LinkedIn/Indeed/Glassdoor cohort.** Gated on commercial revenue.
