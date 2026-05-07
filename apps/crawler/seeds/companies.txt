@@ -1,0 +1,633 @@
+# Seed list of North American + European tech companies for ATS slug
+# discovery. Run via:
+#   go run ./cmd/discover -seeds=seeds/companies.txt -out=discovered.jsonl
+#
+# One company name per line. Comments start with "#". Names should be the
+# common form (the script generates slug variants automatically).
+#
+# Goal: find companies that publish on a public ATS we already adapt
+# (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, BambooHR, Breezy,
+# Pinpoint) but aren't yet in companies.go. Extend freely; duplicates are
+# de-duped by the seed reader.
+
+# === Public tech / large-cap ===
+Stripe
+Shopify
+Pinterest
+Reddit
+DoorDash
+Airbnb
+Robinhood
+Coinbase
+Cloudflare
+Datadog
+MongoDB
+Elastic
+Snowflake
+Twilio
+Okta
+Zoom
+Slack
+Atlassian
+HubSpot
+Asana
+Box
+Dropbox
+Squarespace
+Etsy
+Wayfair
+Yelp
+Pinterest
+GitLab
+HashiCorp
+Snowflake
+Palantir
+Affirm
+SoFi
+
+# === AI / ML ===
+OpenAI
+Anthropic
+Cohere
+Mistral AI
+xAI
+Hugging Face
+Scale AI
+Databricks
+Weights and Biases
+Replicate
+Modal Labs
+Together AI
+Replicate
+Anyscale
+Lambda Labs
+RunPod
+Pika Labs
+Runway ML
+ElevenLabs
+Character AI
+Inflection AI
+Adept AI
+Stability AI
+LlamaIndex
+LangChain
+Pinecone
+Weaviate
+Chroma
+Qdrant
+Vespa
+Haystack AI
+Cresta
+Rilla
+Decagon
+Sierra
+Glean
+Harvey
+Vivun
+Writer
+Jasper
+Copy AI
+Hippocratic AI
+Abridge
+Tome
+Mem
+Granola
+Rewind AI
+Perplexity AI
+You
+Magic
+Codeium
+Tabnine
+Continue
+Sourcegraph
+Cursor
+Warp
+Zed
+Replit
+Vercel
+Netlify
+Render
+Railway
+Fly.io
+Supabase
+PlanetScale
+Neon
+Convex
+Firebase
+Hasura
+Apollo
+Prisma
+PostHog
+Sentry
+Mixpanel
+Amplitude
+Heap
+Hex
+Fivetran
+Hightouch
+Census
+dbt Labs
+Dagster
+Prefect
+Airbyte
+Metaplane
+Monte Carlo
+Bigeye
+Acceldata
+
+# === Fintech ===
+Brex
+Ramp
+Mercury
+Plaid
+Nova Credit
+Earnin
+Wealthfront
+Betterment
+Carta
+Pilot
+Bench
+QuickBooks
+Stripe
+Block
+Square
+Affirm
+Klarna
+Chime
+Current
+Varo
+Revolut
+N26
+Monzo
+Wise
+TransferWise
+Marqeta
+Mambu
+Modern Treasury
+Rapyd
+Checkout.com
+Lithic
+Unit
+Fortnox
+Synth
+Truework
+Persona
+Alloy
+Sentilink
+Plaid
+MX
+Stripe Atlas
+
+# === Devtools / infra ===
+GitHub
+GitLab
+Atlassian
+Linear
+Notion
+Coda
+Airtable
+ClickUp
+Monday.com
+Asana
+Trello
+Figma
+Sketch
+Webflow
+Framer
+Penpot
+Loom
+Pitch
+Miro
+Mural
+Whimsical
+Excalidraw
+PostHog
+Sentry
+Honeybadger
+Bugsnag
+Datadog
+New Relic
+Splunk
+Sumo Logic
+Honeycomb
+Lightstep
+Logz.io
+Loggly
+Logflare
+PagerDuty
+OpsGenie
+VictorOps
+StatusPage
+Statuspage
+Better Stack
+Grafana Labs
+Prometheus
+InfluxData
+Timescale
+TigerData
+ClickHouse
+StarTree
+Confluent
+Materialize
+RisingWave
+DuckDB
+MotherDuck
+
+# === Health / biotech ===
+Devoted Health
+Oscar Health
+Bright Health
+Cityblock
+Hims
+Ro
+Curology
+Carbon Health
+Forward
+One Medical
+Tempus AI
+Tempus
+Recursion Pharmaceuticals
+Insitro
+Atomwise
+Schrödinger
+Relay Therapeutics
+Strive Health
+Spring Health
+Lyra Health
+Modern Health
+Calm
+Headspace
+
+# === Commerce / consumer ===
+Faire
+Whatnot
+StockX
+Goat
+Shop Pay
+Bolt
+Fast
+Cart.com
+BigCommerce
+Shopify
+Salsify
+Klaviyo
+Attentive
+Postscript
+Yotpo
+Gorgias
+Tidio
+Olark
+Drift
+Intercom
+Front
+
+# === Crypto / web3 ===
+Coinbase
+Kraken
+Gemini
+Anchorage
+Fireblocks
+Chainalysis
+TRM Labs
+Dune
+Alchemy
+Infura
+QuickNode
+Helius
+Magic Eden
+OpenSea
+Blur
+Friend.tech
+Worldcoin
+Lido
+Aave
+Uniswap
+Compound
+Maker
+Polygon
+Avalanche
+Solana
+NEAR
+Aptos
+Sui
+
+# === Mobility / logistics ===
+Uber
+Lyft
+DoorDash
+Instacart
+Postmates
+Grubhub
+Gopuff
+Shipt
+Maven Clinic
+Convoy
+Flexport
+Project44
+ShipBob
+Stord
+Outrider
+Plus
+Aurora
+Cruise
+Waymo
+Argo AI
+Zoox
+Rivian
+Lucid Motors
+ChargePoint
+Voltus
+Octopus Energy
+Span
+Sunrun
+SunPower
+
+# === Security ===
+1Password
+LastPass
+Dashlane
+Okta
+Auth0
+Stytch
+WorkOS
+Hanko
+SuperTokens
+Clerk
+Cloudflare
+Cloudflare Inc
+Datadog
+Wiz
+Snyk
+Aqua Security
+Sysdig
+Lacework
+Orca Security
+Tenable
+Rapid7
+Palo Alto Networks
+CrowdStrike
+SentinelOne
+Cybereason
+Arctic Wolf
+Vectra AI
+Tessian
+Material Security
+Push Security
+
+# === Education / productivity ===
+Coursera
+Udemy
+Pluralsight
+Udacity
+edX
+MasterClass
+Skillshare
+Khan Academy
+Duolingo
+Quizlet
+Chegg
+Brilliant
+Lambda School
+Galvanize
+Codecademy
+Educative
+Course Hero
+
+# === SaaS / vertical ===
+Procore
+Veeva
+Toast
+Lightspeed
+Sage Intacct
+Workday
+Anaplan
+Coupa
+Bill.com
+Tipalti
+Airbase
+Brex
+Ramp
+Pleo
+Spendesk
+Pliant
+Navan
+TripActions
+Lola
+Gusto
+Rippling
+Justworks
+Trinet
+ADP
+Paychex
+Deel
+Remote.com
+Multiplier
+Oyster
+Papaya Global
+Velocity Global
+
+# === Other notable ===
+Patreon
+Substack
+Discord
+Twitch
+Dailymotion
+Vimeo
+Spotify
+SoundCloud
+Tidal
+Bandcamp
+Headspace
+Strava
+MyFitnessPal
+Whoop
+Oura
+Eight Sleep
+Levels
+Function Health
+Lifeforce
+Ten Thousand
+Outdoor Voices
+Allbirds
+Bombas
+Warby Parker
+Casper
+Glossier
+Away
+Brandless
+Public.com
+M1 Finance
+Acorns
+Wealthsimple
+Fundrise
+Yieldstreet
+Masterworks
+Vinovest
+
+# === YC alumni (recent batches) ===
+Posthog
+Replit
+Modal
+Substack
+Doppler
+DeepNote
+Render
+Mux
+Streamlit
+Pylon
+Trigger
+Resend
+Highlight
+Liveblocks
+Livekit
+Tigris
+Upstash
+Inngest
+Hookdeck
+Zenfetch
+Lago
+Triggerdev
+Granolaai
+Decagon
+Luma
+Lumalabs
+Hyperliquid
+Monad
+Cluely
+Lindy
+Mercor
+Reflexion
+Pilot AI
+DevRev
+Outset
+Outsetai
+
+# === DACH / EU ===
+Personio
+Celonis
+N26
+Trade Republic
+TIER Mobility
+Voi
+GetYourGuide
+HelloFresh
+Zalando
+Klarna
+Spotify
+King
+Ableton
+SoundCloud
+Mistral
+Helsing
+Parloa
+Black Forest Labs
+Photoroom
+Algolia
+Datadog
+DeepL
+Doctolib
+Mirakl
+Contentsquare
+Owkin
+Qonto
+Spendesk
+Swile
+Ankorstore
+Pennylane
+Aircall
+PayFit
+Alan
+ManoMano
+Vestiaire Collective
+Veepee
+Back Market
+Ledger
+Sorare
+Mistral
+
+# === India / APAC tech ===
+Razorpay
+CRED
+PhonePe
+Paytm
+Zerodha
+Groww
+Postman
+Freshworks
+Zoho
+BrowserStack
+Druva
+Icertis
+Notion India
+Atlan
+Whatfix
+LeadSquared
+Cleartax
+upGrad
+Vedantu
+Zomato
+Swiggy
+Ola
+Flipkart
+Myntra
+Meesho
+Zepto
+Blinkit
+Dukaan
+ShareChat
+Scaler
+
+# === Biotech / pharma ===
+Genentech
+Moderna
+BioNTech
+Recursion
+Insitro
+Tempus
+Flatiron Health
+GRAIL
+Foundation Medicine
+Adaptive Biotechnologies
+10x Genomics
+Twist Bioscience
+Ginkgo Bioworks
+Zymergen
+Arzeda
+Synthego
+Mammoth Biosciences
+Color Health
+Helix
+Invitae
+Ancestry
+23andMe
+
+# === Sports / media / entertainment ===
+DraftKings
+FanDuel
+Sportradar
+Genius Sports
+StatsPerform
+Sorare
+Dapper Labs
+Sky Mavis
+Niantic
+Roblox
+Unity
+Epic Games
+Riot Games
+Activision
+EA
+Take-Two
+Ubisoft
+Rec Room
+Discord
+Twitch
+Cameo
+OnlyFans
+Patreon
+Substack
+ConvertKit
+Beehiiv
+Buttondown
+Ghost
+Medium

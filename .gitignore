@@ -56,3 +56,6 @@ web-build/
 
 # Crash dumps
 *.stackdump
+
+# Discovery artifacts (re-generated; not source of truth)
+apps/crawler/discovered.jsonl
