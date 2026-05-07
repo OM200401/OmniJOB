@@ -18,7 +18,8 @@
 
 set -euo pipefail
 
-LOCATION="${LOCATION:-eastus}"
+LOCATION="${LOCATION:-canadacentral}"
+SWA_LOCATION="${SWA_LOCATION:-eastus2}"  # SWA free tier doesn't run in Canadian regions
 RG="${RG:-omnijob}"
 VM_NAME="${VM_NAME:-omnijob-vm}"
 VM_SIZE="${VM_SIZE:-Standard_B2s}"
@@ -36,7 +37,10 @@ else
     exit 1
 fi
 echo "==> SSH key: $SSH_KEY_PATH"
-STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-omnijobbackups$RANDOM}"
+# Deterministic storage account name so re-runs don't create a new one
+# every invocation. Globally unique via 6-char hash of the subscription id.
+SUB_HASH=$(az account show --query id -o tsv | sha1sum | cut -c1-6)
+STORAGE_ACCOUNT="${STORAGE_ACCOUNT:-omnijobbk${SUB_HASH}}"
 APPINSIGHTS="${APPINSIGHTS:-omnijob-insights}"
 GITHUB_REPO="${GITHUB_REPO:-https://github.com/OM200401/OmniJOB}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
@@ -117,7 +121,7 @@ if ! az staticwebapp show -g "$RG" -n omnijob-web -o none 2>/dev/null; then
     az staticwebapp create \
         --name omnijob-web \
         --resource-group "$RG" \
-        --location eastus2 \
+        --location "$SWA_LOCATION" \
         --source "$GITHUB_REPO" \
         --branch "$GITHUB_BRANCH" \
         --app-location apps/web \
