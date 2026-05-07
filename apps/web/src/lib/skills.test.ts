@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { diffSkills, extractSkills } from "./skills";
 
-describe("extractSkills — basic", () => {
+describe("extractSkills - basic", () => {
   test("returns empty for empty input", () => {
     expect(extractSkills("")).toEqual([]);
   });
@@ -32,7 +32,7 @@ describe("extractSkills — basic", () => {
   });
 });
 
-describe("extractSkills — tricky boundaries", () => {
+describe("extractSkills - tricky boundaries", () => {
   test("'JavaScripty' does NOT match JavaScript", () => {
     const names = extractSkills("javascripty syntax").map((s) => s.name);
     expect(names).not.toContain("JavaScript");
@@ -62,7 +62,7 @@ describe("extractSkills — tricky boundaries", () => {
   });
 });
 
-describe("extractSkills — categories", () => {
+describe("extractSkills - categories", () => {
   test("categorises Python as language", () => {
     const py = extractSkills("Python").find((s) => s.name === "Python");
     expect(py?.category).toBe("language");

@@ -1,7 +1,7 @@
 # @omnijob/web
 
 Vite + React web client. Uses the **native Web Crypto API** for AES-256-GCM
-and `hash-wasm` for Argon2id — exactly the model PROJECT.md §2.3 specifies,
+and `hash-wasm` for Argon2id - exactly the model PROJECT.md §2.3 specifies,
 which the React Native target can't fully deliver yet (RNQC ships only
 partial Web Crypto). This makes the web app the simplest place to exercise
 the full E2EE flow today.
@@ -27,7 +27,7 @@ Requires the API up (`apps/api`) and Qdrant + Redis (`infra/`).
   password ⇒ AES-GCM auth-tag check fails ⇒ "incorrect password".
 - **Dashboard**: shows the unlocked state and exposes a "Test search"
   button that POSTs a 1536-dim zero-vector to `/jobs/search` (real embedding
-  generation is a follow-up — PROJECT.md §9).
+  generation is a follow-up - PROJECT.md §9).
 
 The master key + DEK are held in memory only. Refreshing the page logs you out.
 

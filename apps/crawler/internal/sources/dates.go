@@ -4,7 +4,7 @@ import "time"
 
 // parseRFC3339Millis parses an RFC3339-ish timestamp (the format Greenhouse
 // and Ashby emit for `updated_at` / `publishedAt`). Returns 0 if unparseable
-// — callers treat 0 as "unknown" rather than the unix epoch.
+// - callers treat 0 as "unknown" rather than the unix epoch.
 func parseRFC3339Millis(s string) int64 {
 	if s == "" {
 		return 0

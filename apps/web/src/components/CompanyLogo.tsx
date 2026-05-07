@@ -12,7 +12,7 @@ function hueFor(s: string): number {
   return h % 360;
 }
 
-// Best-effort domain inference. Many companies use {slug}.com — for everything
+// Best-effort domain inference. Many companies use {slug}.com - for everything
 // else the Clearbit logo URL 404s and we fall back to the initial chip.
 function domainGuess(company: string): string {
   const slug = company.toLowerCase().replace(/[^a-z0-9]/g, "");

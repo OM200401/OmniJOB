@@ -20,7 +20,7 @@ import (
 // username and an empty password. Each query returns up to 100 results;
 // `totalResults` lets us bound the paging.
 //
-// Strong UK / EMEA volume signal — complements the US-skewed ATS adapters.
+// Strong UK / EMEA volume signal - complements the US-skewed ATS adapters.
 //
 // No-op if REED_API_KEY is missing.
 
@@ -31,7 +31,7 @@ type Reed struct {
 	MaxPages int
 }
 
-// DefaultReedQueries — broad seeds. Reed's API requires either keywords or a
+// DefaultReedQueries - broad seeds. Reed's API requires either keywords or a
 // location parameter; running with no filter returns 0 results. Operators
 // override via REED_QUERIES env (CSV of keyword strings).
 var DefaultReedQueries = []string{

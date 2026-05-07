@@ -17,7 +17,7 @@ import (
 // Jooble is a multi-country job-search aggregator with a POST-based REST API
 // at https://jooble.org/api/{key}. Free tier requires registering via their
 // help center form to receive a key (jooble.org/api/about). The API is
-// keyword-based — there's no "list everything" mode — so we issue a small
+// keyword-based - there's no "list everything" mode - so we issue a small
 // set of broad seed queries per region, dedup downstream by ID.
 //
 // No-op if JOOBLE_API_KEY is missing.
@@ -29,14 +29,14 @@ type Jooble struct {
 	Pages   int
 }
 
-// JoobleQuery — one (keywords, location) tuple. Location can be a country
+// JoobleQuery - one (keywords, location) tuple. Location can be a country
 // name like "United States" or a city; Jooble's geocoder is forgiving.
 type JoobleQuery struct {
 	Keywords string
 	Location string
 }
 
-// DefaultJoobleQueries — broad seed queries that cover the OmniJOB user base
+// DefaultJoobleQueries - broad seed queries that cover the OmniJOB user base
 // (NA tech). Operators override via JOOBLE_QUERIES env (CSV of "kw|loc"
 // tuples). Kept short because each query consumes a request and the free
 // tier is bounded.

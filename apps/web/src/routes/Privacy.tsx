@@ -31,7 +31,7 @@ const FIELDS: Field[] = [
     name: "Password",
     what: "Unlocks your data encryption key",
     where: "never",
-    detail: "Argon2id-derived master key, generated in your browser. Never transmitted in any form — not even hashed.",
+    detail: "Argon2id-derived master key, generated in your browser. Never transmitted in any form - not even hashed.",
   },
   {
     name: "Recovery key",
@@ -59,9 +59,9 @@ const FIELDS: Field[] = [
   },
   {
     name: "Applications",
-    what: "Tracker — applied / interviewing / offer / etc.",
+    what: "Tracker - applied / interviewing / offer / etc.",
     where: "encrypted",
-    detail: "Status, notes, timestamps — all live inside your encrypted profile blob. The server has no awareness of which roles you're pursuing.",
+    detail: "Status, notes, timestamps - all live inside your encrypted profile blob. The server has no awareness of which roles you're pursuing.",
   },
   {
     name: "Saved searches",
@@ -113,8 +113,8 @@ export function Privacy() {
           <h1 className="page-title">What we never see</h1>
           <p className="muted text-sm" style={{ maxWidth: 620 }}>
             74% of job seekers say they would withdraw an application if they knew their data was sent
-            offshore. OmniJob is built so that there is nothing meaningful for an operator —
-            us, a future buyer, a subpoenaed admin, or a server compromise — to read.
+            offshore. OmniJob is built so that there is nothing meaningful for an operator -
+            us, a future buyer, a subpoenaed admin, or a server compromise - to read.
           </p>
         </div>
       </div>
@@ -192,7 +192,7 @@ export function Privacy() {
               <strong>Things we structurally cannot do</strong>
             </div>
             <ul className="col gap-sm text-sm" style={{ paddingLeft: 18, margin: 0 }}>
-              <li>Reset your password without your recovery key. <span className="muted">There is no support backdoor — the math forbids it.</span></li>
+              <li>Reset your password without your recovery key. <span className="muted">There is no support backdoor - the math forbids it.</span></li>
               <li>Sell your résumé. <span className="muted">We only have the ciphertext.</span></li>
               <li>Build a "candidates available" feed of named users. <span className="muted">uids are SHA-256 hashes; there is no email column.</span></li>
               <li>Comply with a "give us this user's saved jobs" request. <span className="muted">We don't have the key.</span></li>
@@ -208,7 +208,7 @@ export function Privacy() {
               <strong>Things we still need you to trust us about</strong>
             </div>
             <p className="text-sm muted" style={{ marginBottom: 8 }}>
-              Honest catalogue of remaining trust requirements — none can be eliminated by client-side
+              Honest catalogue of remaining trust requirements - none can be eliminated by client-side
               crypto alone:
             </p>
             <ul className="col gap-sm text-sm" style={{ paddingLeft: 18, margin: 0 }}>

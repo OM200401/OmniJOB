@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { classifyCountry } from "./location";
 
-describe("classifyCountry — by country name", () => {
+describe("classifyCountry - by country name", () => {
   const cases: Array<[string, string]> = [
     ["San Francisco, United States", "US"],
     ["London, United Kingdom", "GB"],
@@ -23,7 +23,7 @@ describe("classifyCountry — by country name", () => {
   }
 });
 
-describe("classifyCountry — by city only", () => {
+describe("classifyCountry - by city only", () => {
   test("Bay Area → US", () => expect(classifyCountry("Bay Area")).toBe("US"));
   test("NYC → US", () => expect(classifyCountry("NYC")).toBe("US"));
   test("Bengaluru → IN", () => expect(classifyCountry("Bengaluru")).toBe("IN"));
@@ -33,7 +33,7 @@ describe("classifyCountry — by city only", () => {
   test("Dublin → IE", () => expect(classifyCountry("Dublin")).toBe("IE"));
 });
 
-describe("classifyCountry — by ISO trail token", () => {
+describe("classifyCountry - by ISO trail token", () => {
   test('"Paris, FR" → FR', () => expect(classifyCountry("Paris, FR")).toBe("FR"));
   test('"London, UK" → GB (UK is mapped to GB)', () => expect(classifyCountry("London, UK")).toBe("GB"));
   test('"London, GB" → GB', () => expect(classifyCountry("London, GB")).toBe("GB"));
@@ -42,14 +42,14 @@ describe("classifyCountry — by ISO trail token", () => {
   test('"Munich, DE" → DE', () => expect(classifyCountry("Munich, DE")).toBe("DE"));
 });
 
-describe("classifyCountry — by US state / Canadian province", () => {
+describe("classifyCountry - by US state / Canadian province", () => {
   test('"Austin, TX" → US', () => expect(classifyCountry("Austin, TX")).toBe("US"));
   test('"NY" → US', () => expect(classifyCountry("NY")).toBe("US"));
   test('"Vancouver, BC" → CA', () => expect(classifyCountry("Vancouver, BC")).toBe("CA"));
   test('"Toronto, ON" → CA', () => expect(classifyCountry("Toronto, ON")).toBe("CA"));
 });
 
-describe("classifyCountry — ambiguous trailing 2-letter code (state vs ISO-2)", () => {
+describe("classifyCountry - ambiguous trailing 2-letter code (state vs ISO-2)", () => {
   // These are the cases that motivated the fix: the trail token is both a
   // US state postal code AND an ISO-2 country code. Resolution defaults to
   // the US-state interpretation (real-world ATS strings overwhelmingly use
@@ -73,14 +73,14 @@ describe("classifyCountry — ambiguous trailing 2-letter code (state vs ISO-2)"
     expect(classifyCountry("US, CA, Santa Clara")).toBe("US"));
 });
 
-describe("classifyCountry — alternate separators", () => {
+describe("classifyCountry - alternate separators", () => {
   test('"WA - Vancouver" → US (space-dash separator splits like comma)', () =>
     expect(classifyCountry("WA - Vancouver")).toBe("US"));
   test('"United States - Remote" → US', () =>
     expect(classifyCountry("United States - Remote")).toBe("US"));
 });
 
-describe("classifyCountry — country-name word boundary", () => {
+describe("classifyCountry - country-name word boundary", () => {
   // Regression: previously the country-name pass used naïve substring match,
   // so "Indianapolis" was tagged IN (India), "Sausalito" was tagged US via
   // "usa" substring, etc. Word-boundary check prevents these.
@@ -90,7 +90,7 @@ describe("classifyCountry — country-name word boundary", () => {
     expect(classifyCountry("Sausalito, CA")).toBe("US"));
 });
 
-describe("classifyCountry — UK aliases", () => {
+describe("classifyCountry - UK aliases", () => {
   test('"Britain" → GB', () => expect(classifyCountry("Britain")).toBe("GB"));
   test('"Great Britain" → GB', () => expect(classifyCountry("Great Britain")).toBe("GB"));
   test('"England" → GB', () => expect(classifyCountry("England")).toBe("GB"));
@@ -98,7 +98,7 @@ describe("classifyCountry — UK aliases", () => {
   test('"UK" alone → GB', () => expect(classifyCountry("UK")).toBe("GB"));
 });
 
-describe("classifyCountry — null/empty", () => {
+describe("classifyCountry - null/empty", () => {
   test("undefined → null", () => expect(classifyCountry(undefined)).toBeNull());
   test("null → null", () => expect(classifyCountry(null)).toBeNull());
   test("empty string → null", () => expect(classifyCountry("")).toBeNull());
@@ -106,7 +106,7 @@ describe("classifyCountry — null/empty", () => {
   test('Unparseable text → null', () => expect(classifyCountry("Mars Colony")).toBeNull());
 });
 
-describe("classifyCountry — multi-word names match before substrings", () => {
+describe("classifyCountry - multi-word names match before substrings", () => {
   test("'United States of America' matches before 'America'", () => {
     expect(classifyCountry("United States of America")).toBe("US");
   });

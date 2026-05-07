@@ -1,7 +1,7 @@
 # @omnijob/crawler
 
 Go crawler for OmniJob. **v1 sources structured job data from public ATS APIs**
-(Greenhouse, Lever, Ashby) — no HTML scraping, no anti-bot fights, clean data
+(Greenhouse, Lever, Ashby) - no HTML scraping, no anti-bot fights, clean data
 straight from each company's career-site backend.
 
 ## Setup
@@ -38,7 +38,7 @@ Each adapter:
 
 The worker pool then computes embeddings via the API's `/embed` proxy
 (which itself talks to local Ollama) and ingests via `/jobs/ingest`.
-Per-company 404s are logged and skipped — slugs drift over time.
+Per-company 404s are logged and skipped - slugs drift over time.
 
 ## Configuration
 
@@ -85,9 +85,9 @@ internal/queue/                 Redis URL queue (unused by v1; same reason)
 
 ## What's not in v1
 
-- Generic web crawl + SLM-based extraction (PROJECT.md §2.1) — deferred while
+- Generic web crawl + SLM-based extraction (PROJECT.md §2.1) - deferred while
   v1 sources structured data from ATS APIs. The `internal/fetcher` and
   `internal/queue` packages remain in tree as the foundation for that.
-- Playwright-go fallback for sites behind Cloudflare/DataDome — not needed
+- Playwright-go fallback for sites behind Cloudflare/DataDome - not needed
   while we only hit public ATS APIs.
-- Proxy rotation — public ATS APIs don't require it.
+- Proxy rotation - public ATS APIs don't require it.

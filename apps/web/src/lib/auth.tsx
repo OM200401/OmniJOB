@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
     } catch {
-      // missing profile is fine — user hasn't onboarded yet
+      // missing profile is fine - user hasn't onboarded yet
     }
     setSession({
       uid,

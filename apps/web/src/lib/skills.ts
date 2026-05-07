@@ -1,7 +1,7 @@
-// Skills lexicon — flat, hand-curated list of canonical names with optional
+// Skills lexicon - flat, hand-curated list of canonical names with optional
 // aliases. Extraction is a word-boundary case-insensitive scan; we deliberately
 // lean toward false negatives over false positives so chips on the UI feel
-// trustworthy. Add to this list rather than building cleverer matching — the
+// trustworthy. Add to this list rather than building cleverer matching - the
 // taxonomy is the value.
 //
 // Names are the canonical display form. Aliases are alternate spellings or
@@ -226,7 +226,7 @@ export const SKILLS: SkillEntry[] = [
 // alias as a hit. Word-boundary matching avoids "javascripty" → "JavaScript",
 // but punctuation in names like "C#", "C++", "Next.js" needs the regex
 // special-chars escaped. We do *not* use \b on either side of names that
-// start/end with punctuation — \b is a transition between \w and non-\w, and
+// start/end with punctuation - \b is a transition between \w and non-\w, and
 // "+", "#", "." are non-\w, so \b would never match next to them.
 type CompiledEntry = SkillEntry & { regex: RegExp };
 
@@ -259,7 +259,7 @@ export type ExtractedSkill = {
 };
 
 // Returns canonical skill names found in `text`, in original order, deduped.
-// Pure function — safe to memoize on the caller side.
+// Pure function - safe to memoize on the caller side.
 export function extractSkills(text: string): ExtractedSkill[] {
   if (!text) return [];
   const seen = new Set<string>();

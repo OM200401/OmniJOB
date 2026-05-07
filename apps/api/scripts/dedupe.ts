@@ -31,7 +31,7 @@ const SET_PAYLOAD_BATCH = 100;
 // Lower number = more canonical. Direct ATS beats curated beats aggregator
 // beats remote-aggregator. When two listings collide, keep the lower number.
 const SOURCE_PRIORITY: Record<string, number> = {
-  // Tier 1 — direct ATS, employer-controlled
+  // Tier 1 - direct ATS, employer-controlled
   greenhouse: 1,
   lever: 1,
   ashby: 1,
@@ -44,17 +44,17 @@ const SOURCE_PRIORITY: Record<string, number> = {
   pinpoint: 1,
   personio: 1,
   teamtailor: 1,
-  // Tier 2 — curated employer programs (founder-attested, vetted)
+  // Tier 2 - curated employer programs (founder-attested, vetted)
   hackernews: 2,
   workatastartup: 2,
   usajobs: 2,
-  // Tier 3 — public-API aggregators
+  // Tier 3 - public-API aggregators
   themuse: 3,
   adzuna: 3,
   jooble: 3,
   reed: 3,
   careerjet: 3,
-  // Tier 4 — remote-only aggregators (often syndicate from Tier 1-3)
+  // Tier 4 - remote-only aggregators (often syndicate from Tier 1-3)
   remoteok: 4,
   weworkremotely: 4,
 };
@@ -125,7 +125,7 @@ const qdrant = new QdrantClient({
 });
 
 async function main() {
-  console.log(`dedupe — collection=${config.qdrant.jobsCollection} dry_run=${dryRun}`);
+  console.log(`dedupe - collection=${config.qdrant.jobsCollection} dry_run=${dryRun}`);
 
   const groups = new Map<string, Member[]>();
   let offset: string | number | undefined = undefined;
@@ -242,7 +242,7 @@ async function main() {
   console.log(`would keep canonical: ${activeTotal - toMark.length}`);
 
   if (dryRun) {
-    console.log("--dry-run set — no points modified.");
+    console.log("--dry-run set - no points modified.");
     return;
   }
 

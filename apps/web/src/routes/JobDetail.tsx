@@ -66,7 +66,7 @@ export function JobDetail() {
         if (!cancelled) setSources(res);
       })
       .catch(() => {
-        // Quietly ignore — panel just won't render.
+        // Quietly ignore - panel just won't render.
       });
     return () => {
       cancelled = true;
@@ -84,7 +84,7 @@ export function JobDetail() {
         if (!cancelled) setPairs(res.pairs);
       })
       .catch(() => {
-        // Quietly ignore — the rest of the page still works.
+        // Quietly ignore - the rest of the page still works.
       })
       .finally(() => {
         if (!cancelled) setExplaining(false);
@@ -187,7 +187,7 @@ export function JobDetail() {
                   <>
                     <span className="meta-dot" />
                     {/* Primary apply path. Direct click-through to the canonical
-                        source — proves the listing isn't laundered through an
+                        source - proves the listing isn't laundered through an
                         aggregator and lets the user verify without leaving us. */}
                     <a
                       href={meta.source_url}
@@ -318,7 +318,7 @@ export function JobDetail() {
 }
 
 // Per-source UX guidance shown above the Apply button. Calibrated from
-// hands-on observation of each ATS's apply flow — saves the user from
+// hands-on observation of each ATS's apply flow - saves the user from
 // surprise (no account vs. account required, single-page vs. multi-step).
 const HANDOFF: Record<string, { steps: string; minutes: string; account: "no" | "maybe" | "yes" }> = {
   greenhouse:      { steps: "single-page",         minutes: "3-5",  account: "no" },
@@ -367,7 +367,7 @@ function ApplyHandoff({ source }: { source: string }) {
 
 // Surface the dedupe pass's cross-source merge: the canonical row first
 // (marked primary), then every duplicate that scripts/dedupe.ts collapsed
-// into it. Each row links to the original posting on its source — the
+// into it. Each row links to the original posting on its source - the
 // "verified across N sources" trust signal made tangible.
 function VerifiedSourcesPanel({ sources }: { sources: JobSources }) {
   const total = 1 + sources.duplicates.length;
@@ -509,7 +509,7 @@ function QualityPanel({
         <ScoreRow label="Source reliability" value={breakdown.source_reliability} weight={0.15} />
       </div>
       <p className="text-xs muted-2" style={{ marginTop: 10 }}>
-        Composite signal of how trustworthy this posting looks. Doesn't affect ranking — just disclosure.
+        Composite signal of how trustworthy this posting looks. Doesn't affect ranking - just disclosure.
       </p>
     </div>
   );
@@ -530,7 +530,7 @@ function SkillsPanel({ jobText, resumeText }: { jobText: string; resumeText: str
         Skill fit
       </h4>
       <p className="muted text-xs" style={{ margin: "0 0 14px" }}>
-        Heuristic match against a known-skills lexicon. Not algorithmic ranking — just
+        Heuristic match against a known-skills lexicon. Not algorithmic ranking - just
         what's literally named in both texts.
       </p>
 
@@ -550,7 +550,7 @@ function SkillsPanel({ jobText, resumeText }: { jobText: string; resumeText: str
           </div>
           <SkillRow skills={missing} chip="chip-warning" />
           <p className="text-xs muted-2" style={{ marginTop: 8 }}>
-            These aren't blockers — they're a checklist of what to highlight in your application
+            These aren't blockers - they're a checklist of what to highlight in your application
             (or learn, if it matters).
           </p>
         </div>

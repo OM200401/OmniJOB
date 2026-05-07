@@ -42,7 +42,7 @@ type roEntry struct {
 	ApplyURL    string          `json:"apply_url"`
 	Date        string          `json:"date"`
 	EpochSecs   json.Number     `json:"epoch"`
-	// Legal-blob fields (first element) — used to detect & skip.
+	// Legal-blob fields (first element) - used to detect & skip.
 	Legal string `json:"legal"`
 }
 

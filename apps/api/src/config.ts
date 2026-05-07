@@ -40,7 +40,7 @@ export const config = {
     timeoutMs: num("OLLAMA_TIMEOUT_MS", 30_000),
   },
   sqlite: {
-    // Local dev default is relative — production sets SQLITE_PATH=
+    // Local dev default is relative - production sets SQLITE_PATH=
     // /var/lib/omnijob/users.db via infra/docker-compose.prod.yml so the
     // file lives on the host bind-mount rather than container CWD.
     path: env("SQLITE_PATH", "./data/omnijob.sqlite"),

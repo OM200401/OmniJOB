@@ -1,5 +1,5 @@
 // Common countries shown as checkboxes in the feed sidebar. Anything not on
-// this list still passes through the API's country filter — the user can
+// this list still passes through the API's country filter - the user can
 // type a city/region into the location text input instead.
 
 export type CountryEntry = { code: string; name: string };

@@ -22,7 +22,7 @@ import (
 //	https://{tenant}.bamboohr.com/careers/{id}/detail
 //
 // Tenants without a public-careers feed redirect /careers/list to
-// www.bamboohr.com (size ≈ 47 KB) — we treat that as "tenant not on bamboo".
+// www.bamboohr.com (size ≈ 47 KB) - we treat that as "tenant not on bamboo".
 // The detail endpoint adds the rich description; we fetch it per job, with a
 // small inter-request delay to stay polite to the Cloudflare-fronted CDN.
 
@@ -116,7 +116,7 @@ func (b *BambooHR) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 		return fmt.Errorf("status=%d: %s", resp.StatusCode, body)
 	}
 	// Tenants without a careers feed redirect /careers/list to the BambooHR
-	// marketing homepage — surface as a clear error rather than parse HTML.
+	// marketing homepage - surface as a clear error rather than parse HTML.
 	ctype := resp.Header.Get("Content-Type")
 	if !strings.Contains(strings.ToLower(ctype), "json") {
 		return fmt.Errorf("non-json (slug not on bamboohr?) content-type=%s", ctype)

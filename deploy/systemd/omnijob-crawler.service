@@ -1,5 +1,5 @@
 [Unit]
-Description=OmniJob crawler — single full pass
+Description=OmniJob crawler - single full pass
 Documentation=https://github.com/OM200401/OmniJOB
 After=omnijob-api.service
 Requires=omnijob-api.service

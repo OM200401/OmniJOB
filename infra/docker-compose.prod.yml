@@ -7,13 +7,13 @@
 #   - Named volumes get host bind-mounts under /var/lib/omnijob so the
 #     backup script can read snapshots and SQLite directly off disk.
 #   - Hard memory ceilings on every container so a runaway query can't OOM
-#     the whole VM. B2s has 4 GB total — Bun + system overhead consumes ~1 GB,
+#     the whole VM. B2s has 4 GB total - Bun + system overhead consumes ~1 GB,
 #     leaving ~3 GB to split between Qdrant (1G), Ollama (2G), Redis (256M).
 
 services:
   qdrant:
     # Ports come from the base compose (127.0.0.1-bound). Don't re-declare
-    # here — compose merges port lists and produces duplicate bindings.
+    # here - compose merges port lists and produces duplicate bindings.
     volumes:
       - /var/lib/omnijob/qdrant:/qdrant/storage
     deploy:

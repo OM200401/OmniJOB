@@ -8,7 +8,7 @@ import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
 
-// Map URL paths to rate-limit buckets. Order matters — more specific patterns
+// Map URL paths to rate-limit buckets. Order matters - more specific patterns
 // must come first. Match-explain is /jobs/:id/match-explain, so we test that
 // before the broader /jobs/* patterns.
 function ruleFor(method: string, path: string): RateLimitRule | null {
@@ -87,7 +87,7 @@ const app = new Elysia()
   .listen({
     port: config.port,
     // Bun-level cap. Requests larger than this are rejected before the
-    // handler runs — protects the B2s VM from naive-or-malicious bloat.
+    // handler runs - protects the B2s VM from naive-or-malicious bloat.
     maxRequestBodySize: config.security.maxBodyBytes,
   });
 

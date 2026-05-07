@@ -1,5 +1,5 @@
 [Unit]
-Description=OmniJob cross-source dedupe — chained after crawler
+Description=OmniJob cross-source dedupe - chained after crawler
 Documentation=https://github.com/OM200401/OmniJOB
 After=omnijob-crawler.service
 

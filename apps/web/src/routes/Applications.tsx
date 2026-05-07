@@ -140,7 +140,7 @@ export function Applications() {
         <div className="page-header-left">
           <h1 className="page-title">Applications</h1>
           <p className="muted text-sm">
-            Stored encrypted in your profile blob — server only sees ciphertext. Auto-flagged as ghosted after {GHOST_THRESHOLD_DAYS} days without an update.
+            Stored encrypted in your profile blob - server only sees ciphertext. Auto-flagged as ghosted after {GHOST_THRESHOLD_DAYS} days without an update.
           </p>
         </div>
         {totalActive > 0 && (
@@ -238,7 +238,7 @@ function ApplicationRow({
             {meta?.country && (
               <>
                 <span className="meta-dot" />
-                <span><span aria-hidden style={{ marginRight: 4 }}>{flagEmoji(meta.country)}</span>{meta.location || "—"}</span>
+                <span><span aria-hidden style={{ marginRight: 4 }}>{flagEmoji(meta.country)}</span>{meta.location || "-"}</span>
               </>
             )}
             <span className="meta-dot" />

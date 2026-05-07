@@ -159,7 +159,7 @@ export function Onboarding() {
             <div>
               <h2>What are you looking for?</h2>
               <p className="muted text-sm">
-                A sentence or two. Title, technologies, mission, anything specific —
+                A sentence or two. Title, technologies, mission, anything specific -
                 it's used as a soft signal in ranking.
               </p>
             </div>
@@ -179,7 +179,7 @@ export function Onboarding() {
             <div>
               <h2>Your experience</h2>
               <p className="muted text-sm">
-                We use this to filter the feed — you'll only see roles at your level
+                We use this to filter the feed - you'll only see roles at your level
                 (you can override on the feed itself).
               </p>
             </div>
@@ -296,7 +296,7 @@ export function Onboarding() {
             {resumeTab === "paste" ? (
               <textarea
                 className="textarea"
-                placeholder="Paste your résumé text here. Skills, experience, projects — the more, the better."
+                placeholder="Paste your résumé text here. Skills, experience, projects - the more, the better."
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 rows={12}
@@ -320,7 +320,7 @@ export function Onboarding() {
                 <span className="icon"><UploadCloud size={20} /></span>
                 <strong>Drop your résumé PDF here</strong>
                 <span className="muted text-sm">
-                  or click to choose. Parsed by pdf.js — bytes never leave the browser.
+                  or click to choose. Parsed by pdf.js - bytes never leave the browser.
                 </span>
                 <input
                   ref={fileRef}

@@ -1,11 +1,11 @@
-# OmniJOB — Architecture & Data Flow
+# OmniJOB - Architecture & Data Flow
 
 Two views of the system:
 
-1. **Infrastructure** — every running process, where it lives, what it talks to.
-2. **Data flow (DFD)** — every piece of user data, where it crosses a trust boundary, where it lives at rest, and what is provably never seen by the server.
+1. **Infrastructure** - every running process, where it lives, what it talks to.
+2. **Data flow (DFD)** - every piece of user data, where it crosses a trust boundary, where it lives at rest, and what is provably never seen by the server.
 
-Both diagrams are kept in sync with the codebase. If a diagram and the code disagree, the code is right and the diagram is stale — please open a PR.
+Both diagrams are kept in sync with the codebase. If a diagram and the code disagree, the code is right and the diagram is stale - please open a PR.
 
 ---
 
@@ -31,7 +31,7 @@ graph TB
         API --> SQLITE
     end
 
-    subgraph crawler["Crawler — same box · systemd timer · 12h cadence"]
+    subgraph crawler["Crawler - same box · systemd timer · 12h cadence"]
         CRAWL[apps/crawler<br/>Go binary · 24 source adapters]
         DEDUP[apps/api/scripts/dedupe.ts<br/>cosine ≥ 0.98 + canonical priority]
         DISCOVER[apps/crawler/cmd/discover<br/>tenant slug-probe · adhoc]
@@ -70,7 +70,7 @@ graph TB
 | Bun API (Elysia) | Server | 3000 | `/health`, `/embed`, `/users/*`, `/jobs/*`, `/jobs/:id/sources` |
 | Qdrant | Server | 6333 | 768-dim cosine, `jobs` + `users` collections, HNSW index |
 | Ollama | Server | 11434 | `nomic-embed-text` always loaded |
-| Bun SQLite | Server | n/a (file) | `users.db` — ciphertext blobs only |
+| Bun SQLite | Server | n/a (file) | `users.db` - ciphertext blobs only |
 | Crawler | Server | n/a | systemd timer every 12h, runs `apps/crawler` then `dedupe.ts` |
 | Web SPA | User browser | n/a | served as static files by Caddy |
 
@@ -82,7 +82,7 @@ The dashed line is the only boundary that matters. **Everything left of it is pl
 
 ```mermaid
 flowchart LR
-    subgraph trust1["Browser trust zone — plaintext OK"]
+    subgraph trust1["Browser trust zone - plaintext OK"]
         EMAIL[Email]
         PASSWD[Password]
         RESUME[Résumé text<br/>or PDF]
@@ -125,7 +125,7 @@ flowchart LR
     UID --> BOUNDARY
     EMBED_OUT --> BOUNDARY
 
-    subgraph trust2["Server trust zone — ciphertext + unlinked vectors only"]
+    subgraph trust2["Server trust zone - ciphertext + unlinked vectors only"]
         EMBED_PROXY([API /embed<br/>Bun · Ollama proxy])
         OLLAMA_P([Ollama<br/>nomic-embed-text])
         BLOB_CT[(SQLite<br/>encrypted blob<br/>keyed by uid)]
@@ -147,11 +147,11 @@ flowchart LR
         SEARCH_API -- top-K hits --> BOUNDARY
     end
 
-    subgraph trust3["External sources — public job postings only"]
+    subgraph trust3["External sources - public job postings only"]
         ATS_EXT[Greenhouse · Lever · Ashby<br/>Workday · SmartRecruiters · etc.]
     end
 
-    subgraph crawler_zone["Crawler trust zone — server-internal"]
+    subgraph crawler_zone["Crawler trust zone - server-internal"]
         CRAWLER([apps/crawler<br/>24 source adapters])
         DEDUP_PROC([dedupe.ts<br/>cosine ≥ 0.98])
 
@@ -178,13 +178,13 @@ flowchart LR
 
 | Field | Plaintext where | Server sees | Encrypted with |
 |---|---|---|---|
-| Email | Browser only | **never** | n/a — only the SHA-256 hash leaves |
-| Password | Browser only | **never** | n/a — only Argon2id-derived material is used |
-| Master Key | Browser memory | **never** | n/a — derived per-session |
+| Email | Browser only | **never** | n/a - only the SHA-256 hash leaves |
+| Password | Browser only | **never** | n/a - only Argon2id-derived material is used |
+| Master Key | Browser memory | **never** | n/a - derived per-session |
 | DEK | Browser memory | **never** | wrapped by master key + by recovery key |
 | Recovery Key | Shown once at signup | **never** | independent wrapper for the DEK |
 | Résumé text | Browser memory | **transit only** (sent to `/embed`, not persisted) | DEK in profile blob |
-| Skill vector | Browser memory · Qdrant | yes — at a random point ID with no link to uid | n/a (the point itself, not the linkage) |
+| Skill vector | Browser memory · Qdrant | yes - at a random point ID with no link to uid | n/a (the point itself, not the linkage) |
 | Applications | Browser memory | **never** | DEK in profile blob |
 | Saved searches | Browser memory | **never** | DEK in profile blob |
 | Bookmarks | Browser memory | **never** | DEK in profile blob |
@@ -193,7 +193,7 @@ flowchart LR
 
 ### Structural impossibilities
 
-These aren't promises — they are mathematical facts about the protocol:
+These aren't promises - they are mathematical facts about the protocol:
 
 1. **The server cannot reset a password.** The DEK is wrapped only by the master key and the recovery key. Without one of those, the cryptographic auth tag fails on every decryption attempt and no support tool can override it.
 2. **The server cannot link a skill vector to a user.** The vector lives at a Qdrant point ID generated client-side with no derivation from `uid` or email. The mapping `uid → point_id` is held only inside the encrypted blob.

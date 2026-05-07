@@ -16,7 +16,7 @@ import (
 
 // Careerjet is an international meta-search aggregator with an affiliate
 // search API at https://public.api.careerjet.net/search. Free affiliate
-// signup is at careerjet.com/partners/api — they require an `affid`, a
+// signup is at careerjet.com/partners/api - they require an `affid`, a
 // `user_ip`, and a `user_agent` to be passed through on every request so
 // they can attribute clicks. The API returns up to 99 results per page.
 //
@@ -31,7 +31,7 @@ type Careerjet struct {
 	Pages   int
 }
 
-// DefaultCareerjetLocales — Careerjet's locale tags are "<lang>_<country>".
+// DefaultCareerjetLocales - Careerjet's locale tags are "<lang>_<country>".
 // English-speaking markets only; operators expand via CAREERJET_LOCALES.
 var DefaultCareerjetLocales = []string{"en_US", "en_GB", "en_CA", "en_AU"}
 
@@ -159,7 +159,7 @@ func (c *Careerjet) fetchPage(ctx context.Context, locale string, page int, out 
 		}
 		ApplySalary(&meta.SalaryMin, &meta.SalaryMax, &meta.SalaryCurrency, &meta.SalaryPeriod, &meta.SalaryRange, j.Salary, desc)
 
-		// Careerjet doesn't expose a stable per-job ID — derive a stable one
+		// Careerjet doesn't expose a stable per-job ID - derive a stable one
 		// from the URL plus the page index so re-fetches dedup correctly.
 		id := j.URL
 		if id == "" {

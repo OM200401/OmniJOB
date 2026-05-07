@@ -1,8 +1,8 @@
-# OmniJOB — Deployment Runbook
+# OmniJOB - Deployment Runbook
 
 Primary target is **DigitalOcean** (via the GitHub Student Pack's $200 credit) with **Cloudflare Pages** for the SPA. End-to-end provisioning takes ~15 minutes of clock time, ~10 of which is cloud-init running on its own.
 
-The Azure path is preserved as an alternative — see `docs/deployment-azure.md`-equivalent inline at the bottom.
+The Azure path is preserved as an alternative - see `docs/deployment-azure.md`-equivalent inline at the bottom.
 
 ## What we're deploying
 
@@ -20,8 +20,8 @@ Privacy-moat note: Ollama lives on the droplet. No résumé text leaves our infr
 
 ## Prerequisites
 
-- DigitalOcean account — redeem $200 student credit at https://education.github.com/pack (search "DigitalOcean").
-- `doctl` CLI — `winget install DigitalOcean.doctl` on Windows, or https://docs.digitalocean.com/reference/doctl/how-to/install/.
+- DigitalOcean account - redeem $200 student credit at https://education.github.com/pack (search "DigitalOcean").
+- `doctl` CLI - `winget install DigitalOcean.doctl` on Windows, or https://docs.digitalocean.com/reference/doctl/how-to/install/.
 - DO API token with read+write scope: https://cloud.digitalocean.com/account/api/tokens.
 - An SSH keypair at `~/.ssh/id_ed25519.pub` (preferred) or `~/.ssh/id_rsa.pub`. Generate with `ssh-keygen -t ed25519` if missing.
 - A domain registered. The runbook assumes `omnijob.app`; substitute your own everywhere.
@@ -30,7 +30,7 @@ Privacy-moat note: Ollama lives on the droplet. No résumé text leaves our infr
 
 ---
 
-## Step 1 — Provision the droplet (~5 min)
+## Step 1 - Provision the droplet (~5 min)
 
 ```sh
 doctl auth init     # paste the API token
@@ -38,7 +38,7 @@ doctl account get   # confirm
 bash deploy/digitalocean/setup.sh
 ```
 
-The script is idempotent — re-run safely after any failure. It creates:
+The script is idempotent - re-run safely after any failure. It creates:
 
 - Droplet `omnijob-vm` (Ubuntu 22.04, `s-2vcpu-4gb`, NYC3 by default)
 - Reserved IP, assigned to the droplet (free while attached)
@@ -62,7 +62,7 @@ REGION=sfo3 SIZE=s-2vcpu-2gb-amd bash deploy/digitalocean/setup.sh
 
 ---
 
-## Step 2 — DNS + TLS (~5 min)
+## Step 2 - DNS + TLS (~5 min)
 
 In Cloudflare's DNS panel:
 
@@ -72,7 +72,7 @@ In Cloudflare's DNS panel:
 | CNAME | `@` | (Cloudflare Pages hostname from step 3) | Proxied |
 | CNAME | `www` | `omnijob.app` | Proxied |
 
-The "DNS only" setting on the `api` record is mandatory the first time — Caddy needs Let's Encrypt's HTTP-01 challenge to reach the droplet directly.
+The "DNS only" setting on the `api` record is mandatory the first time - Caddy needs Let's Encrypt's HTTP-01 challenge to reach the droplet directly.
 
 After DNS propagates (~1-5 min), confirm:
 
@@ -85,7 +85,7 @@ If `qdrant` or `ollama` is `false`, SSH in and check `docker ps`.
 
 ---
 
-## Step 3 — Cloudflare Pages (~5 min)
+## Step 3 - Cloudflare Pages (~5 min)
 
 1. https://dash.cloudflare.com → your account → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
 2. Select the `OmniJOB` repo.
@@ -100,11 +100,11 @@ If `qdrant` or `ollama` is `false`, SSH in and check `docker ps`.
 5. Save. First deploy runs immediately; ~2 minutes.
 6. After the first deploy, **Custom domains** → add `omnijob.app` and `www.omnijob.app`. Cloudflare wires up DNS automatically.
 
-Pages does its own SPA fallback via `apps/web/public/_redirects` — no `staticwebapp.config.json` needed.
+Pages does its own SPA fallback via `apps/web/public/_redirects` - no `staticwebapp.config.json` needed.
 
 ---
 
-## Step 4 — API env vars on the droplet
+## Step 4 - API env vars on the droplet
 
 The API refuses to start in production without `ALLOWED_ORIGINS` set. SSH in and configure:
 
@@ -130,7 +130,7 @@ SQLITE_PATH=/var/lib/omnijob/users.db
 
 ---
 
-## Step 5 — (Optional) DO Spaces for offsite backups
+## Step 5 - (Optional) DO Spaces for offsite backups
 
 Local-disk backups under `/var/lib/omnijob/backups` always run. To also push to DO Spaces:
 
@@ -155,12 +155,12 @@ The backup cron picks these up on its next run (03:00 UTC).
 
 ---
 
-## Step 6 — Smoke test (~5 min)
+## Step 6 - Smoke test (~5 min)
 
 1. **API reachability:** `curl -fsS https://api.omnijob.app/health` → ok JSON.
 2. **Web SPA:** `https://omnijob.app/` loads the React build with valid TLS.
 3. **Deep-link routing:** `https://omnijob.app/privacy` directly visited does NOT 404 (proves `_redirects` fallback works).
-4. **CORS:** open the SPA in a browser, log in, hit `/jobs/search` — no CORS error in DevTools console.
+4. **CORS:** open the SPA in a browser, log in, hit `/jobs/search` - no CORS error in DevTools console.
 5. **Onboarding flow:** create a test account, paste a small résumé, save the recovery key, log out, log back in, confirm matches load.
 6. **Crawler scheduled:**
    ```sh
@@ -183,7 +183,7 @@ The backup cron picks these up on its next run (03:00 UTC).
 
 ---
 
-## Step 7 — Soft launch
+## Step 7 - Soft launch
 
 1. Tag the deployed commit:
    ```sh
@@ -191,7 +191,7 @@ The backup cron picks these up on its next run (03:00 UTC).
    git push --tags
    ```
 2. Send the first 5-10 invites. Tail `/var/lib/omnijob/audit.log` for the first hour to spot abuse.
-3. Have a feedback channel ready — `mailto:feedback@omnijob.app` via Cloudflare Email Routing (free).
+3. Have a feedback channel ready - `mailto:feedback@omnijob.app` via Cloudflare Email Routing (free).
 
 ---
 
@@ -259,11 +259,11 @@ Hardening that ships in the API for the public beta. Most of these are off-by-de
 |---|---|---|
 | Bun listener | 1 MB request body cap (rejects oversized POSTs before parse) | `apps/api/src/index.ts` |
 | API middleware | Per-IP fixed-window rate limits on hot routes | `apps/api/src/lib/ratelimit.ts` |
-| API middleware | Fail-closed CORS — startup aborts if `ALLOWED_ORIGINS` unset in prod | `apps/api/src/index.ts` |
+| API middleware | Fail-closed CORS - startup aborts if `ALLOWED_ORIGINS` unset in prod | `apps/api/src/index.ts` |
 | Embed client | 30 s hard timeout on Ollama calls (prevents wedged-model worker exhaustion) | `apps/api/src/embed/ollama.ts` |
 | Auth routes | JSON-lines audit log of register/login/recovery/reset events | `apps/api/src/lib/audit.ts` |
 | Container runtime | Memory + CPU caps on Qdrant (1G/1cpu), Ollama (2G/2cpu), Redis (256M/0.5cpu) | `infra/docker-compose.prod.yml` |
-| Container runtime | Log rotation (10 MB × 3 files) — prevents `/var/lib/docker/containers` from filling the disk | `infra/docker-compose.prod.yml` |
+| Container runtime | Log rotation (10 MB × 3 files) - prevents `/var/lib/docker/containers` from filling the disk | `infra/docker-compose.prod.yml` |
 
 ### Rate limit buckets (per IP)
 
@@ -320,11 +320,11 @@ jq -rs --arg cutoff "$(date -u -d '1 hour ago' +%FT%TZ)" \
   /var/lib/omnijob/audit.log
 ```
 
-Logrotate is not configured for this file by default — for a long beta, add a daily rotation in `/etc/logrotate.d/omnijob-audit`.
+Logrotate is not configured for this file by default - for a long beta, add a daily rotation in `/etc/logrotate.d/omnijob-audit`.
 
 ### Known gaps (deferred)
 
-- No Redis-backed distributed rate limiter — single-instance only. Migrate when scaling the API horizontally.
+- No Redis-backed distributed rate limiter - single-instance only. Migrate when scaling the API horizontally.
 - No CAPTCHA on `/users/register`. The 5/hour/IP cap is the primary brake; revisit if signup floods materialize.
 - No mTLS or auth on the internal Qdrant/Ollama ports. They bind to 127.0.0.1 only (see `docker-compose.prod.yml`), so the VM perimeter is the trust boundary.
 
@@ -345,4 +345,4 @@ az account show --query name
 bash deploy/azure/deploy-with-retry.sh
 ```
 
-The same `cloud-init.yaml`, Caddyfile, systemd units, and backup script work — only the provisioning script (`azure.sh` vs `setup.sh`) differs. Backup script honors `AZURE_STORAGE_ACCOUNT` for Blob upload via the VM's managed identity.
+The same `cloud-init.yaml`, Caddyfile, systemd units, and backup script work - only the provisioning script (`azure.sh` vs `setup.sh`) differs. Backup script honors `AZURE_STORAGE_ACCOUNT` for Blob upload via the VM's managed identity.

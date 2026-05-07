@@ -1,4 +1,4 @@
-// "Why this match" — chunked cosine between résumé and job description.
+// "Why this match" - chunked cosine between résumé and job description.
 // We embed N chunks of each side via Ollama in one batch and surface the
 // top-K résumé↔job phrase pairs by cosine similarity.
 

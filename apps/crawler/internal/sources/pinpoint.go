@@ -115,7 +115,7 @@ func (p *Pinpoint) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 			continue
 		}
 
-		// Concatenate the structured sections — Pinpoint splits content across
+		// Concatenate the structured sections - Pinpoint splits content across
 		// description / key_responsibilities / skills / benefits.
 		desc := strings.TrimSpace(strings.Join(skipEmpty(
 			stripHTML(post.Description),

@@ -17,7 +17,7 @@ import (
 // https://www.themuse.com/api/public/jobs that returns 20 results per page
 // and reports `page_count` so paging is bounded. No API key is required for
 // basic use but registered keys (free, instant) raise the rate limit from
-// 500/hr to 3600/hr — operators set MUSE_API_KEY to enable.
+// 500/hr to 3600/hr - operators set MUSE_API_KEY to enable.
 //
 // Volume sanity-checked at ~500k active postings across all categories.
 

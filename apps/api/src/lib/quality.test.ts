@@ -14,7 +14,7 @@ const baseJob: JobMetadata = {
   salary_max: 150_000,
 };
 
-describe("qualityBreakdown — components", () => {
+describe("qualityBreakdown - components", () => {
   test("total is in [0, 1]", () => {
     const q = qualityBreakdown(baseJob);
     expect(q.total).toBeGreaterThanOrEqual(0);
@@ -78,7 +78,7 @@ describe("qualityBreakdown — components", () => {
   });
 });
 
-describe("qualityBreakdown — totals", () => {
+describe("qualityBreakdown - totals", () => {
   test("perfect job (recent, salaried, long description, top source) approaches 1", () => {
     const q = qualityBreakdown({
       ...baseJob,

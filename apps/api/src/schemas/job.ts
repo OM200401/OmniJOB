@@ -86,7 +86,7 @@ export const JobSearchSchema = t.Object({
   country: t.Optional(t.Array(Country)),
   location: t.Optional(t.String({ maxLength: 256 })),
   company: t.Optional(t.String({ maxLength: 256 })),
-  // USD-annual equivalents — server normalizes per-job before filtering.
+  // USD-annual equivalents - server normalizes per-job before filtering.
   salary_min_usd: t.Optional(t.Number({ minimum: 0 })),
   salary_max_usd: t.Optional(t.Number({ minimum: 0 })),
   require_salary: t.Optional(t.Boolean()),

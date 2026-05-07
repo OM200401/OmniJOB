@@ -79,7 +79,7 @@ var adapters = []adapter{
 			}
 			// API returns 200 with `{"totalFound":0,"content":[]}` for any
 			// company name (existent or not). Accept only when at least one
-			// posting exists — that proves the slug is real AND actively
+			// posting exists - that proves the slug is real AND actively
 			// hiring (which is what discovery wants anyway).
 			return jsonHasNonZeroNumber(body, "totalFound")
 		},
@@ -197,7 +197,7 @@ func jsonHasNonZeroNumber(body []byte, k string) bool {
 }
 
 // jsonHasKey returns true if the JSON body has a top-level key matching `k`.
-// Avoids a full json.Unmarshal — we only need a structural sanity check.
+// Avoids a full json.Unmarshal - we only need a structural sanity check.
 func jsonHasKey(body []byte, k string) bool {
 	if len(body) < len(k)+2 {
 		return false
@@ -295,7 +295,7 @@ func main() {
 		hitCount++
 		byAdapter[r.Adapter]++
 	}
-	log.Printf("done — total_hits=%d", hitCount)
+	log.Printf("done - total_hits=%d", hitCount)
 	for _, a := range adapters {
 		log.Printf("  %s: %d", a.name, byAdapter[a.name])
 	}

@@ -2,7 +2,7 @@
 // abuse patterns post-hoc (signup floods, credential-stuffing) without
 // keeping a hot index of failed attempts in the request path.
 //
-// One file handle, opened lazily on first write. Writes are best-effort —
+// One file handle, opened lazily on first write. Writes are best-effort -
 // a failed log line should never break the auth flow.
 
 import { config } from "../config";

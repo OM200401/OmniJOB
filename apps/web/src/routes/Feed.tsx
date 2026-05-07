@@ -619,7 +619,7 @@ export function Feed() {
               description={
                 totalActive > 0
                   ? "Try loosening filters or removing the search query."
-                  : "Run the crawler to ingest live ATS data — see README §3."
+                  : "Run the crawler to ingest live ATS data - see README §3."
               }
               action={totalActive > 0 ? <button className="btn btn-secondary btn-sm" onClick={reset}>Clear filters</button> : undefined}
             />

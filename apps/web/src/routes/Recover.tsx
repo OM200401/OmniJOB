@@ -94,7 +94,7 @@ export function Recover() {
             <span className="chip chip-success" style={{ alignSelf: "flex-start" }}>Password reset</span>
             <h2>You're set</h2>
             <p className="muted text-sm">
-              Sending you to sign in. Your résumé and saved jobs are still there —
+              Sending you to sign in. Your résumé and saved jobs are still there -
               the recovery key only re-wrapped the data-encryption key.
             </p>
           </div>
@@ -113,7 +113,7 @@ export function Recover() {
           <h2>Reset your password</h2>
           <p className="muted text-sm">
             Enter the recovery key you saved at signup. We'll decrypt your DEK
-            locally and re-wrap it with a new password — no data is lost.
+            locally and re-wrap it with a new password - no data is lost.
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function Recover() {
               id="recoverykey"
               className="textarea mono"
               style={{ minHeight: 90, fontSize: 12.5, letterSpacing: 0.5 }}
-              placeholder="paste your 32-character-group recovery key — formatting doesn't matter"
+              placeholder="paste your 32-character-group recovery key - formatting doesn't matter"
               value={recoveryKeyInput}
               onChange={(e) => setRecoveryKeyInput(e.target.value)}
               disabled={busy}

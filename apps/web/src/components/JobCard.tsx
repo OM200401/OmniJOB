@@ -23,9 +23,9 @@ const levelLabel: Record<string, string> = {
   executive: "Executive",
 };
 
-// Card grid item. Shows the full "should I click this?" surface — title,
+// Card grid item. Shows the full "should I click this?" surface - title,
 // company, level chip, salary chip, location, remote, freshness, quality
-// dot, match score — but never the description preview (that lives only on
+// dot, match score - but never the description preview (that lives only on
 // the detail page).
 export function JobCard({ hit, saved, onToggleSave }: Props) {
   const id = String(hit.id);
@@ -71,7 +71,7 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
           </span>
         )}
         {hit.payload.source && (
-          // Informational only — the whole card is a Link to /jobs/:id, so a
+          // Informational only - the whole card is a Link to /jobs/:id, so a
           // separate clickable target inside it would conflict. Title carries
           // the "source attribution" affordance; the click-through lives on
           // the detail page.
@@ -94,7 +94,7 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
                   {flagEmoji(hit.payload.country)}
                 </span>
               )}
-              {hit.payload.location || "—"}
+              {hit.payload.location || "-"}
             </span>
           )}
           {isShownRemote(remote) && (
@@ -157,7 +157,7 @@ function freshnessOf(ms: number | undefined): "fresh" | "stale" | null {
 }
 
 function QualityDot({ value }: { value: number }) {
-  // Three tiers — high ≥ 0.65, medium ≥ 0.40, low otherwise.
+  // Three tiers - high ≥ 0.65, medium ≥ 0.40, low otherwise.
   const tier = value >= 0.65 ? "high" : value >= 0.4 ? "med" : "low";
   const label =
     tier === "high"

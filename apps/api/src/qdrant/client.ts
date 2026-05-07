@@ -167,7 +167,7 @@ export async function searchJobs(
       )
     ) {
       // salaryOverlapsUSD returns false for jobs without salary info when a
-      // numeric filter is set; that's the desired behavior — if the user
+      // numeric filter is set; that's the desired behavior - if the user
       // asked for $X+, we shouldn't show jobs of unknown pay.
       continue;
     }
@@ -211,7 +211,7 @@ export async function getJob(externalId: string): Promise<(JobMetadata & { quali
 
 // Source disclosure: for a canonical job, return its own source plus every
 // duplicate that scripts/dedupe.ts collapsed into it. Used by the
-// "Verified across N sources" panel — the duplicates carry canonical_id
+// "Verified across N sources" panel - the duplicates carry canonical_id
 // pointing at this canonical's external_id.
 export type JobSource = {
   source: string;
@@ -229,7 +229,7 @@ export async function getJobSources(
   if (!canonicalMeta) return null;
 
   // Single filter scroll over points whose canonical_id pointer matches us.
-  // Cap aggressively — a single canonical with >50 duplicates would be
+  // Cap aggressively - a single canonical with >50 duplicates would be
   // pathological; in practice clusters are 2-5 points.
   const res = await qdrant.scroll(config.qdrant.jobsCollection, {
     limit: 50,

@@ -54,7 +54,7 @@ export async function rewrapDek(
 }
 
 // =========================================================================
-// Profile blob — what we store, encrypted, server-side
+// Profile blob - what we store, encrypted, server-side
 // =========================================================================
 
 export type ExperienceLevel =
@@ -117,7 +117,7 @@ export const DEFAULT_PREFS: Preferences = {
   savedSearches: [],
 };
 
-// Application lifecycle states. `applied` is the entry state — created when
+// Application lifecycle states. `applied` is the entry state - created when
 // a user marks a job applied or clicks the external Apply button. Other
 // states are explicit user choices except `ghosted`, which the UI computes
 // at render time after 14d of no movement and the user can confirm or revert.

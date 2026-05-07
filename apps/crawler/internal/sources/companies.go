@@ -1,7 +1,7 @@
 package sources
 
 // Curated company lists per ATS provider. ATS providers don't expose a public
-// "list all boards" endpoint, so this is hand-maintained. Slugs may drift —
+// "list all boards" endpoint, so this is hand-maintained. Slugs may drift -
 // 404s during fetch are logged and skipped, not fatal. Override with the
 // {ATS}_COMPANIES env vars (CSV).
 //
@@ -517,7 +517,7 @@ var DefaultWorkable = []string{
 // hand-curated; bad combinations 404 cleanly and are skipped.
 //
 // Pattern verification: open `https://{tenant}.{region}.myworkdayjobs.com/{site}`
-// in a browser — if jobs load, the tuple is correct. The site-path can usually
+// in a browser - if jobs load, the tuple is correct. The site-path can usually
 // be read from the URL after a click on "View All Jobs" on the company's
 // careers page.
 var DefaultWorkday = []WorkdayCompany{
@@ -671,7 +671,7 @@ var DefaultRecruitee = []string{
 	"etsy",
 }
 
-// DefaultPersonio — Personio tenant slugs at {slug}.jobs.personio.com/xml.
+// DefaultPersonio - Personio tenant slugs at {slug}.jobs.personio.com/xml.
 // Personio's public XML feed is opt-in per tenant and Cloudflare-fronted;
 // many slugs that exist in the Personio admin do not actually expose the
 // feed publicly. Defaults are kept conservative; operators populate via
@@ -682,7 +682,7 @@ var DefaultPersonio = []string{
 	"awin",
 }
 
-// DefaultTeamtailor — Teamtailor tenant slugs at {slug}.teamtailor.com. The
+// DefaultTeamtailor - Teamtailor tenant slugs at {slug}.teamtailor.com. The
 // list is intentionally short until tenants are individually verified; many
 // Teamtailor customers use branded `careers.{company}.com` CNAMEs whose
 // underlying tenant slug isn't the company name. Operators can override via
@@ -691,7 +691,7 @@ var DefaultTeamtailor = []string{
 	"paradox",
 }
 
-// DefaultBambooHR — tenant slugs at {slug}.bamboohr.com. BambooHR is mostly
+// DefaultBambooHR - tenant slugs at {slug}.bamboohr.com. BambooHR is mostly
 // SMB; tenants without a public careers feed redirect /careers/list to the
 // BambooHR marketing homepage and surface as `non-json` errors during fetch.
 // Operators override via BAMBOOHR_COMPANIES=<csv>.
@@ -765,7 +765,7 @@ var DefaultBambooHR = []string{
 	"zepto",
 }
 
-// DefaultBreezy — tenant slugs at {slug}.breezy.hr. Breezy's CDN 403s any
+// DefaultBreezy - tenant slugs at {slug}.breezy.hr. Breezy's CDN 403s any
 // non-browser UA on the root host and on slugs that don't host a public
 // careers page; only slugs verified to return non-empty feeds are seeded here.
 var DefaultBreezy = []string{
@@ -775,7 +775,7 @@ var DefaultBreezy = []string{
 	"intrahealth",
 }
 
-// DefaultPinpoint — tenant slugs at {slug}.pinpointhq.com. Pinpoint's UK/EU
+// DefaultPinpoint - tenant slugs at {slug}.pinpointhq.com. Pinpoint's UK/EU
 // SMB customer base; the list seeds enterprise + scale-up tenants whose
 // /postings.json was verified to return live jobs.
 var DefaultPinpoint = []string{
@@ -830,7 +830,7 @@ var DefaultPinpoint = []string{
 	"zoox",
 }
 
-// DefaultMuseCategories — placeholder; The Muse adapter currently paginates
+// DefaultMuseCategories - placeholder; The Muse adapter currently paginates
 // the unfiltered /jobs feed (~500k postings) instead of category-filtering,
 // so this list is unused but kept for future per-category fan-out.
 var DefaultMuseCategories = []string{

@@ -1,5 +1,5 @@
 /* =========================================================================
-   OmniJob — design tokens
+   OmniJob - design tokens
    Refined Stripe / Notion-leaning: warm neutrals, single accent, restrained
    shadows, monospace numbers. Less generic, more product.
    ========================================================================= */
@@ -459,7 +459,7 @@ kbd, .kbd {
 
 /* ------------------------------------------------------------- job grid (rectangular cards) */
 
-/* Card grid (Feed) — rectangular cards in an auto-filling grid. */
+/* Card grid (Feed) - rectangular cards in an auto-filling grid. */
 .job-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

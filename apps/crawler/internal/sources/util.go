@@ -21,7 +21,7 @@ func stripHTML(s string) string {
 }
 
 // prettyCompany turns a board slug like "anthropic" or "speakeasyapi" into a
-// reasonable display name. Best-effort — adapters can override per-row.
+// reasonable display name. Best-effort - adapters can override per-row.
 func prettyCompany(slug string) string {
 	if slug == "" {
 		return ""

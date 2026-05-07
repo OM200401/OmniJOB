@@ -5,7 +5,7 @@ const VectorSchema = t.Array(t.Number());
 const Base64 = t.String({ pattern: "^[A-Za-z0-9+/=_-]+$", minLength: 1 });
 
 // uid = lowercase hex of SHA-256(lowercased_email). The server never sees the
-// email itself — derivation happens client-side. PROJECT.md §6 + §9 entry on
+// email itself - derivation happens client-side. PROJECT.md §6 + §9 entry on
 // the email-as-PII tradeoff.
 const Uid = t.String({ pattern: "^[a-f0-9]{64}$" });
 

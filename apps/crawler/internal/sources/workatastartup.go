@@ -16,7 +16,7 @@ import (
 )
 
 // Y Combinator's "Work at a Startup" (workatastartup.com) does not expose a
-// stable public JSON API — the GraphQL endpoint is session-gated. The public
+// stable public JSON API - the GraphQL endpoint is session-gated. The public
 // HTML pages are server-rendered with the full props payload embedded as an
 // Inertia.js attribute:
 //
@@ -49,7 +49,7 @@ func (w *WorkAtAStartup) Name() string { return "workatastartup" }
 // DefaultWorkAtAStartupRoles mirrors the categories surfaced in the YC public
 // nav. Each route returns up to ~30 jobs with little overlap across categories.
 var DefaultWorkAtAStartupRoles = []string{
-	"", // home page (`/jobs`) — broadest, no role filter
+	"", // home page (`/jobs`) - broadest, no role filter
 	"l/software-engineer",
 	"l/designer",
 	"l/product-manager",

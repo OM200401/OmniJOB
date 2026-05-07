@@ -55,7 +55,7 @@ export function Saved() {
         <div className="page-header-left">
           <h1 className="page-title">Saved jobs</h1>
           <p className="muted text-sm">
-            Stored inside your encrypted profile blob — server only sees ciphertext.
+            Stored inside your encrypted profile blob - server only sees ciphertext.
           </p>
         </div>
       </div>

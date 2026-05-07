@@ -248,7 +248,7 @@ func classifyCountry(loc string) string {
 
 func splitClean(s string) []string {
 	// Normalize the " - " separator first so "WA - Vancouver" splits into
-	// ["wa", "vancouver"] — many ATS strings use a hyphen as a top-level
+	// ["wa", "vancouver"] - many ATS strings use a hyphen as a top-level
 	// region delimiter (e.g. "United States - Remote", "WA - Seattle").
 	s = strings.ReplaceAll(s, " - ", ",")
 	raw := strings.FieldsFunc(s, func(r rune) bool {
@@ -270,7 +270,7 @@ func cityLookup(l string) string {
 	for k := range cityCountry {
 		keys = append(keys, k)
 	}
-	// Insertion sort by length desc — small map, fine.
+	// Insertion sort by length desc - small map, fine.
 	for i := 1; i < len(keys); i++ {
 		for j := i; j > 0 && len(keys[j]) > len(keys[j-1]); j-- {
 			keys[j], keys[j-1] = keys[j-1], keys[j]

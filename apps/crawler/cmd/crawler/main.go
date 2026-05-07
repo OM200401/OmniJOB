@@ -48,7 +48,7 @@ func main() {
 	if len(srcs) == 0 {
 		log.Fatalf("no sources selected (got %q)", *includeStr)
 	}
-	log.Printf("starting crawler — sources=%v concurrency=%d api=%s", names(srcs), *concurrency, *apiURL)
+	log.Printf("starting crawler - sources=%v concurrency=%d api=%s", names(srcs), *concurrency, *apiURL)
 
 	jobs := make(chan pipeline.JobJSON, 64)
 
@@ -84,7 +84,7 @@ func main() {
 	}
 	consumers.Wait()
 
-	log.Printf("done — ingested=%d skipped=%d failed=%d", stats.ingested, stats.skipped, stats.failed)
+	log.Printf("done - ingested=%d skipped=%d failed=%d", stats.ingested, stats.skipped, stats.failed)
 }
 
 type counters struct {
@@ -134,7 +134,7 @@ func worker(
 			continue
 		}
 
-		log.Printf("[w%d] ✓ %s — %s @ %s", id, job.ID, job.Metadata.Title, job.Metadata.Company)
+		log.Printf("[w%d] ✓ %s - %s @ %s", id, job.ID, job.Metadata.Title, job.Metadata.Company)
 		stats.inc(&stats.ingested)
 	}
 }

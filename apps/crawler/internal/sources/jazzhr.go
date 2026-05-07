@@ -6,7 +6,7 @@ package sources
 //	https://{tenant}.applytojob.com/jobs/feed
 //
 // but the feed routes now 302 redirect to https://www.jazzhr.com/ regardless
-// of tenant slug — Employ Inc deprecated the public feed. Their current API
+// of tenant slug - Employ Inc deprecated the public feed. Their current API
 // (apidoc.jazzhrapis.com) only exposes Apply / Assessment / Screening / SSO
 // surfaces and requires an OAuth token issued per customer.
 //

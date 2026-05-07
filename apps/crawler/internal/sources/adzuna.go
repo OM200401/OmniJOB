@@ -19,7 +19,7 @@ import (
 // API spans 16 countries; we default to the English-speaking subset to keep
 // the candidate pool tightly aligned with the OmniJOB user base.
 //
-// The adapter no-ops if either ADZUNA_APP_ID or ADZUNA_APP_KEY is missing —
+// The adapter no-ops if either ADZUNA_APP_ID or ADZUNA_APP_KEY is missing -
 // no key is committed in repo. Operators set both env vars to enable.
 //
 // Rate limit per call is the bottleneck rather than total volume, so we cap
@@ -33,7 +33,7 @@ type Adzuna struct {
 	MaxPages  int
 }
 
-// DefaultAdzunaCountries — Adzuna's English-speaking markets. Operators
+// DefaultAdzunaCountries - Adzuna's English-speaking markets. Operators
 // override via ADZUNA_COUNTRIES=<csv>. The full set Adzuna supports as of
 // 2026: us, gb, au, ca, de, fr, in, it, nl, nz, pl, sg, za, es, mx, br.
 var DefaultAdzunaCountries = []string{"us", "gb", "ca", "au", "in", "sg"}
@@ -147,7 +147,7 @@ func (a *Adzuna) fetchPage(ctx context.Context, country string, page int, out ch
 
 		country2 := strings.ToUpper(country)
 		if country2 == "GB" && strings.Contains(strings.ToLower(loc), "remote") {
-			// noop — keep GB as resolved country
+			// noop - keep GB as resolved country
 		}
 
 		meta := pipeline.JobMetadata{
@@ -163,7 +163,7 @@ func (a *Adzuna) fetchPage(ctx context.Context, country string, page int, out ch
 			PostedAt:        parseRFC3339Millis(j.Created),
 			Description:     desc,
 		}
-		// Adzuna returns predicted salaries — only trust ones marked non-predicted.
+		// Adzuna returns predicted salaries - only trust ones marked non-predicted.
 		if (j.SalaryMin > 0 || j.SalaryMax > 0) && j.SalaryIsPredicted == "0" {
 			meta.SalaryMin = int(j.SalaryMin)
 			meta.SalaryMax = int(j.SalaryMax)

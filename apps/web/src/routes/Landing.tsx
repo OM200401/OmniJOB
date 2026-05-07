@@ -14,7 +14,7 @@ export function Landing() {
         </h1>
         <p className="lede">
           OmniJob ranks live postings from Greenhouse, Lever and Ashby boards by
-          cosine similarity to your résumé. Encrypted on your device — the server
+          cosine similarity to your résumé. Encrypted on your device - the server
           never sees the plaintext.
         </p>
         <div className="landing-actions">
@@ -27,7 +27,7 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Live-ish product preview — non-interactive but the same components
+      {/* Live-ish product preview - non-interactive but the same components
           the real feed uses, so the landing reads as the product itself. */}
       <div className="preview-card">
         <div className="preview-chrome">
@@ -94,7 +94,7 @@ export function Landing() {
         <div className="fact">
           <h4>No PII server-side</h4>
           <p>
-            Your account id is SHA-256 of your email — the server never stores
+            Your account id is SHA-256 of your email - the server never stores
             the email itself, the password, or any plaintext résumé.
           </p>
         </div>

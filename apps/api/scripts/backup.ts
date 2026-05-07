@@ -20,12 +20,12 @@
  *   USERS_COLLECTION        (default users)
  *   SQLITE_PATH             (default ./data/omnijob.sqlite)
  *   BACKUP_DIR              (default /var/lib/omnijob/backups)
- *   BACKUP_KEEP_LOCAL_DAYS  (default 7 — older local copies pruned)
- *   DO_SPACES_BUCKET        (optional — when set, aws s3 cp fires against DO Spaces)
+ *   BACKUP_KEEP_LOCAL_DAYS  (default 7 - older local copies pruned)
+ *   DO_SPACES_BUCKET        (optional - when set, aws s3 cp fires against DO Spaces)
  *   DO_SPACES_REGION        (default nyc3)
  *   DO_SPACES_KEY           (required if DO_SPACES_BUCKET set)
  *   DO_SPACES_SECRET        (required if DO_SPACES_BUCKET set)
- *   AZURE_STORAGE_ACCOUNT   (optional — when set, az storage blob upload-batch fires)
+ *   AZURE_STORAGE_ACCOUNT   (optional - when set, az storage blob upload-batch fires)
  *   AZURE_STORAGE_CONTAINER (default backups)
  */
 
@@ -109,7 +109,7 @@ function uploadToAzure(localDir: string, prefix: string) {
   if (!AZURE_ACCOUNT) return;
   console.log(`uploading ${localDir} → az://${AZURE_ACCOUNT}/${AZURE_CONTAINER}/${prefix}/`);
   // az CLI authentication assumed (managed identity on the VM, or
-  // `az login` for local one-offs). Container must exist in advance —
+  // `az login` for local one-offs). Container must exist in advance -
   // azure.sh creates it during provisioning.
   const r = spawnSync(
     "az",

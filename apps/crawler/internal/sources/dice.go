@@ -13,5 +13,5 @@ package sources
 //
 // Coverage of the US tech-employer cohort that Dice historically owned
 // is largely captured today by our Greenhouse / Lever / Ashby / Workday
-// adapters — most companies that pay for a Dice posting also maintain
+// adapters - most companies that pay for a Dice posting also maintain
 // a public ATS board.

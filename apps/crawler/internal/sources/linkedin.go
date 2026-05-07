@@ -9,14 +9,14 @@ package sources
 //      2025-10. Pricing is bilateral and undisclosed.
 //
 //   2. Direct scraping of linkedin.com/jobs violates LinkedIn's User
-//      Agreement section 8.2 ("Don'ts" — automated access, scraping,
+//      Agreement section 8.2 ("Don'ts" - automated access, scraping,
 //      crawling). The hiQ Labs v. LinkedIn line of cases left CFAA exposure
 //      narrow but the contract claim survives, and LinkedIn actively
 //      pursues both injunctive and damages relief against scrapers.
 //
 //   3. Third-party "LinkedIn Jobs Datasets" (Bright Data, Coresignal,
 //      Apify) re-distribute scraped data; their ToS push the legal risk
-//      onto the buyer and pricing is in the $0.01-$0.05/posting range —
+//      onto the buyer and pricing is in the $0.01-$0.05/posting range -
 //      easily $5k+/month for our daily ingest target. Not a fit for a
 //      free-for-students product.
 //

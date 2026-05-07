@@ -14,7 +14,7 @@ import (
 )
 
 // Breezy HR exposes a public JSON feed at https://{tenant}.breezy.hr/json for
-// each tenant that opts in. The feed lists current openings (no description —
+// each tenant that opts in. The feed lists current openings (no description -
 // description requires fetching the per-job HTML page, which we skip to keep
 // the crawler cheap; title + location + salary still embed usefully).
 //

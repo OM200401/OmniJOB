@@ -26,10 +26,10 @@ export const ALL_LEVELS: Level[] = [
 ];
 
 // Rules are tried in order; first match wins. Order matters because many
-// real-world titles combine multiple keywords (e.g. "Senior Associate" —
-// senior beats junior; "Director of X" — director beats senior).
+// real-world titles combine multiple keywords (e.g. "Senior Associate" -
+// senior beats junior; "Director of X" - director beats senior).
 const RULES: Array<{ level: Level; patterns: RegExp[] }> = [
-  // Off-IC management ladder first — keeps "VP" beating "Lead"/"Senior" in
+  // Off-IC management ladder first - keeps "VP" beating "Lead"/"Senior" in
   // titles like "Lead, Vice President".
   {
     level: "executive",
@@ -82,7 +82,7 @@ const RULES: Array<{ level: Level; patterns: RegExp[] }> = [
       // Roman-numeral III at end of role name → senior.
       /\bengineer\s+iii\b/i,
       /\b(?:developer|scientist|architect)\s+iii\b/i,
-      // "Founding Engineer" / "Founding Backend Engineer" — at most
+      // "Founding Engineer" / "Founding Backend Engineer" - at most
       // early-stage startups this is a senior IC role. Bias toward senior
       // over mid to surface them alongside other lead/staff roles when
       // filtering for senior+. The keyword "founding" alone is rare enough
@@ -110,7 +110,7 @@ const RULES: Array<{ level: Level; patterns: RegExp[] }> = [
       // The negative lookahead prevents matching "Engineer II" / "III".
       /\bengineer\s+i\b(?!i)/i,
       /\b(?:developer|scientist|architect|analyst)\s+i\b(?!i)/i,
-      // Arabic numeral 1 — much rarer than roman I, but we see "Engineer 1"
+      // Arabic numeral 1 - much rarer than roman I, but we see "Engineer 1"
       // at some sources. Limit to 1 only; 2/3/4/5 are too source-dependent
       // (Microsoft/Google "Engineer 4-5" are senior+, not junior).
       /\bengineer\s+1\b/i,

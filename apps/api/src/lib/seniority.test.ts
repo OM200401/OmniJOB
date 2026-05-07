@@ -53,7 +53,7 @@ describe("classifyTitle", () => {
   });
 });
 
-describe("classifyTitle — new-grad / early-career patterns", () => {
+describe("classifyTitle - new-grad / early-career patterns", () => {
   // Regression: previously titles with the new-grad signal *after* the
   // role keyword (e.g. "Software Engineer, New Grad") and other common
   // early-career markers were silently classified as mid.
@@ -80,9 +80,9 @@ describe("classifyTitle — new-grad / early-career patterns", () => {
   }
 });
 
-describe("classifyTitle — Engineer I / II / III / IV / V (roman + arabic)", () => {
+describe("classifyTitle - Engineer I / II / III / IV / V (roman + arabic)", () => {
   // "Engineer I" = junior; "II" = mid (default); "III" = senior; "IV"/"V" = staff.
-  // For arabic numerals only "1" maps to junior — Engineer 4/5 at MSFT/Google
+  // For arabic numerals only "1" maps to junior - Engineer 4/5 at MSFT/Google
   // are senior+ so we deliberately leave them as the mid default.
   const cases: Array<[string, ReturnType<typeof classifyTitle>]> = [
     ["Software Engineer I", "junior"],
@@ -105,7 +105,7 @@ describe("classifyTitle — Engineer I / II / III / IV / V (roman + arabic)", ()
   }
 });
 
-describe("classifyTitle — Senior/Staff/Principal Associate disambiguation", () => {
+describe("classifyTitle - Senior/Staff/Principal Associate disambiguation", () => {
   // Regression: previously "Senior Associate" classified as junior because
   // the junior rule fired before the senior rule.
   test('"Senior Associate, Payroll" → senior', () => {
@@ -125,7 +125,7 @@ describe("classifyTitle — Senior/Staff/Principal Associate disambiguation", ()
   });
 });
 
-describe("classifyTitle — Founding roles", () => {
+describe("classifyTitle - Founding roles", () => {
   test('"Founding Engineer" → senior', () => {
     expect(classifyTitle("Founding Engineer")).toBe("senior");
   });

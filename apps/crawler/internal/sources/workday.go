@@ -341,7 +341,7 @@ func parseWorkdayPosted(structured, label string) int64 {
 	// "Posted 5 Days Ago" / "Posted 30+ Days Ago"
 	for _, w := range strings.Fields(l) {
 		var n int
-		// crude integer parse — stop at first non-digit
+		// crude integer parse - stop at first non-digit
 		for _, c := range w {
 			if c < '0' || c > '9' {
 				break

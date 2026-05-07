@@ -84,7 +84,7 @@ export function Settings() {
           <div className="section">
             <p className="text-sm muted">
               Master key &amp; DEK live in memory only. Refreshing the page or signing out
-              clears them — you'll re-derive from your password to unlock.
+              clears them - you'll re-derive from your password to unlock.
             </p>
           </div>
         </div>
@@ -131,7 +131,7 @@ export function Settings() {
                 <HealthRow name="API" ok={Boolean(health?.status === "ok")} detail="Bun + Elysia, http://localhost:3000" />
                 <HealthRow name="Qdrant" ok={Boolean(health?.qdrant)} detail="Vector DB · 768-dim cosine" />
                 <HealthRow name="SQLite" ok={Boolean(health?.sqlite)} detail="Encrypted user blobs" />
-                <HealthRow name="Ollama" ok={Boolean(health?.ollama)} detail="nomic-embed-text — local embeddings" />
+                <HealthRow name="Ollama" ok={Boolean(health?.ollama)} detail="nomic-embed-text - local embeddings" />
               </div>
             )}
           </div>
@@ -215,7 +215,7 @@ function SkillGapCard() {
         {!err && !analyzed && !busy && (
           <p className="text-sm muted">
             Looks at your top 50 ranked jobs, extracts named skills, and surfaces the
-            highest-frequency skills that aren't on your résumé yet. Pure heuristic — no
+            highest-frequency skills that aren't on your résumé yet. Pure heuristic - no
             data leaves your browser beyond the search call you'd make anyway.
           </p>
         )}
@@ -257,7 +257,7 @@ function SkillGapCard() {
             {analyzed.gaps.length === 0 && analyzed.confirmed.length === 0 && (
               <p className="text-sm muted">
                 None of the lexicon skills showed up. Either descriptions are sparse or the
-                lexicon needs widening — open an issue.
+                lexicon needs widening - open an issue.
               </p>
             )}
           </div>

@@ -55,7 +55,7 @@ export function SignUp() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — user can still select manually */
+      /* clipboard blocked - user can still select manually */
     }
   };
 
@@ -65,7 +65,7 @@ export function SignUp() {
       `OmniJob recovery key for ${email}\n` +
       `Generated ${new Date().toISOString()}\n\n` +
       `${recoveryKey}\n\n` +
-      `Treat this like a password — anyone with both your email and this key\n` +
+      `Treat this like a password - anyone with both your email and this key\n` +
       `can reset your password and decrypt your résumé. The server does not\n` +
       `have a copy. If you lose both your password and this key, your data\n` +
       `is permanently inaccessible.`;
@@ -96,7 +96,7 @@ export function SignUp() {
             <h2>Create your vault</h2>
             <p className="muted text-sm">
               Your password derives a 256-bit master key in this browser via Argon2id.
-              We never see the password — wrong password just means decryption fails.
+              We never see the password - wrong password just means decryption fails.
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export function SignUp() {
               onChange={(e) => setEmail(e.target.value)}
               disabled={busy}
               placeholder="you@example.com"
-              hint="We never store your email — only SHA-256(email) as your account id."
+              hint="We never store your email - only SHA-256(email) as your account id."
             />
             <Input
               label="Password"
@@ -155,7 +155,7 @@ export function SignUp() {
       <div className="card section">
         <div className="col gap-md" style={{ marginBottom: 18 }}>
           <span className="chip chip-warning" style={{ alignSelf: "flex-start" }}>
-            <ShieldAlert size={11} /> Save this — shown once
+            <ShieldAlert size={11} /> Save this - shown once
           </span>
           <h2>Your recovery key</h2>
           <p className="muted text-sm">
@@ -178,7 +178,7 @@ export function SignUp() {
         <div style={{ marginTop: 18 }}>
           <Alert variant="info">
             <span>
-              The server stores your DEK encrypted twice — once with your password,
+              The server stores your DEK encrypted twice - once with your password,
               once with this recovery key. Neither key ever leaves this browser. If
               you lose both, your data is permanently unrecoverable.
             </span>

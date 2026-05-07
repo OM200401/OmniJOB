@@ -14,7 +14,7 @@ import (
 	"github.com/omnijob/crawler/internal/pipeline"
 )
 
-// Hacker News "Ask HN: Who is hiring?" — a monthly thread posted by user
+// Hacker News "Ask HN: Who is hiring?" - a monthly thread posted by user
 // `whoishiring`. Each top-level comment is a job posting from a founder or
 // hiring manager. High signal because there's no recruiter funnel: the person
 // posting is usually the person you'd report to.
@@ -168,9 +168,9 @@ func (h *HackerNews) fetchThread(ctx context.Context, storyID string, out chan<-
 	return nil
 }
 
-// hnHeaderSep splits on "|" or " - " or " — " — common header delimiters
+// hnHeaderSep splits on "|" or " - " or " - " - common header delimiters
 // used in HN job postings.
-var hnHeaderSep = regexp.MustCompile(`\s*[\|—]\s*| - `)
+var hnHeaderSep = regexp.MustCompile(`\s*[\|-]\s*| - `)
 
 // hnURLRe finds the first http(s) URL in a comment for the apply link.
 var hnURLRe = regexp.MustCompile(`https?://[^\s<>"']+`)

@@ -9,7 +9,7 @@ package sources
 //      public search surface.
 //
 //   2. The currently-active partner APIs (Job Sync, Sponsored Jobs, Job
-//      Update) are recruiter-facing — they let an employer push jobs onto
+//      Update) are recruiter-facing - they let an employer push jobs onto
 //      Indeed, not pull them off. Sponsored Jobs additionally requires the
 //      partner to have an Indeed billing relationship as of 2024-12-01.
 //
@@ -22,6 +22,6 @@ package sources
 //      but legally re-distribute scraped data; same cost / risk profile
 //      as the LinkedIn analysis (see linkedin.go).
 //
-// Coverage gap is partly mitigated by the ATS adapters — most US employers
+// Coverage gap is partly mitigated by the ATS adapters - most US employers
 // large enough to pay Indeed's CPC also expose a Greenhouse / Lever /
 // Workday board that we already index directly.

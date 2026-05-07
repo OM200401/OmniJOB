@@ -6,7 +6,7 @@ package sources
 // disconnected and new signups are not being processed.
 //
 // ZipRecruiter's remaining APIs (Jobs API, Questions API, Apply Webhook,
-// Embedded Sponsorship) are all recruiter-facing — they let employers
+// Embedded Sponsorship) are all recruiter-facing - they let employers
 // post and receive applications, not let third parties read jobs off
 // the platform. Their affiliate program pays per-click on individual
 // referral links but provides no structured search feed.

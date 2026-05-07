@@ -1,5 +1,5 @@
 // Currency / period normalization for salary filtering. Rates are static
-// and approximate — fine for "is this $120k+" filtering, not for accounting.
+// and approximate - fine for "is this $120k+" filtering, not for accounting.
 // Refresh annually if the product depends on tighter precision.
 
 const FX_TO_USD: Record<string, number> = {

@@ -7,9 +7,9 @@ import "regexp"
 // ingest time and is filterable without a fallback classification.
 
 // Rules are tried in order; first match wins. Order matters because many
-// real-world titles combine multiple keywords (e.g. "Senior Associate" —
-// senior beats junior; "Director of X" — director beats senior). Mirrors
-// apps/api/src/lib/seniority.ts — keep in sync.
+// real-world titles combine multiple keywords (e.g. "Senior Associate" -
+// senior beats junior; "Director of X" - director beats senior). Mirrors
+// apps/api/src/lib/seniority.ts - keep in sync.
 //
 // Note: Go's regexp package (RE2) does not support lookaround. We emulate
 // the negative-lookahead `\bengineer i\b(?!i)` from the TS classifier with a
@@ -53,7 +53,7 @@ var levelRules = []struct {
 		// Roman-numeral III at end of role → senior.
 		`(?i)\bengineer\s+iii\b`,
 		`(?i)\b(?:developer|scientist|architect)\s+iii\b`,
-		// "Founding Engineer" — early-stage startups treat this as senior IC.
+		// "Founding Engineer" - early-stage startups treat this as senior IC.
 		`(?i)\bfounding\b`,
 	)},
 	{"junior", compileAll(
@@ -74,7 +74,7 @@ var levelRules = []struct {
 		// end-of-string after the "i".
 		`(?i)\bengineer\s+i(?:[^a-z]|$)`,
 		`(?i)\b(?:developer|scientist|architect|analyst)\s+i(?:[^a-z]|$)`,
-		// Arabic numeral 1 — limit to 1 only; Engineer 4/5 at MSFT/Google
+		// Arabic numeral 1 - limit to 1 only; Engineer 4/5 at MSFT/Google
 		// are senior-level and we don't want to over-correct.
 		`(?i)\bengineer\s+1\b`,
 	)},

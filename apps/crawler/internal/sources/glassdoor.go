@@ -14,7 +14,7 @@ package sources
 // Direct scraping is constrained by the same anti-bot stack as Indeed
 // (their sibling) and by ToS section 4(d) prohibiting automated access.
 // Third-party Glassdoor datasets exist (Bright Data, OpenWeb Ninja) but
-// re-distribute scraped data — same cost / risk profile as LinkedIn
+// re-distribute scraped data - same cost / risk profile as LinkedIn
 // (see linkedin.go).
 //
 // Notable: Glassdoor's *unique* data (employer reviews, salary self-

@@ -80,7 +80,7 @@ echo "==> VM $VM_NAME ($VM_SIZE)"
 # Region-suffix the auto-derived scaffolding (VNET, subnet, NSG, public IP)
 # so a failed attempt in region A doesn't block a retry in region B.
 # az defaults these to ${VM_NAME}{VNET,NSG,PublicIP} which are RG-unique
-# but location-bound — cross-region retries trip InvalidResourceLocation.
+# but location-bound - cross-region retries trip InvalidResourceLocation.
 VNET_NAME="${VM_NAME}-${LOCATION}-vnet"
 SUBNET_NAME="${VM_NAME}-${LOCATION}-subnet"
 NSG_NAME="${VM_NAME}-${LOCATION}-nsg"
@@ -176,7 +176,7 @@ SWA_HOST=$(az staticwebapp show -g "$RG" -n omnijob-web --query defaultHostname 
 cat <<EOF
 
 ============================================================
-OmniJob — Azure provision summary
+OmniJob - Azure provision summary
 ============================================================
 Resource group     : $RG
 VM                 : $VM_NAME ($VM_SIZE)

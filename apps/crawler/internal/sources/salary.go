@@ -45,20 +45,20 @@ var salaryPatterns = []struct {
 	currency string
 	re       *regexp.Regexp
 }{
-	{"USD", regexp.MustCompile(`(?i)\$\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*\$?\s*(\d[\d,]*)\s*(k)?`)},
-	{"GBP", regexp.MustCompile(`(?i)£\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*£?\s*(\d[\d,]*)\s*(k)?`)},
-	{"EUR", regexp.MustCompile(`(?i)€\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*€?\s*(\d[\d,]*)\s*(k)?`)},
-	{"INR", regexp.MustCompile(`(?i)₹\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*₹?\s*(\d[\d,]*)\s*(k)?`)},
+	{"USD", regexp.MustCompile(`(?i)\$\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*\$?\s*(\d[\d,]*)\s*(k)?`)},
+	{"GBP", regexp.MustCompile(`(?i)£\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*£?\s*(\d[\d,]*)\s*(k)?`)},
+	{"EUR", regexp.MustCompile(`(?i)€\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*€?\s*(\d[\d,]*)\s*(k)?`)},
+	{"INR", regexp.MustCompile(`(?i)₹\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*₹?\s*(\d[\d,]*)\s*(k)?`)},
 }
 
 // codePrefixedPattern matches "USD 120,000 – 160,000" / "EUR 55k - 75k".
 var codePrefixedPattern = regexp.MustCompile(
-	`(?i)\b(USD|EUR|GBP|CAD|AUD|INR|SGD|JPY|CHF|NZD)\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*(\d[\d,]*)\s*(k)?`,
+	`(?i)\b(USD|EUR|GBP|CAD|AUD|INR|SGD|JPY|CHF|NZD)\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*(\d[\d,]*)\s*(k)?`,
 )
 
 // codeSuffixedPattern matches "120,000 – 160,000 USD" / "$120 - $160 USD/hr".
 var codeSuffixedPattern = regexp.MustCompile(
-	`(?i)\$?\s*(\d[\d,]*)\s*(k)?\s*(?:[-–—]+|\bto\b)\s*\$?\s*(\d[\d,]*)\s*(k)?\s*(USD|EUR|GBP|CAD|AUD|INR|SGD|JPY|CHF|NZD)\b`,
+	`(?i)\$?\s*(\d[\d,]*)\s*(k)?\s*(?:[-–-]+|\bto\b)\s*\$?\s*(\d[\d,]*)\s*(k)?\s*(USD|EUR|GBP|CAD|AUD|INR|SGD|JPY|CHF|NZD)\b`,
 )
 
 // ParseSalary tries to extract a salary range from free-form text (typically
@@ -125,7 +125,7 @@ func validRange(min, max int) bool {
 		return false
 	}
 	if min < 1000 && max < 1000 {
-		// Could be hourly — accept if both at least $5/hr.
+		// Could be hourly - accept if both at least $5/hr.
 		return min >= 5 && max >= 5 && max <= 2000
 	}
 	if max > 10_000_000 {
@@ -175,7 +175,7 @@ func currencySymbol(code string) string {
 
 func formatThousands(n int) string {
 	if n >= 10_000 {
-		// Show as "120k" / "1,200k" — k-shorthand for any 5+ digit value.
+		// Show as "120k" / "1,200k" - k-shorthand for any 5+ digit value.
 		k := n / 1000
 		// Only apply k-shorthand for clean multiples (multiples of 1k).
 		if n%1000 == 0 {
