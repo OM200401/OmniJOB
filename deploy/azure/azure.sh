@@ -18,8 +18,8 @@
 
 set -euo pipefail
 
-LOCATION="${LOCATION:-canadacentral}"
-SWA_LOCATION="${SWA_LOCATION:-eastus2}"  # SWA free tier doesn't run in Canadian regions
+LOCATION="${LOCATION:-eastus2}"
+SWA_LOCATION="${SWA_LOCATION:-eastus2}"  # SWA + VM in the same region cuts SPA->API latency
 RG="${RG:-omnijob}"
 VM_NAME="${VM_NAME:-omnijob-vm}"
 VM_SIZE="${VM_SIZE:-Standard_B2s}"
