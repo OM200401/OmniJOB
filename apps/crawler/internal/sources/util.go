@@ -37,16 +37,37 @@ func prettyCompany(slug string) string {
 	return string(r)
 }
 
+// remoteFalsePositive matches phrases that contain the word "remote" but are
+// NOT a remote-work signal: "remote office" (a physical office in a far-flung
+// region), "remote location" (a hard-to-reach physical site), "controls
+// remote ..." (job description prose), "remote sensing" (technical domain).
+// Tested before classifyRemote's positive match so these fall through to
+// hybrid / onsite / unknown.
+var remoteFalsePositiveRe = regexp.MustCompile(`(?i)remote\s+(office|location|site|monitoring|sensing|control|access|server|host|team\s+management)`)
+
+// remotePositiveRe matches the most reliable remote-work signals: a bare
+// "remote" word in the location, or "fully remote" / "100% remote" /
+// "work from home" / "wfh" / "work from anywhere" anywhere.
+var remotePositiveLocRe = regexp.MustCompile(`(?i)\bremote\b`)
+var remotePositiveDescRe = regexp.MustCompile(`(?i)(fully\s+remote|100%\s+remote|work\s+from\s+home|\bwfh\b|work\s+from\s+anywhere|remote[\s-]+first|remote[\s-]+only)`)
+var hybridLocRe = regexp.MustCompile(`(?i)\bhybrid\b`)
+var hybridDescRe = regexp.MustCompile(`(?i)\bhybrid\b`)
+
 // classifyRemote inspects a free-text location and description and produces
 // one of remote / hybrid / onsite / unknown. Heuristic-only; ATS adapters
 // that have a structured remote flag should set it directly.
 func classifyRemote(location, description string) string {
 	loc := strings.ToLower(location)
 	desc := strings.ToLower(description)
+
+	// Strip false-positive phrases first so the bare-word check doesn't
+	// fire on "remote office" / "remote location" etc.
+	locRedacted := remoteFalsePositiveRe.ReplaceAllString(loc, "")
+
 	switch {
-	case strings.Contains(loc, "remote") || strings.Contains(desc, "fully remote") || strings.Contains(desc, "100% remote"):
+	case remotePositiveLocRe.MatchString(locRedacted) || remotePositiveDescRe.MatchString(desc):
 		return "remote"
-	case strings.Contains(loc, "hybrid") || strings.Contains(desc, "hybrid"):
+	case hybridLocRe.MatchString(loc) || hybridDescRe.MatchString(desc):
 		return "hybrid"
 	case loc != "":
 		return "onsite"
