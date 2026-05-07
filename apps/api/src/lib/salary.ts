@@ -26,12 +26,22 @@ const FX_TO_USD: Record<string, number> = {
   MXN: 0.058,
 };
 
+// Adapter-emitted aliases all map to the same multiplier so we don't need
+// to normalize at the call site.
 const PERIOD_TO_ANNUAL: Record<string, number> = {
   annual: 1,
+  year: 1,
+  yearly: 1,
   monthly: 12,
+  month: 12,
   weekly: 52,
+  week: 52,
+  biweek: 26,
+  biweekly: 26,
   daily: 260,
+  day: 260,
   hourly: 2080,
+  hour: 2080,
 };
 
 export type Salary = {

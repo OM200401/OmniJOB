@@ -226,15 +226,15 @@ func pickRemuneration(rs []usajRemuneration) (smin, smax int, currency, period s
 	currency = "USD"
 	switch strings.ToUpper(strings.TrimSpace(r.RateIntervalCode)) {
 	case "PA", "PER YEAR":
-		period = "year"
+		period = "annual"
 	case "PH", "PER HOUR":
-		period = "hour"
+		period = "hourly"
 	case "PD", "PER DAY":
-		period = "day"
+		period = "daily"
 	case "BW", "BIWEEKLY":
-		period = "biweek"
+		period = "biweekly"
 	default:
-		period = "year"
+		period = "annual"
 	}
 	return
 }

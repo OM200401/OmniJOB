@@ -127,7 +127,7 @@ func (r *RemoteOK) Fetch(ctx context.Context, out chan<- pipeline.JobJSON) error
 			meta.SalaryMin = int(smin)
 			meta.SalaryMax = int(smax)
 			meta.SalaryCurrency = "USD"
-			meta.SalaryPeriod = "year"
+			meta.SalaryPeriod = "annual"
 			meta.SalaryRange = formatSalaryRange(smin, smax, "USD")
 		} else {
 			ApplySalary(&meta.SalaryMin, &meta.SalaryMax, &meta.SalaryCurrency, &meta.SalaryPeriod, &meta.SalaryRange, desc)

@@ -28,12 +28,23 @@ export const Source = t.Union([
   t.Literal("recruitee"),
 ]);
 
+// Adapter-emitted period strings vary ("annual" vs "year" vs "yearly" vs
+// "per year"). Accept the common aliases at the API boundary; the salary
+// library maps every accepted form to its canonical multiplier.
 export const SalaryPeriod = t.Union([
   t.Literal("annual"),
+  t.Literal("year"),
+  t.Literal("yearly"),
   t.Literal("monthly"),
+  t.Literal("month"),
   t.Literal("weekly"),
+  t.Literal("week"),
+  t.Literal("biweek"),
+  t.Literal("biweekly"),
   t.Literal("daily"),
+  t.Literal("day"),
   t.Literal("hourly"),
+  t.Literal("hour"),
 ]);
 
 const Country = t.String({ pattern: "^[A-Z]{2}$" });
