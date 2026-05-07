@@ -3,35 +3,35 @@
 # and omnijob-api.service).
 #
 # Cloudflare DNS notes:
-#   - For api.omnijob.app, set the orange cloud to "DNS only" so Let's Encrypt
+#   - For api.omnijob.tech, set the orange cloud to "DNS only" so Let's Encrypt
 #     HTTP-01 can complete. Once cert is issued, you can flip back to "proxied"
 #     for DDoS shield (Caddy's automatic renewal will then need DNS-01).
-#   - For omnijob.app, Cloudflare Pages provides its own cert; Cloudflare
+#   - For omnijob.tech, Cloudflare Pages provides its own cert; Cloudflare
 #     proxy can be on or off — leave on for DDoS protection.
 #
-# Replace omnijob.app with your domain.
+# Replace omnijob.tech with your domain.
 
 {
-    email om@omnijob.app
+    email om@omnijob.tech
     # Uncomment for testing against staging issuer to avoid LE rate limits.
     # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
 }
 
-api.omnijob.app {
+api.omnijob.tech {
     encode zstd gzip
 
     # Strict CORS — the SPA origin is the only allowed caller. Adjust if
     # you add subdomains or a separate marketing site.
     @cors_preflight method OPTIONS
     handle @cors_preflight {
-        header Access-Control-Allow-Origin "https://omnijob.app"
+        header Access-Control-Allow-Origin "https://omnijob.tech"
         header Access-Control-Allow-Methods "GET,POST,DELETE,OPTIONS"
         header Access-Control-Allow-Headers "Content-Type,Authorization"
         header Access-Control-Max-Age "600"
         respond 204
     }
     header {
-        Access-Control-Allow-Origin "https://omnijob.app"
+        Access-Control-Allow-Origin "https://omnijob.tech"
         Access-Control-Allow-Credentials "true"
         # Belt & suspenders — Elysia's CORS plugin sets these too, but
         # making Caddy authoritative means the API can be locked down to
@@ -60,8 +60,8 @@ api.omnijob.app {
 }
 
 # Optional: serve a tiny landing redirect if someone hits the apex over the
-# proxy. Static Web Apps already serves omnijob.app, so this only fires if
+# proxy. Static Web Apps already serves omnijob.tech, so this only fires if
 # DNS is mis-configured.
-omnijob.app {
-    redir https://omnijob.app{uri} 308
+omnijob.tech {
+    redir https://omnijob.tech{uri} 308
 }
