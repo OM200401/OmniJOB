@@ -1,0 +1,670 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { Bell, BookmarkPlus, Search, Sparkles, X } from "lucide-react";
+import { useAuth } from "../lib/auth";
+import {
+  api,
+  type ExperienceLevel,
+  type JobHit,
+  type RemoteStatus,
+  type SourceName,
+} from "../lib/api";
+import {
+  type SavedSearch,
+  type SavedSearchFilters,
+} from "../lib/crypto/vault";
+import { COMMON_COUNTRIES, flagEmoji } from "../lib/countries";
+import { Alert } from "../components/Alert";
+import { JobCard } from "../components/JobCard";
+import { EmptyState } from "../components/EmptyState";
+
+const REMOTES: { value: RemoteStatus; label: string }[] = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "Onsite" },
+];
+
+const LEVELS: { value: ExperienceLevel; label: string }[] = [
+  { value: "intern", label: "Internship" },
+  { value: "junior", label: "Junior / new grad" },
+  { value: "mid", label: "Mid-level" },
+  { value: "senior", label: "Senior" },
+  { value: "staff", label: "Staff" },
+  { value: "principal", label: "Principal" },
+];
+
+const SOURCES: { value: SourceName; label: string }[] = [
+  { value: "greenhouse", label: "Greenhouse" },
+  { value: "lever", label: "Lever" },
+  { value: "ashby", label: "Ashby" },
+  { value: "smartrecruiters", label: "SmartRecruiters" },
+  { value: "workable", label: "Workable" },
+  { value: "recruitee", label: "Recruitee" },
+];
+
+export function Feed() {
+  const { session, patchProfile } = useAuth();
+
+  const initialLevels: ExperienceLevel[] = session?.profile.preferences.level
+    ? [session.profile.preferences.level]
+    : [];
+  const initialRemotes: RemoteStatus[] =
+    session?.profile.preferences.remotePref &&
+    session.profile.preferences.remotePref !== "any"
+      ? [session.profile.preferences.remotePref as RemoteStatus]
+      : [];
+
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [debouncedLocation, setDebouncedLocation] = useState("");
+  const [debouncedCompany, setDebouncedCompany] = useState("");
+  const [levels, setLevels] = useState<ExperienceLevel[]>(initialLevels);
+  const [remotes, setRemotes] = useState<RemoteStatus[]>(initialRemotes);
+  const [sources, setSources] = useState<SourceName[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [salaryMin, setSalaryMin] = useState<number | null>(null); // USD-annual floor
+  const [requireSalary, setRequireSalary] = useState(false);
+  const [hideStale, setHideStale] = useState(true); // hide postings 45d+ old
+
+  const [hits, setHits] = useState<JobHit[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Saved-searches state. The "+N new" badge for each is computed on mount
+  // by re-running the search in the background and diffing against
+  // `lastResultIds`. The active id is set when a saved search is loaded so
+  // that the *next* result set updates that search's snapshot exactly once.
+  const savedSearches = useMemo(
+    () => session?.profile.preferences.savedSearches ?? [],
+    [session?.profile.preferences.savedSearches],
+  );
+  const [savedNewCounts, setSavedNewCounts] = useState<Record<string, number>>({});
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const pendingSavedSearchRef = useRef<string | null>(null);
+
+  const skill = session?.profile.skillVector;
+  const savedSet = useMemo(
+    () => new Set(session?.profile.savedJobIds ?? []),
+    [session?.profile.savedJobIds],
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+  const saveInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLocation(locationFilter.trim()), 250);
+    return () => clearTimeout(t);
+  }, [locationFilter]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCompany(companyFilter.trim()), 250);
+    return () => clearTimeout(t);
+  }, [companyFilter]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const search = useCallback(async () => {
+    if (!skill || skill.length === 0) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      let vector = skill;
+      if (debouncedQuery.length >= 2) {
+        const { vector: qv } = await api.embed(debouncedQuery);
+        vector = qv;
+      }
+
+      const { hits } = await api.searchJobs(vector, {
+        k: 60,
+        ...(remotes.length > 0 && remotes.length < 3 ? { remote_status: remotes } : {}),
+        ...(levels.length > 0 ? { experience_level: levels } : {}),
+        ...(sources.length > 0 && sources.length < SOURCES.length ? { source: sources } : {}),
+        ...(countries.length > 0 ? { country: countries } : {}),
+        ...(debouncedLocation ? { location: debouncedLocation } : {}),
+        ...(debouncedCompany ? { company: debouncedCompany } : {}),
+        ...(salaryMin !== null ? { salary_min_usd: salaryMin } : {}),
+        ...(requireSalary ? { require_salary: true } : {}),
+        ...(hideStale ? { max_age_days: 45 } : {}),
+      });
+      setHits(hits);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, [skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale]);
+
+  useEffect(() => {
+    void search();
+  }, [search]);
+
+  // Background-evaluate saved searches once skill is loaded, so the sidebar
+  // can show "+N new" badges. Bails on cancellation; failures per-search are
+  // swallowed so a single broken filter doesn't blank the panel.
+  useEffect(() => {
+    let cancelled = false;
+    if (!skill || skill.length === 0 || savedSearches.length === 0) {
+      setSavedNewCounts({});
+      return;
+    }
+    (async () => {
+      const counts: Record<string, number> = {};
+      for (const ss of savedSearches) {
+        try {
+          let vector = skill;
+          if (ss.query.length >= 2) {
+            const { vector: qv } = await api.embed(ss.query);
+            vector = qv;
+          }
+          const { hits: ssHits } = await api.searchJobs(vector, {
+            k: 60,
+            ...(ss.filters.remotes?.length ? { remote_status: ss.filters.remotes as RemoteStatus[] } : {}),
+            ...(ss.filters.levels?.length ? { experience_level: ss.filters.levels as ExperienceLevel[] } : {}),
+            ...(ss.filters.sources?.length ? { source: ss.filters.sources as SourceName[] } : {}),
+            ...(ss.filters.countries?.length ? { country: ss.filters.countries } : {}),
+            ...(ss.filters.location ? { location: ss.filters.location } : {}),
+            ...(ss.filters.company ? { company: ss.filters.company } : {}),
+            ...(ss.filters.salaryMin !== undefined ? { salary_min_usd: ss.filters.salaryMin } : {}),
+            ...(ss.filters.requireSalary ? { require_salary: true } : {}),
+            max_age_days: 45,
+          });
+          const lastIds = new Set(ss.lastResultIds);
+          counts[ss.id] = ssHits.filter((h) => !lastIds.has(String(h.id))).length;
+        } catch {
+          counts[ss.id] = 0;
+        }
+        if (cancelled) return;
+      }
+      if (!cancelled) setSavedNewCounts(counts);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally only re-run when skill or saved-search count/IDs change,
+    // not on every filter change in the foreground UI.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skill, savedSearches.map((s) => s.id + s.lastCheckedAt).join("|")]);
+
+  // After applying a saved search, when the resulting hits arrive, snapshot
+  // them as the new `lastResultIds` for that saved search and clear its
+  // "+N new" badge. Runs at most once per `applySaved` call.
+  useEffect(() => {
+    const id = pendingSavedSearchRef.current;
+    if (!id || !session || !hits) return;
+    pendingSavedSearchRef.current = null;
+    const updated = session.profile.preferences.savedSearches.map((s) =>
+      s.id === id
+        ? { ...s, lastResultIds: hits.map((h) => String(h.id)), lastCheckedAt: Date.now() }
+        : s,
+    );
+    void patchProfile({
+      preferences: { ...session.profile.preferences, savedSearches: updated },
+    });
+    setSavedNewCounts((c) => ({ ...c, [id]: 0 }));
+  }, [hits, session, patchProfile]);
+
+  const currentFilters: SavedSearchFilters = useMemo(
+    () => ({
+      ...(levels.length ? { levels } : {}),
+      ...(remotes.length ? { remotes } : {}),
+      ...(sources.length ? { sources } : {}),
+      ...(countries.length ? { countries } : {}),
+      ...(debouncedLocation ? { location: debouncedLocation } : {}),
+      ...(debouncedCompany ? { company: debouncedCompany } : {}),
+      ...(salaryMin !== null ? { salaryMin } : {}),
+      ...(requireSalary ? { requireSalary } : {}),
+    }),
+    [levels, remotes, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary],
+  );
+
+  const hasSavableState =
+    debouncedQuery.trim().length > 0 ||
+    Object.keys(currentFilters).length > 0;
+
+  const saveCurrentSearch = (rawName: string) => {
+    if (!session) return;
+    const name = rawName.trim();
+    if (!name) return;
+    const ss: SavedSearch = {
+      id: crypto.randomUUID(),
+      name,
+      query: debouncedQuery,
+      filters: currentFilters,
+      createdAt: Date.now(),
+      lastCheckedAt: Date.now(),
+      lastResultIds: (hits ?? []).map((h) => String(h.id)),
+    };
+    void patchProfile({
+      preferences: {
+        ...session.profile.preferences,
+        savedSearches: [...session.profile.preferences.savedSearches, ss],
+      },
+    });
+    setShowSaveDialog(false);
+    setSaveName("");
+  };
+
+  const applySaved = (ss: SavedSearch) => {
+    setQuery(ss.query);
+    setLevels((ss.filters.levels ?? []) as ExperienceLevel[]);
+    setRemotes((ss.filters.remotes ?? []) as RemoteStatus[]);
+    setSources((ss.filters.sources ?? []) as SourceName[]);
+    setCountries(ss.filters.countries ?? []);
+    setLocationFilter(ss.filters.location ?? "");
+    setCompanyFilter(ss.filters.company ?? "");
+    setSalaryMin(ss.filters.salaryMin ?? null);
+    setRequireSalary(Boolean(ss.filters.requireSalary));
+    pendingSavedSearchRef.current = ss.id;
+  };
+
+  const removeSavedSearch = (id: string) => {
+    if (!session) return;
+    void patchProfile({
+      preferences: {
+        ...session.profile.preferences,
+        savedSearches: session.profile.preferences.savedSearches.filter((s) => s.id !== id),
+      },
+    });
+    setSavedNewCounts((c) => {
+      const next = { ...c };
+      delete next[id];
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (showSaveDialog) saveInputRef.current?.focus();
+  }, [showSaveDialog]);
+
+  const defaultSaveName = (() => {
+    if (debouncedQuery) return debouncedQuery.slice(0, 60);
+    const parts: string[] = [];
+    if (levels.length) parts.push(levels.join("/"));
+    if (remotes.length) parts.push(remotes.join("/"));
+    if (countries.length) parts.push(countries.join("/"));
+    if (debouncedCompany) parts.push(debouncedCompany);
+    return parts.join(" · ") || "Untitled search";
+  })();
+
+  const onToggleSave = useCallback(
+    (id: string, save: boolean) => {
+      if (!session) return;
+      const next = new Set(session.profile.savedJobIds);
+      if (save) next.add(id);
+      else next.delete(id);
+      void patchProfile({ savedJobIds: Array.from(next) });
+    },
+    [session, patchProfile],
+  );
+
+  const totalActive =
+    (debouncedQuery ? 1 : 0) +
+    (debouncedCompany ? 1 : 0) +
+    (debouncedLocation ? 1 : 0) +
+    levels.length +
+    remotes.length +
+    sources.length +
+    countries.length +
+    (salaryMin !== null ? 1 : 0) +
+    (requireSalary ? 1 : 0) +
+    (hideStale ? 0 : 0); // hideStale is on by default; not counted as "active"
+
+  const reset = () => {
+    setQuery("");
+    setCompanyFilter("");
+    setLocationFilter("");
+    setLevels([]);
+    setRemotes([]);
+    setSources([]);
+    setSalaryMin(null);
+    setRequireSalary(false);
+    setHideStale(true);
+    setCountries([]);
+  };
+
+  return (
+    <div className="container">
+      <div className="feed-header">
+        <div className="search-wrap">
+          <Search size={15} className="search-icon" />
+          <input
+            ref={inputRef}
+            type="text"
+            className="search-input"
+            placeholder="Search roles, technologies, companies…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <kbd className="kbd">/</kbd>
+          {query && (
+            <button className="search-clear" onClick={() => setQuery("")} aria-label="Clear" type="button">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="row gap-sm" style={{ marginLeft: "auto" }}>
+          {totalActive > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={reset}>
+              Clear filters · {totalActive}
+            </button>
+          )}
+          {hasSavableState && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setSaveName(defaultSaveName);
+                setShowSaveDialog((s) => !s);
+              }}
+              title="Save this search and get notified of new matches"
+            >
+              <BookmarkPlus size={13} /> Save search
+            </button>
+          )}
+          <Link to="/onboarding" className="btn btn-secondary btn-sm">
+            <Sparkles size={13} /> Update preferences
+          </Link>
+        </div>
+      </div>
+
+      {showSaveDialog && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Bell size={14} className="muted" />
+          <input
+            ref={saveInputRef}
+            type="text"
+            className="input"
+            placeholder="Name this search…"
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveCurrentSearch(saveName);
+              if (e.key === "Escape") setShowSaveDialog(false);
+            }}
+            style={{ flex: 1, height: 30, fontSize: 13 }}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => saveCurrentSearch(saveName)}
+            disabled={!saveName.trim()}
+          >
+            Save
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setShowSaveDialog(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      <div className="feed-grid">
+        <aside className="sidebar">
+          {savedSearches.length > 0 && (
+            <FilterSection title="Saved searches">
+              <div className="col" style={{ gap: 2 }}>
+                {savedSearches.map((ss) => {
+                  const newCount = savedNewCounts[ss.id] ?? 0;
+                  return (
+                    <div
+                      key={ss.id}
+                      className="filter-row"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        cursor: "pointer",
+                        paddingRight: 4,
+                      }}
+                      onClick={() => applySaved(ss)}
+                      role="button"
+                    >
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {ss.name}
+                      </span>
+                      {newCount > 0 && (
+                        <span className="chip chip-accent" style={{ fontSize: 10.5, padding: "1px 6px" }}>
+                          +{newCount} new
+                        </span>
+                      )}
+                      <button
+                        className="icon-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSavedSearch(ss.id);
+                        }}
+                        title="Remove saved search"
+                        style={{ width: 22, height: 22, padding: 0 }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </FilterSection>
+          )}
+
+          <FilterSection title="Experience">
+            {LEVELS.map((l) => (
+              <FilterCheck
+                key={l.value}
+                label={l.label}
+                checked={levels.includes(l.value)}
+                onChange={() =>
+                  setLevels((cur) =>
+                    cur.includes(l.value) ? cur.filter((x) => x !== l.value) : [...cur, l.value],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Work setup">
+            {REMOTES.map((r) => (
+              <FilterCheck
+                key={r.value}
+                label={r.label}
+                checked={remotes.includes(r.value)}
+                onChange={() =>
+                  setRemotes((cur) =>
+                    cur.includes(r.value) ? cur.filter((x) => x !== r.value) : [...cur, r.value],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Posted">
+            <label className="filter-row">
+              <input
+                type="checkbox"
+                checked={hideStale}
+                onChange={(e) => setHideStale(e.target.checked)}
+              />
+              <span>Hide postings 45+ days old</span>
+            </label>
+          </FilterSection>
+
+          <FilterSection title="Compensation">
+            <select
+              className="input"
+              value={salaryMin === null ? "" : String(salaryMin)}
+              onChange={(e) =>
+                setSalaryMin(e.target.value === "" ? null : Number(e.target.value))
+              }
+              style={{ height: 32, fontSize: 12.5, padding: "5px 9px" }}
+            >
+              <option value="">Any</option>
+              <option value="60000">$60k+</option>
+              <option value="80000">$80k+</option>
+              <option value="100000">$100k+</option>
+              <option value="125000">$125k+</option>
+              <option value="150000">$150k+</option>
+              <option value="200000">$200k+</option>
+              <option value="250000">$250k+</option>
+            </select>
+            <label className="filter-row" style={{ marginTop: 4 }}>
+              <input
+                type="checkbox"
+                checked={requireSalary}
+                onChange={(e) => setRequireSalary(e.target.checked)}
+              />
+              <span>Only with disclosed salary</span>
+            </label>
+          </FilterSection>
+
+          <FilterSection title="Country">
+            {COMMON_COUNTRIES.map((c) => (
+              <FilterCheck
+                key={c.code}
+                label={
+                  <span className="row gap-sm" style={{ gap: 6 }}>
+                    <span aria-hidden style={{ width: 18, textAlign: "center" }}>{flagEmoji(c.code)}</span>
+                    <span>{c.name}</span>
+                  </span>
+                }
+                checked={countries.includes(c.code)}
+                onChange={() =>
+                  setCountries((cur) =>
+                    cur.includes(c.code) ? cur.filter((x) => x !== c.code) : [...cur, c.code],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="City / region">
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Berlin, Bay Area"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              style={{ height: 30, fontSize: 12.5, padding: "5px 9px" }}
+            />
+          </FilterSection>
+
+          <FilterSection title="Source">
+            {SOURCES.map((s) => (
+              <FilterCheck
+                key={s.value}
+                label={s.label}
+                checked={sources.includes(s.value)}
+                onChange={() =>
+                  setSources((cur) =>
+                    cur.includes(s.value) ? cur.filter((x) => x !== s.value) : [...cur, s.value],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Company">
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Stripe"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              style={{ height: 30, fontSize: 12.5, padding: "5px 9px" }}
+            />
+          </FilterSection>
+        </aside>
+
+        <section className="results">
+          <div className="results-meta">
+            <span>
+              {busy
+                ? "Searching…"
+                : hits
+                  ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
+                  : "Loading…"}
+            </span>
+            <span className="muted-2 text-xs">
+              {debouncedQuery
+                ? <>Searching for <strong style={{ color: "var(--fg-2)" }}>“{debouncedQuery}”</strong></>
+                : "Ranked by your résumé embedding"}
+            </span>
+          </div>
+
+          {err && <Alert variant="error">{err}</Alert>}
+
+          {!err && hits && hits.length === 0 && (
+            <EmptyState
+              title={totalActive > 0 ? "Nothing matches these filters" : "No jobs in the index"}
+              description={
+                totalActive > 0
+                  ? "Try loosening filters or removing the search query."
+                  : "Run the crawler to ingest live ATS data — see README §3."
+              }
+              action={totalActive > 0 ? <button className="btn btn-secondary btn-sm" onClick={reset}>Clear filters</button> : undefined}
+            />
+          )}
+
+          {hits && hits.length > 0 && (
+            <div className="job-grid">
+              {hits.map((h) => (
+                <JobCard
+                  key={String(h.id)}
+                  hit={h}
+                  saved={savedSet.has(String(h.id))}
+                  onToggleSave={onToggleSave}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="filter-section">
+      <h4>{title}</h4>
+      <div className="filter-group">{children}</div>
+    </div>
+  );
+}
+
+function FilterCheck({
+  label,
+  checked,
+  onChange,
+}: {
+  label: React.ReactNode;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className={`filter-row ${checked ? "checked" : ""}`}>
+      <input type="checkbox" checked={checked} onChange={onChange} />
+      <span>{label}</span>
+    </label>
+  );
+}
