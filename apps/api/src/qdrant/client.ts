@@ -30,6 +30,13 @@ export type JobMetadata = {
   scraped_at: number;
   posted_at?: number;
   description?: string;
+  // Cross-source dedup outputs. Set by scripts/dedupe.ts when this point is
+  // judged a duplicate of another (cosine ≥ 0.98 within the same normalized
+  // company × title bucket). The canonical (kept) point references the
+  // duplicates by listing them here at apply-time; the duplicate references
+  // back to its canonical. Default omitted = treated as active.
+  is_active?: boolean;
+  canonical_id?: string;
   // Computed at read time, not persisted.
   quality?: number;
   quality_breakdown?: QualityBreakdown["components"];
@@ -85,6 +92,11 @@ export async function searchJobs(
   filter?: JobSearchFilter,
 ): Promise<Array<{ id: string; score: number; payload: JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] } }>> {
   const must = [] as Array<Record<string, unknown>>;
+  // Hide cross-source duplicates marked by scripts/dedupe.ts. Points without
+  // is_active set are treated as active (default).
+  const must_not: Array<Record<string, unknown>> = [
+    { key: "is_active", match: { value: false } },
+  ];
   if (filter?.remote_status?.length) {
     must.push({ key: "remote_status", match: { any: filter.remote_status } });
   }
@@ -112,7 +124,7 @@ export async function searchJobs(
     vector,
     limit: fetchK,
     with_payload: true,
-    ...(must.length ? { filter: { must } } : {}),
+    filter: { must_not, ...(must.length ? { must } : {}) },
   });
 
   const wantLevels = new Set<Level>(filter?.experience_level ?? []);
