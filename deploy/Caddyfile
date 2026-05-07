@@ -5,9 +5,8 @@
 # Cloudflare DNS notes:
 #   - For api.omnijob.app, set the orange cloud to "DNS only" so Let's Encrypt
 #     HTTP-01 can complete. Once cert is issued, you can flip back to "proxied"
-#     for DDoS shield (Caddy's automatic renewal will then need DNS-01; see
-#     deploy/azure/README for that path).
-#   - For omnijob.app, the Static Web App provides its own cert; Cloudflare
+#     for DDoS shield (Caddy's automatic renewal will then need DNS-01).
+#   - For omnijob.app, Cloudflare Pages provides its own cert; Cloudflare
 #     proxy can be on or off — leave on for DDoS protection.
 #
 # Replace omnijob.app with your domain.
