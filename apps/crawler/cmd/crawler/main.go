@@ -23,9 +23,12 @@ func main() {
 	// SOURCES env var to override.
 	// Personio and Teamtailor adapters exist but are gated on operator-curated
 	// tenant lists (PERSONIO_COMPANIES / TEAMTAILOR_COMPANIES env vars) since
-	// their public endpoints are opt-in per tenant. USAJobs is gated on a free
-	// API key (USAJOBS_API_KEY). Pass `-sources` or SOURCES to opt in.
-	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup"), "comma-separated subset of sources to run")
+	// their public endpoints are opt-in per tenant. USAJobs / Adzuna / Reed /
+	// Jooble / Careerjet are gated on free API keys (USAJOBS_API_KEY,
+	// ADZUNA_APP_ID+ADZUNA_APP_KEY, REED_API_KEY, JOOBLE_API_KEY,
+	// CAREERJET_AFFID). The Muse works with or without MUSE_API_KEY (key
+	// raises the rate limit). Pass `-sources` or SOURCES to opt in.
+	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse"), "comma-separated subset of sources to run")
 	flag.Parse()
 
 	include := splitCSV(*includeStr)
@@ -206,6 +209,31 @@ func buildSources(include []string) []sources.Source {
 	}
 	if want["workatastartup"] {
 		out = append(out, sources.NewWorkAtAStartup(envCSV("WORKATASTARTUP_ROLES", sources.DefaultWorkAtAStartupRoles)))
+	}
+	if want["themuse"] {
+		out = append(out, sources.NewTheMuse(env("MUSE_API_KEY", ""), envInt("MUSE_MAX_PAGES", 50)))
+	}
+	if want["adzuna"] {
+		out = append(out, sources.NewAdzuna(
+			env("ADZUNA_APP_ID", ""),
+			env("ADZUNA_APP_KEY", ""),
+			envCSV("ADZUNA_COUNTRIES", sources.DefaultAdzunaCountries),
+			envInt("ADZUNA_MAX_PAGES", 5),
+		))
+	}
+	if want["jooble"] {
+		out = append(out, sources.NewJooble(env("JOOBLE_API_KEY", ""), nil, envInt("JOOBLE_PAGES", 3)))
+	}
+	if want["reed"] {
+		out = append(out, sources.NewReed(env("REED_API_KEY", ""), envCSV("REED_QUERIES", sources.DefaultReedQueries), envInt("REED_MAX_PAGES", 3)))
+	}
+	if want["careerjet"] {
+		out = append(out, sources.NewCareerjet(
+			env("CAREERJET_AFFID", ""),
+			env("CAREERJET_USER_AGENT", ""),
+			envCSV("CAREERJET_LOCALES", sources.DefaultCareerjetLocales),
+			envInt("CAREERJET_PAGES", 5),
+		))
 	}
 	return out
 }

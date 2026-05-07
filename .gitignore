@@ -51,6 +51,7 @@ web-build/
 # Tooling state (Ruflo, Claude, scratch dirs)
 .swarm/
 .tmp/
+.tmp_*
 .claude/
 
 # Crash dumps

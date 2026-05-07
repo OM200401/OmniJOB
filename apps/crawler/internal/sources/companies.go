@@ -458,3 +458,13 @@ var DefaultPinpoint = []string{
 	"discogsinc",
 	"reconomy",
 }
+
+// DefaultMuseCategories — placeholder; The Muse adapter currently paginates
+// the unfiltered /jobs feed (~500k postings) instead of category-filtering,
+// so this list is unused but kept for future per-category fan-out.
+var DefaultMuseCategories = []string{
+	"Software Engineer",
+	"Data Science",
+	"Product",
+	"Design",
+}
