@@ -1,0 +1,460 @@
+package sources
+
+// Curated company lists per ATS provider. ATS providers don't expose a public
+// "list all boards" endpoint, so this is hand-maintained. Slugs may drift —
+// 404s during fetch are logged and skipped, not fatal. Override with the
+// {ATS}_COMPANIES env vars (CSV).
+//
+// Goal here is breadth, not perfection. We include any plausible candidate
+// and let 404s shake out. Counting on the failed-list ratio: ~30-50% is fine.
+
+var DefaultGreenhouse = []string{
+	// FAANG-adjacent / big consumer
+	"airbnb", "stripe", "anthropic", "discord", "cloudflare", "figma",
+	"notion", "robinhood", "instacart", "doordash", "lyft", "snowflake",
+	"datadog", "elastic", "reddit", "squarespace", "shopify", "twitch",
+	"github", "gitlab", "hashicorp", "mongodb", "dropbox", "etsy",
+	"pinterest", "mozilla", "sentry", "twilio", "intercom", "asana",
+	"slack", "atlassian", "lattice", "samsara", "gusto", "vimeo",
+	"quora", "zoom", "hubspot", "duolingo", "coursera", "snapinc",
+	"hopper", "opendoor", "redfin", "zillow", "expedia", "wayfair",
+	"thumbtack", "yelp", "groupon", "medium", "patreon",
+	// Fintech
+	"brex", "chime", "betterment", "wealthfront", "navan", "ramp",
+	"plaidinc", "earnin", "blockchain", "blockchaincom", "circle",
+	"affirm", "klarna", "block", "squareinc", "robinhoodmarkets",
+	"fanduel", "draftkings", "betterup",
+	// AI / ML / data
+	"openai", "scale", "scaleai", "runwayml", "replit", "anduril",
+	"perplexityai", "perplexity", "characterai", "weaviate", "pinecone",
+	"writer", "cohereai",
+	"databricks", "snowflakecomputing", "planetscale", "cockroachdb",
+	"redis", "confluent", "datastax", "neon", "vercel", "netlify",
+	"hcompany", "nebius",
+	// Gaming / media
+	"riotgames", "ea", "niantic", "roblox", "unity", "epicgames",
+	"peloton", "robloxcorp",
+	// Health / commerce / consumer
+	"sweetgreen", "hims", "oscar", "glassdoor", "hinge", "bumble",
+	"warbyparker", "wayfair", "rover", "stitchfix", "thirdlove",
+	"goodrx", "rohealth", "noomhealth", "noom", "calmcom", "calm",
+	"headspace", "lyrahealth",
+	// Marketplaces / B2B / startups
+	"faire", "rippling", "deel", "gusto", "trello", "miro",
+	"webflow", "canva", "bento", "front", "frontapp", "intercomengineering",
+	"clay", "attio", "linear", "pitch", "loom",
+	"lattice", "docebo", "cultureamp", "personio",
+	// More tech
+	"twitter", "twittercom", "x-corp", "snap", "snapchat", "pinterest",
+	"yelp", "tripadvisor", "booking", "gopuff", "shipt", "uber",
+	"uberresearch", "lyftengineering", "doordashinc",
+	// Various
+	"tinder", "match", "okcupid", "matchgroup", "bumbleinc",
+	"instabase", "openphone", "modern", "modernhealth",
+	"newrelic", "fastly", "akamai",
+	"mongodbinc", "couchbase", "neo4j", "elasticsearch",
+	// Older but solid
+	"strava", "vimeoinc", "letterboxd", "discordinc",
+	"opensea", "superhuman", "rivian", "lucidmotors",
+	"rakuten", "rakutenusa",
+	// Recently raised AI startups
+	"sakana", "blackforestlabs", "physicalintelligence",
+	"mistralai", "groq", "lambdalabs", "lambda",
+	"inflection", "you", "abridge", "tome", "tomeapp",
+	// Crypto / web3
+	"chainalysis", "fireblocks", "coinbase", "coinbasecloud",
+	// Misc
+	"audaxhealth", "discord-inc", "cardless", "stordcom",
+	"glean", "harvey", "anthropicai",
+}
+
+var DefaultLever = []string{
+	"netflix", "spotify", "ramp", "scale", "cohere", "plaid", "brex",
+	"gusto", "asana", "benchling", "clari", "latch", "eventbrite",
+	"box", "segment", "huggingface", "stabilityai", "writer", "adept",
+	"you", "deepgram", "fireworks", "runpod", "modal-labs", "togetherai",
+	"kraken", "ledger", "alchemy", "thirdweb", "circle",
+	"public", "carta", "marqeta", "alloy", "modernhealth", "rover",
+	"classpass", "gympass", "podium",
+	"talkdesk", "drift", "branch", "voiceflow", "lago",
+	"sanity", "contentful", "frontapp", "front",
+	"faire", "wisetack", "capchase", "karat",
+	"gem", "checkr", "showpad", "amplitude",
+	"mixpanel", "fivetran", "hex", "looker",
+	"automattic", "buffer", "zapier", "remote", "deel",
+	// Larger / European
+	"netflix-engineering", "spotifyjobs",
+	"ramphq", "rampnetwork",
+	"masterclass", "udemy", "moveable",
+	"yelp-engineering", "boxhq",
+	"cohereai", "cohere-jobs",
+	"plaidcareers",
+	// Crypto
+	"opensea", "magiceden", "matter-labs", "matterlabs",
+	"polygon", "polygonzk", "uniswap",
+	// Health
+	"ohayuhealth", "tempushealth", "tempus", "verily",
+	"flatironhealth", "flatiron",
+	"hims-and-hers",
+	// Misc
+	"figma-engineering", "applovin",
+	"applovin-jobs", "discord-jobs",
+	"sentryio",
+	"dailyweb",
+}
+
+var DefaultAshby = []string{
+	"linear", "vercel", "vanta", "mercury", "posthog", "retool",
+	"render", "supabase", "warp", "cursor", "hex", "modal",
+	"replicate", "browserbase", "knock", "productlane", "neon",
+	"baseten", "anyscale",
+	"elevenlabs", "mintlify", "perplexity", "ai21labs",
+	"contextualai",
+	"runwayml", "characterai", "magic", "magicdev",
+	"openinterpreter", "codeium", "tabnine", "continue",
+	"jasper", "regie", "harvey",
+	"jupiterone", "drata", "secureframe",
+	"clay", "attio", "primer",
+	"browserstack", "raycast", "linear-app",
+	"prismaio", "prisma", "sourcegraph",
+	"cresta", "rilla", "manychat", "decagon",
+	"zedindustries", "zed",
+	"speakeasyapi", "speakeasy",
+	// Crypto / web3
+	"figmentcrypto", "alchemyplatform",
+	// Misc
+	"hightouch", "census",
+	"airbyte", "dbt-labs", "dbtlabs", "dagsterlabs",
+	"prefect", "metaplane",
+	// Newer
+	"openai-startup",
+	"lambda-labs",
+	"glean-jobs",
+	"poolside",
+	"aritmiehealth",
+	"luma", "lumalabs",
+	"hyperliquid", "monad",
+	"granolaai",
+	"clerk", "clerkdev",
+	"workos",
+	"trigger", "triggerdev",
+	"resend",
+	"liveblocks",
+	"livekit",
+	"convex", "convexdev",
+	"upstash", "tigris",
+	"highlight",
+	"getfeatherbase",
+	"granola",
+	"fly", "flyio",
+	"warp-dev",
+	"causal",
+	"merge-api",
+	"hex-tech",
+	"pylon",
+	"tessl",
+	"motherduck",
+	"runme",
+	"mendable",
+}
+
+var DefaultSmartRecruiters = []string{
+	// Large enterprises commonly on SmartRecruiters
+	"visa", "allianz", "bosch", "ubisoft", "roche", "equinix",
+	"ikea", "lvmh", "hertz", "hilton", "marriott", "accor",
+	"lululemon", "schaeffler", "nestle", "unilever",
+	"pepsico", "schneider-electric", "schneiderelectric",
+	"hitachi", "deutschebahn",
+	"sap", "siemens", "boeing",
+	"ringcentral", "ringcentralinc",
+	"twentyfourseven", "publicismedia", "publicis",
+	"servicenow",
+	"square", "spotifyjobs",
+	"capgemini",
+	"atos",
+	"bayer",
+	"basf",
+	"merck",
+	"abinbev",
+	"imperial",
+	"pwc",
+	"deloitte",
+	"accenture",
+	"ey", "kpmg",
+	"adidas", "nike",
+	"sephora",
+	"kering", "richemont",
+	"loreal",
+	"johnson",
+	"bookingcom", "booking",
+	"foodpanda",
+	"deliveryhero",
+	"justeat",
+	"deliveroo",
+	"glovo",
+	"dorling",
+	"stryker",
+	"pfizer",
+}
+
+var DefaultWorkable = []string{
+	// Mid-market companies known/likely to use Workable
+	"transferwise", "wise",
+	"payoneer",
+	"qonto",
+	"alan",
+	"swile",
+	"spendesk",
+	"papaya",
+	"papayaglobal",
+	"bigpanda",
+	"cybereason",
+	"mendix",
+	"gympass",
+	"deliveroo",
+	"klarna",
+	"revolut",
+	"monzo",
+	"n26",
+	"trade-republic",
+	"traderepublic",
+	"frichti",
+	"sunday",
+	"miro",
+	"ableton",
+	"soundcloud",
+	"hopin",
+	"rappi",
+	"factorialhr",
+	"factorial",
+	"glovo",
+	"contentsquare",
+	"contentsq",
+	"agora",
+	"sumup",
+	"klarna-careers",
+	"thoughtmachine",
+	"thought-machine",
+	"snyk",
+	"checkout",
+	"checkoutcom",
+	"signaturit",
+	"finn",
+	"finn-auto",
+}
+
+// Workday tenants. Each entry is a (display, tenant, region, site) tuple
+// because all four are required to construct the public CXS API URL. Workday
+// does not have a "list all tenants" endpoint and customer provisioning region
+// (wd1/wd5/wd103/...) is not derivable from the tenant name. Mappings
+// hand-curated; bad combinations 404 cleanly and are skipped.
+//
+// Pattern verification: open `https://{tenant}.{region}.myworkdayjobs.com/{site}`
+// in a browser — if jobs load, the tuple is correct. The site-path can usually
+// be read from the URL after a click on "View All Jobs" on the company's
+// careers page.
+var DefaultWorkday = []WorkdayCompany{
+	// Tech / enterprise
+	{Display: "NVIDIA",          Tenant: "nvidia",       Region: "wd5",  Site: "NVIDIAExternalCareerSite"},
+	{Display: "Salesforce",      Tenant: "salesforce",   Region: "wd12", Site: "External_Career_Site"},
+	{Display: "ServiceNow",      Tenant: "servicenow",   Region: "wd1",  Site: "External_Career_Site"},
+	{Display: "Cisco",           Tenant: "cisco",        Region: "wd5",  Site: "External_Career_Site_XJB"},
+	{Display: "Adobe",           Tenant: "adobe",        Region: "wd5",  Site: "external_experienced"},
+	{Display: "VMware",          Tenant: "vmware",       Region: "wd1",  Site: "VMware"},
+	{Display: "Workday",         Tenant: "workday",      Region: "wd5",  Site: "Workday"},
+	{Display: "Intuit",          Tenant: "intuit",       Region: "wd12", Site: "External"},
+	{Display: "Atlassian",       Tenant: "atlassian",    Region: "wd5",  Site: "External"},
+	{Display: "Autodesk",        Tenant: "autodesk",     Region: "wd1",  Site: "Ext"},
+	{Display: "Dell Technologies", Tenant: "delltechnologies", Region: "wd1", Site: "External"},
+	{Display: "HPE",             Tenant: "hpe",          Region: "wd5",  Site: "Jobsathpe"},
+	{Display: "HP",              Tenant: "hp",           Region: "wd5",  Site: "ExternalCareerSite"},
+	{Display: "AMD",             Tenant: "amd",          Region: "wd1",  Site: "External"},
+	{Display: "Broadcom",        Tenant: "broadcom",     Region: "wd1",  Site: "External_Career_Site_New"},
+	{Display: "Intel",           Tenant: "intel",        Region: "wd1",  Site: "External"},
+	{Display: "Micron",          Tenant: "micron",       Region: "wd1",  Site: "External"},
+	{Display: "Qualcomm",        Tenant: "qualcomm",     Region: "wd5",  Site: "External"},
+	{Display: "Texas Instruments", Tenant: "ti",         Region: "wd1",  Site: "External"},
+	{Display: "Western Digital", Tenant: "westerndigital", Region: "wd1", Site: "External"},
+	{Display: "NetApp",          Tenant: "netapp",       Region: "wd1",  Site: "NetApp"},
+	{Display: "Pure Storage",    Tenant: "purestorage",  Region: "wd1",  Site: "Pure_Storage_Career_Site"},
+	{Display: "Palo Alto Networks", Tenant: "paloaltonetworks", Region: "wd5", Site: "PaloAltoNetworks"},
+
+	// Financial services
+	{Display: "JPMorgan Chase",  Tenant: "jpmc",         Region: "wd1",  Site: "jpmc"},
+	{Display: "Goldman Sachs",   Tenant: "goldmansachs", Region: "wd1",  Site: "goldman"},
+	{Display: "Morgan Stanley",  Tenant: "morganstanley", Region: "wd5", Site: "External"},
+	{Display: "Citi",            Tenant: "citi",         Region: "wd5",  Site: "2"},
+	{Display: "Capital One",     Tenant: "capitalone",   Region: "wd12", Site: "Capital_One"},
+	{Display: "American Express", Tenant: "aexp",        Region: "wd1",  Site: "AmericanExpress"},
+	{Display: "Wells Fargo",     Tenant: "wd5",          Region: "wd5",  Site: "WellsFargoJobs"},
+	{Display: "Charles Schwab",  Tenant: "schwab",       Region: "wd1",  Site: "Schwab"},
+	{Display: "Mastercard",      Tenant: "mastercard",   Region: "wd1",  Site: "CorporateCareers"},
+	{Display: "Visa",            Tenant: "visa",         Region: "wd1",  Site: "External"},
+	{Display: "BlackRock",       Tenant: "blackrock",    Region: "wd1",  Site: "BlackRock"},
+	{Display: "Fidelity",        Tenant: "fmr",          Region: "wd1",  Site: "external"},
+	{Display: "Bank of America", Tenant: "bankofamerica", Region: "wd1", Site: "BofAJobs"},
+	{Display: "PayPal",          Tenant: "paypal",       Region: "wd1",  Site: "jobs"},
+
+	// Healthcare / pharma
+	{Display: "UnitedHealth Group", Tenant: "unitedhealthgroup", Region: "wd5", Site: "External"},
+	{Display: "CVS Health",      Tenant: "cvshealth",    Region: "wd1",  Site: "CVS_Health_Careers"},
+	{Display: "Cigna",           Tenant: "cigna",        Region: "wd5",  Site: "cigna_careers"},
+	{Display: "Humana",          Tenant: "humana",       Region: "wd5",  Site: "External"},
+	{Display: "Pfizer",          Tenant: "pfizer",       Region: "wd1",  Site: "PfizerCareers"},
+	{Display: "Moderna",         Tenant: "moderna",      Region: "wd1",  Site: "External"},
+	{Display: "Eli Lilly",       Tenant: "lilly",        Region: "wd5",  Site: "LLY"},
+
+	// Consumer / retail
+	{Display: "Walmart",         Tenant: "walmart",      Region: "wd5",  Site: "WalmartExternal"},
+	{Display: "Target",          Tenant: "target",       Region: "wd5",  Site: "targetcareers"},
+	{Display: "Costco",          Tenant: "costco",       Region: "wd5",  Site: "External"},
+	{Display: "Home Depot",      Tenant: "homedepot",    Region: "wd1",  Site: "homedepot"},
+	{Display: "Best Buy",        Tenant: "bestbuy",      Region: "wd5",  Site: "External"},
+	{Display: "Nike",            Tenant: "nike",         Region: "wd1",  Site: "nike"},
+	{Display: "Starbucks",       Tenant: "starbucks",    Region: "wd5",  Site: "External"},
+
+	// Media / entertainment
+	{Display: "Disney",          Tenant: "disney",       Region: "wd5",  Site: "disneycareer"},
+	{Display: "Comcast",         Tenant: "comcast",      Region: "wd5",  Site: "Comcast_Careers"},
+	{Display: "Warner Bros Discovery", Tenant: "wbd",    Region: "wd5",  Site: "Global"},
+	{Display: "Sony",            Tenant: "sonypictures", Region: "wd1",  Site: "spe"},
+
+	// Industrial / energy / auto
+	{Display: "Ford",            Tenant: "ford",         Region: "wd1",  Site: "FordCareers"},
+	{Display: "GM",              Tenant: "gm",           Region: "wd5",  Site: "Careers_External"},
+	{Display: "Tesla",           Tenant: "tesla",        Region: "wd1",  Site: "Tesla"}, // sometimes uses other ATS
+	{Display: "Boeing",          Tenant: "boeing",       Region: "wd1",  Site: "EXTERNAL_CAREERS"},
+	{Display: "Lockheed Martin", Tenant: "lockheedmartin", Region: "wd1", Site: "External"},
+	{Display: "Raytheon",        Tenant: "rtx",          Region: "wd5",  Site: "REC_RTX_Ext_Gateway"},
+	{Display: "GE",              Tenant: "ge",           Region: "wd5",  Site: "GE_External"},
+
+	// Telecom
+	{Display: "AT&T",            Tenant: "att",          Region: "wd1",  Site: "ATTEXTERNAL"},
+	{Display: "Verizon",         Tenant: "verizon",      Region: "wd5",  Site: "external"},
+	{Display: "T-Mobile",        Tenant: "t-mobile",     Region: "wd1",  Site: "TMobile"},
+
+	// Hospitality
+	{Display: "Marriott",        Tenant: "marriott",     Region: "wd5",  Site: "marriott"},
+	{Display: "Hilton",          Tenant: "hilton",       Region: "wd5",  Site: "Hilton_Careers"},
+
+	// Tech mid-cap / unicorns on Workday
+	{Display: "Zoom",            Tenant: "zoom",         Region: "wd5",  Site: "Zoom"},
+	{Display: "Snowflake",       Tenant: "snowflake",    Region: "wd1",  Site: "External"},
+	{Display: "Splunk",          Tenant: "splunk",       Region: "wd5",  Site: "external"},
+	{Display: "Akamai",          Tenant: "akamaicareers", Region: "wd1", Site: "External"},
+	{Display: "F5",              Tenant: "f5",           Region: "wd1",  Site: "F5_Networks_External"},
+	{Display: "Juniper Networks", Tenant: "juniper",     Region: "wd5",  Site: "JNetworks"},
+
+	// European / international
+	{Display: "Deutsche Bank",   Tenant: "db",           Region: "wd3",  Site: "DBWebsite"},
+	{Display: "Barclays",        Tenant: "barclays",     Region: "wd3",  Site: "External"},
+	{Display: "HSBC",            Tenant: "hsbc",         Region: "wd3",  Site: "External"},
+	{Display: "UBS",             Tenant: "ubs",          Region: "wd3",  Site: "global"},
+	{Display: "BNP Paribas",     Tenant: "bnpparibas",   Region: "wd3",  Site: "BNP-PARIBAS-CAREERS"},
+}
+
+var DefaultRecruitee = []string{
+	"catawiki",
+	"helloprint",
+	"swapfiets",
+	"airfocus",
+	"camunda",
+	"miro",
+	"tweakers",
+	"mews",
+	"vivino",
+	"wallapop",
+	"tier",
+	"tiermobility",
+	"trivago",
+	"getyourguide",
+	"booking",
+	"contentful",
+	"babbel",
+	"hellofresh",
+	"factorial",
+	"factorialhr",
+	"backbase",
+	"bunq",
+	"adyen",
+	"messagebird",
+	"bird",
+	"silverfin",
+	"shapeshift",
+	"otrium",
+	"jobandtalent",
+	"taxfix",
+	"luno",
+	"pleo",
+	"lottiefiles",
+	"unbabel",
+	"talkpush",
+	"bynder",
+	"templafy",
+	"yousign",
+	"germanytechjobs",
+	"raisin",
+	"checkstep",
+	"sellforte",
+	"meneuren",
+	"flexiana",
+}
+
+// DefaultPersonio — Personio tenant slugs at {slug}.jobs.personio.com/xml.
+// Personio's public XML feed is opt-in per tenant and Cloudflare-fronted;
+// many slugs that exist in the Personio admin do not actually expose the
+// feed publicly. Defaults are kept conservative; operators populate via
+// PERSONIO_COMPANIES=<csv> after verifying the feed responds to a manual
+// curl from the deploy environment.
+var DefaultPersonio = []string{
+	// Known to publish public feeds at the time of writing.
+	"awin",
+}
+
+// DefaultTeamtailor — Teamtailor tenant slugs at {slug}.teamtailor.com. The
+// list is intentionally short until tenants are individually verified; many
+// Teamtailor customers use branded `careers.{company}.com` CNAMEs whose
+// underlying tenant slug isn't the company name. Operators can override via
+// TEAMTAILOR_COMPANIES=<csv>.
+var DefaultTeamtailor = []string{
+	"paradox",
+}
+
+// DefaultBambooHR — tenant slugs at {slug}.bamboohr.com. BambooHR is mostly
+// SMB; tenants without a public careers feed redirect /careers/list to the
+// BambooHR marketing homepage and surface as `non-json` errors during fetch.
+// Operators override via BAMBOOHR_COMPANIES=<csv>.
+var DefaultBambooHR = []string{
+	"canopy",
+	"roomraccoon",
+	"flashfood",
+	"asana",
+	"buoyhealth",
+	"afar",
+	"testlio",
+	"instabase",
+}
+
+// DefaultBreezy — tenant slugs at {slug}.breezy.hr. Breezy's CDN 403s any
+// non-browser UA on the root host and on slugs that don't host a public
+// careers page; only slugs verified to return non-empty feeds are seeded here.
+var DefaultBreezy = []string{
+	"servers-com",
+	"cometeer",
+	"erdman-anthony",
+	"intrahealth",
+}
+
+// DefaultPinpoint — tenant slugs at {slug}.pinpointhq.com. Pinpoint's UK/EU
+// SMB customer base; the list seeds enterprise + scale-up tenants whose
+// /postings.json was verified to return live jobs.
+var DefaultPinpoint = []string{
+	"nccgroup",
+	"multiplier-careers",
+	"cartesian",
+	"upway",
+	"vena",
+	"digitalscience",
+	"discogsinc",
+	"reconomy",
+}
