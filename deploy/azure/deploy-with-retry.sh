@@ -5,7 +5,6 @@
 # This actually attempts the deploy and moves on when SkuNotAvailable
 # / RequestDisallowedByAzure / NoLongerAvailable strikes.
 
-set -e
 REGIONS=(${REGIONS:-eastus2 centralus southcentralus westus3 northcentralus})
 
 cd "$(dirname "$0")/../.."
@@ -16,11 +15,17 @@ for r in "${REGIONS[@]}"; do
     echo "Attempt: LOCATION=$r"
     echo "============================================================"
 
-    # Run azure.sh with stderr captured so we can detect transient capacity
-    # errors and retry the next region. Other errors stop the loop.
     # SWA free tier only runs in centralus / eastus2 / westus2 / westeurope /
     # eastasia. Keep SWA pinned to eastus2 regardless of where the VM lands.
-    if LOCATION="$r" SWA_LOCATION=eastus2 bash deploy/azure/azure.sh 2>&1 | tee /tmp/azure-attempt.log; then
+    # We capture stdout+stderr so a tee in the pipe doesn't mask azure.sh's
+    # exit status (the previous bug — tee always exits 0 and made every
+    # capacity failure look like success).
+    LOCATION="$r" SWA_LOCATION=eastus2 bash deploy/azure/azure.sh \
+        > /tmp/azure-attempt.log 2>&1
+    status=$?
+    cat /tmp/azure-attempt.log
+
+    if [[ $status -eq 0 ]]; then
         echo
         echo "SUCCESS in $r"
         exit 0
@@ -28,12 +33,12 @@ for r in "${REGIONS[@]}"; do
 
     if grep -qE "SkuNotAvailable|Capacity Restrictions|NoLongerAvailable" /tmp/azure-attempt.log; then
         echo
-        echo "    -> $r is capacity-restricted; trying next region."
+        echo "    -> $r is capacity-restricted (status=$status); trying next region."
         continue
     fi
 
     echo
-    echo "Non-capacity error; stopping. Inspect /tmp/azure-attempt.log."
+    echo "Non-capacity error (status=$status); stopping. Inspect /tmp/azure-attempt.log."
     exit 1
 done
 
