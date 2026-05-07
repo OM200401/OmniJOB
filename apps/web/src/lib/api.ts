@@ -58,6 +58,17 @@ export type JobHit = {
   payload: JobMetadata;
 };
 
+export type JobSource = {
+  source: string;
+  source_url: string;
+  scraped_at: number;
+};
+
+export type JobSources = {
+  canonical: JobSource;
+  duplicates: JobSource[];
+};
+
 export type Health = {
   status: string;
   qdrant: boolean;
@@ -198,4 +209,7 @@ export const api = {
       `/jobs/${encodeURIComponent(id)}/match-explain`,
       { resume_text },
     ),
+
+  fetchJobSources: (id: string) =>
+    request<JobSources>("GET", `/jobs/${encodeURIComponent(id)}/sources`),
 };

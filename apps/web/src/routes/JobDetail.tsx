@@ -12,9 +12,10 @@ import {
   Wifi,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { api, type JobMetadata } from "../lib/api";
+import { api, type JobMetadata, type JobSources } from "../lib/api";
 import { type ApplicationStatus } from "../lib/crypto/vault";
 import { diffSkills, extractSkills, type ExtractedSkill } from "../lib/skills";
+import { sourceDisplayName } from "../lib/sources";
 import { Button } from "../components/Button";
 import { Alert } from "../components/Alert";
 
@@ -28,6 +29,7 @@ export function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [pairs, setPairs] = useState<ExplainPair[] | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [sources, setSources] = useState<JobSources | null>(null);
 
   const resumeText = session?.profile.resumeText;
 
@@ -36,6 +38,7 @@ export function JobDetail() {
     setLoading(true);
     setErr(null);
     setPairs(null);
+    setSources(null);
     if (!id) return;
     api
       .getJob(id)
@@ -52,6 +55,23 @@ export function JobDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  // Lazy-load the cross-source disclosure once the job is loaded.
+  useEffect(() => {
+    if (!id || !meta) return;
+    let cancelled = false;
+    api
+      .fetchJobSources(id)
+      .then((res) => {
+        if (!cancelled) setSources(res);
+      })
+      .catch(() => {
+        // Quietly ignore — panel just won't render.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, meta]);
 
   // Lazy-load match explanation once the job is loaded.
   useEffect(() => {
@@ -166,7 +186,30 @@ export function JobDetail() {
                 {meta.source && (
                   <>
                     <span className="meta-dot" />
-                    <span className="muted-2 text-sm">via {meta.source}</span>
+                    {/* Primary apply path. Direct click-through to the canonical
+                        source — proves the listing isn't laundered through an
+                        aggregator and lets the user verify without leaving us. */}
+                    <a
+                      href={meta.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link text-sm row gap-sm"
+                      style={{ alignItems: "center", gap: 4 }}
+                    >
+                      via {sourceDisplayName(meta.source)} <ExternalLink size={12} />
+                    </a>
+                  </>
+                )}
+                {sources && sources.duplicates.length > 0 && (
+                  <>
+                    <span className="meta-dot" />
+                    <span
+                      className="chip chip-success"
+                      style={{ fontSize: 11, height: 19 }}
+                      title={`Same role found across ${1 + sources.duplicates.length} sources`}
+                    >
+                      Verified · {1 + sources.duplicates.length} sources
+                    </span>
                   </>
                 )}
               </div>
@@ -254,15 +297,19 @@ export function JobDetail() {
               <QualityPanel total={meta.quality} breakdown={meta.quality_breakdown} />
             )}
 
-            <div className="card section" style={{ padding: 16 }}>
-              <h4 style={{ fontSize: 11, textTransform: "uppercase", color: "var(--fg-4)", marginBottom: 8 }}>Source</h4>
-              <a className="link text-sm" href={meta.source_url} target="_blank" rel="noreferrer">
-                {meta.source_url}
-              </a>
-              <p className="text-xs muted" style={{ marginTop: 6 }}>
-                Scraped {timeAgo(meta.scraped_at)}
-              </p>
-            </div>
+            {sources && sources.duplicates.length > 0 ? (
+              <VerifiedSourcesPanel sources={sources} />
+            ) : (
+              <div className="card section" style={{ padding: 16 }}>
+                <h4 style={{ fontSize: 11, textTransform: "uppercase", color: "var(--fg-4)", marginBottom: 8 }}>Source</h4>
+                <a className="link text-sm" href={meta.source_url} target="_blank" rel="noopener noreferrer">
+                  {sourceDisplayName(meta.source)} <ExternalLink size={11} style={{ verticalAlign: "-1px" }} />
+                </a>
+                <p className="text-xs muted" style={{ marginTop: 6 }}>
+                  Scraped {timeAgo(meta.scraped_at)}
+                </p>
+              </div>
+            )}
           </aside>
         </div>
       )}
@@ -314,6 +361,59 @@ function ApplyHandoff({ source }: { source: string }) {
       <p className="muted text-xs" style={{ margin: 0, lineHeight: 1.4 }}>
         {info.steps} · ~{info.minutes} min · {source.charAt(0).toUpperCase() + source.slice(1)} board
       </p>
+    </div>
+  );
+}
+
+// Surface the dedupe pass's cross-source merge: the canonical row first
+// (marked primary), then every duplicate that scripts/dedupe.ts collapsed
+// into it. Each row links to the original posting on its source — the
+// "verified across N sources" trust signal made tangible.
+function VerifiedSourcesPanel({ sources }: { sources: JobSources }) {
+  const total = 1 + sources.duplicates.length;
+  return (
+    <div className="card section verified-sources" style={{ padding: 16 }}>
+      <h4 style={{ fontSize: 11, textTransform: "uppercase", color: "var(--fg-4)", marginBottom: 4 }}>
+        Verified across {total} sources
+      </h4>
+      <p className="text-xs muted-2" style={{ margin: "0 0 12px" }}>
+        We found the same role posted on {total} independent boards.
+      </p>
+      <ul className="verified-sources-list">
+        <li className="verified-sources-row">
+          <div className="col" style={{ gap: 1, minWidth: 0 }}>
+            <span className="text-sm" style={{ fontWeight: 500 }}>
+              {sourceDisplayName(sources.canonical.source)}{" "}
+              <span className="muted-2 text-xs" style={{ fontWeight: 400 }}>(primary)</span>
+            </span>
+          </div>
+          <a
+            className="link text-xs row gap-sm"
+            href={sources.canonical.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ alignItems: "center", whiteSpace: "nowrap" }}
+          >
+            View <ExternalLink size={11} />
+          </a>
+        </li>
+        {sources.duplicates.map((d, i) => (
+          <li key={`${d.source}-${i}`} className="verified-sources-row">
+            <div className="col" style={{ gap: 1, minWidth: 0 }}>
+              <span className="text-sm">{sourceDisplayName(d.source)}</span>
+            </div>
+            <a
+              className="link text-xs row gap-sm"
+              href={d.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ alignItems: "center", whiteSpace: "nowrap" }}
+            >
+              View <ExternalLink size={11} />
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -209,6 +209,57 @@ export async function getJob(externalId: string): Promise<(JobMetadata & { quali
   return { ...enriched, quality: quality.total, quality_breakdown: quality.components };
 }
 
+// Source disclosure: for a canonical job, return its own source plus every
+// duplicate that scripts/dedupe.ts collapsed into it. Used by the
+// "Verified across N sources" panel — the duplicates carry canonical_id
+// pointing at this canonical's external_id.
+export type JobSource = {
+  source: string;
+  source_url: string;
+  scraped_at: number;
+};
+
+export async function getJobSources(
+  externalId: string,
+): Promise<{
+  canonical: JobSource;
+  duplicates: JobSource[];
+} | null> {
+  const canonicalMeta = await getJob(externalId);
+  if (!canonicalMeta) return null;
+
+  // Single filter scroll over points whose canonical_id pointer matches us.
+  // Cap aggressively — a single canonical with >50 duplicates would be
+  // pathological; in practice clusters are 2-5 points.
+  const res = await qdrant.scroll(config.qdrant.jobsCollection, {
+    limit: 50,
+    with_payload: true,
+    with_vector: false,
+    filter: {
+      must: [{ key: "canonical_id", match: { value: externalId } }],
+    },
+  });
+
+  const duplicates: JobSource[] = [];
+  for (const p of res.points) {
+    const payload = (p.payload ?? {}) as Record<string, unknown>;
+    const source = typeof payload.source === "string" ? payload.source : "unknown";
+    const source_url = typeof payload.source_url === "string" ? payload.source_url : "";
+    const scraped_at = typeof payload.scraped_at === "number" ? payload.scraped_at : 0;
+    if (!source_url) continue;
+    duplicates.push({ source, source_url, scraped_at });
+  }
+
+  return {
+    canonical: {
+      source: canonicalMeta.source ?? "unknown",
+      source_url: canonicalMeta.source_url,
+      scraped_at: canonicalMeta.scraped_at,
+    },
+    duplicates,
+  };
+}
+
 export async function isReachable(): Promise<boolean> {
   try {
     await qdrant.getCollections();

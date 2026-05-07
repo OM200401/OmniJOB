@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { JobIngestSchema, JobSearchSchema } from "../schemas/job";
-import { getJob, searchJobs, upsertJob } from "../qdrant/client";
+import { getJob, getJobSources, searchJobs, upsertJob } from "../qdrant/client";
 import { explainMatch } from "../lib/explain";
 
 export const jobs = new Elysia({ prefix: "/jobs" })
@@ -30,6 +30,17 @@ export const jobs = new Elysia({ prefix: "/jobs" })
       const meta = await getJob(params.id);
       if (!meta) return status(404, { error: "job not found" });
       return { id: params.id, payload: meta };
+    },
+    { params: t.Object({ id: t.String({ minLength: 1, maxLength: 256 }) }) },
+  )
+  // Surface every source the dedupe pass merged into this canonical, plus
+  // the canonical's own source. Powers the "Verified across N sources" panel.
+  .get(
+    "/:id/sources",
+    async ({ params, status }) => {
+      const sources = await getJobSources(params.id);
+      if (!sources) return status(404, { error: "job not found" });
+      return sources;
     },
     { params: t.Object({ id: t.String({ minLength: 1, maxLength: 256 }) }) },
   )

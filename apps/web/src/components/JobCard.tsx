@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck, DollarSign } from "lucide-react";
 import type { JobHit, RemoteStatus } from "../lib/api";
 import { flagEmoji } from "../lib/countries";
+import { sourceDisplayName } from "../lib/sources";
 import { CompanyLogo } from "./CompanyLogo";
 
 type Props = {
@@ -67,6 +68,19 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
         ) : (
           <span className="chip chip-muted" title="No salary disclosed">
             no salary
+          </span>
+        )}
+        {hit.payload.source && (
+          // Informational only — the whole card is a Link to /jobs/:id, so a
+          // separate clickable target inside it would conflict. Title carries
+          // the "source attribution" affordance; the click-through lives on
+          // the detail page.
+          <span
+            className="chip chip-muted"
+            style={{ fontStyle: "normal" }}
+            title={`Sourced from ${sourceDisplayName(hit.payload.source)}`}
+          >
+            {sourceDisplayName(hit.payload.source)}
           </span>
         )}
       </div>
