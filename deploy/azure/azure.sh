@@ -13,7 +13,8 @@
 #   Static Web App  $0
 #   Storage (LRS, <5GB)  $0
 #   App Insights (<5GB/mo)  $0
-#   Public IP (Basic, dynamic)  ~$0
+#   Public IP (Standard, static)  ~$3.65/mo
+#     (Basic SKU was free but newer subs cap quota at 0; Standard required.)
 #   Total  ~$30/mo. Migrate to Hetzner CX22 ($8/mo) when credit ends.
 
 set -euo pipefail
@@ -86,7 +87,7 @@ if ! az vm show -g "$RG" -n "$VM_NAME" -o none 2>/dev/null; then
         --admin-username "$ADMIN_USER" \
         --ssh-key-values "$SSH_KEY_PATH" \
         --custom-data deploy/azure/cloud-init.yaml \
-        --public-ip-sku Basic \
+        --public-ip-sku Standard \
         --assign-identity \
         --tags "$TAG" \
         -o none
