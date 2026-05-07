@@ -197,3 +197,76 @@ az group delete -n omnijob --yes --no-wait
 ```
 
 One command, ~30 seconds, removes every Azure resource including the VM, storage, IPs, and Static Web App. Cloudflare DNS + the registered domain persist (delete those manually if abandoning the project).
+
+---
+
+## Beta hardening
+
+Hardening that ships in the API for the public beta. Most of these are off-by-default in dev and only activate when `NODE_ENV=production` is set on the VM.
+
+### What's enforced
+
+| Layer | Protection | File |
+|---|---|---|
+| Bun listener | 1 MB request body cap (rejects oversized POSTs before parse) | `apps/api/src/index.ts` |
+| API middleware | Per-IP fixed-window rate limits on hot routes | `apps/api/src/lib/ratelimit.ts` |
+| API middleware | Fail-closed CORS — startup aborts if `ALLOWED_ORIGINS` unset in prod | `apps/api/src/index.ts` |
+| Embed client | 30 s hard timeout on Ollama calls (prevents wedged-model worker exhaustion) | `apps/api/src/embed/ollama.ts` |
+| Auth routes | JSON-lines audit log of register/login/recovery/reset events | `apps/api/src/lib/audit.ts` |
+| Container runtime | Memory + CPU caps on Qdrant (1G/1cpu), Ollama (2G/2cpu), Redis (256M/0.5cpu) | `infra/docker-compose.prod.yml` |
+| Container runtime | Log rotation (10 MB × 3 files) — prevents `/var/lib/docker/containers` from filling the disk | `infra/docker-compose.prod.yml` |
+
+### Rate limit buckets (per IP)
+
+| Route(s) | Limit | Window |
+|---|---|---|
+| `POST /jobs/search` | 60 req | 60 s |
+| `POST /embed` | 10 req | 60 s |
+| `POST /jobs/:id/match-explain` | 10 req | 60 s |
+| `POST /users/login`, `GET /users/:uid/recovery` | 30 req | 60 s |
+| `POST /users/register`, `POST /users/reset-password` | 5 req | 1 hour |
+| `POST /users/profile`, `POST /users/profile/blob` | 30 req | 60 s |
+
+A blocked request returns `429` with `Retry-After` and a JSON body `{"error":"rate_limited","retry_after_sec":N}`. The SPA already surfaces 4xx errors via the existing toast pipeline; no client change needed.
+
+### Required env vars on the VM
+
+Add these to `/home/om/omnijob/.env` (or the systemd unit's `Environment=` lines). Without them the API will refuse to start in production mode:
+
+```
+NODE_ENV=production
+ALLOWED_ORIGINS=https://omnijob.app,https://www.omnijob.app
+SQLITE_PATH=/var/lib/omnijob/users.db
+QDRANT_URL=http://localhost:6333
+OLLAMA_URL=http://localhost:11434
+```
+
+Optional tunables (defaults are sane for a B2s):
+
+```
+MAX_BODY_BYTES=1048576
+OLLAMA_TIMEOUT_MS=30000
+AUDIT_LOG_PATH=/var/lib/omnijob/audit.log
+```
+
+### Audit log inspection
+
+The auth audit log lives at `/var/lib/omnijob/audit.log` (one JSON object per line). Tail it during the first week of beta to spot abuse patterns:
+
+```sh
+ssh om@<VM_IP>
+tail -f /var/lib/omnijob/audit.log | jq -c '{ts, event, ip}'
+
+# How many distinct IPs registered in the last hour?
+jq -rs --arg cutoff "$(date -u -d '1 hour ago' +%FT%TZ)" \
+  'map(select(.event == "register" and .ts > $cutoff)) | map(.ip) | unique | length' \
+  /var/lib/omnijob/audit.log
+```
+
+Logrotate is not configured for this file by default — for a long beta, add a daily rotation in `/etc/logrotate.d/omnijob-audit`.
+
+### Known gaps (deferred)
+
+- No Redis-backed distributed rate limiter — single-instance only. Migrate when scaling the API horizontally.
+- No CAPTCHA on `/users/register`. The 5/hour/IP cap is the primary brake; revisit if signup floods materialize.
+- No mTLS or auth on the internal Qdrant/Ollama ports. They bind to 127.0.0.1 only (see `docker-compose.prod.yml`), so the VM perimeter is the trust boundary.
