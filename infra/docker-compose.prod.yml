@@ -12,9 +12,8 @@
 
 services:
   qdrant:
-    ports:
-      - "127.0.0.1:6333:6333"
-      - "127.0.0.1:6334:6334"
+    # Ports come from the base compose (127.0.0.1-bound). Don't re-declare
+    # here — compose merges port lists and produces duplicate bindings.
     volumes:
       - /var/lib/omnijob/qdrant:/qdrant/storage
     deploy:
@@ -29,8 +28,6 @@ services:
         max-file: "3"
 
   redis:
-    ports:
-      - "127.0.0.1:6379:6379"
     volumes:
       - /var/lib/omnijob/redis:/data
     deploy:
@@ -45,8 +42,6 @@ services:
         max-file: "3"
 
   ollama:
-    ports:
-      - "127.0.0.1:11434:11434"
     volumes:
       - /var/lib/omnijob/ollama:/root/.ollama
     # Ollama benefits from CPU pinning on B-series; let it use both vCPU

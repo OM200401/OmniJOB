@@ -3,9 +3,12 @@ services:
     image: qdrant/qdrant:latest
     container_name: omnijob-qdrant
     restart: unless-stopped
+    # Localhost-only by default. Caddy (or `localhost` browser tabs in dev)
+    # is the single entry point. Production overlay does not re-declare
+    # these — that produced duplicate bindings that silently failed.
     ports:
-      - "${QDRANT_HTTP_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
+      - "127.0.0.1:${QDRANT_HTTP_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -19,7 +22,7 @@ services:
     container_name: omnijob-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     volumes:
       - redis_data:/data
@@ -34,7 +37,7 @@ services:
     container_name: omnijob-ollama
     restart: unless-stopped
     ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     # Model cache lives on a named volume so nomic-embed-text (~275 MB)
     # survives container restarts. Pulled once via:
     #   docker exec omnijob-ollama ollama pull nomic-embed-text
