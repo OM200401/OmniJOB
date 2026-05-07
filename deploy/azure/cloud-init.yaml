@@ -32,7 +32,7 @@ write_files:
     permissions: "0644"
     content: |
       # Replaced after first boot by `cp deploy/azure/Caddyfile`.
-      :80 { respond "OmniJob bootstrap — Caddyfile not yet copied" }
+      :80 { respond "OmniJob bootstrap - Caddyfile not yet copied" }
 
 runcmd:
   # Docker
@@ -77,7 +77,7 @@ runcmd:
   - echo "0 3 * * * om cd /home/om/omnijob && /home/om/.bun/bin/bun run apps/api/scripts/backup.ts >> /var/log/omnijob-backup.log 2>&1" > /etc/cron.d/omnijob-backup
   - chmod 644 /etc/cron.d/omnijob-backup
 
-  # Caddy — copy the real Caddyfile and reload
+  # Caddy: copy the real Caddyfile and reload
   - cp /home/om/omnijob/deploy/azure/Caddyfile /etc/caddy/Caddyfile
   - systemctl reload caddy
   - echo "OmniJob bootstrap complete at $(date -u)" > /var/log/omnijob-bootstrap.log
