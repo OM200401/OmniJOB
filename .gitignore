@@ -1,0 +1,57 @@
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node / Bun
+node_modules/
+bun.lockb
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Go
+apps/crawler/crawler
+apps/crawler/crawler.exe
+apps/crawler/dist/
+*.test
+*.out
+vendor/
+
+# Build / cache
+dist/
+build/
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local data (Qdrant, SQLite, Redis dumps)
+data/
+*.sqlite
+*.sqlite-journal
+*.rdb
+
+# Expo (kept for when mobile app lands)
+.expo/
+.expo-shared/
+ios/
+android/
+web-build/
+
+# Plan / scratch
+*.scratch.md
+
+# Tooling state (Ruflo, Claude, scratch dirs)
+.swarm/
+.tmp/
+.claude/
+
+# Crash dumps
+*.stackdump
