@@ -1137,6 +1137,11 @@ kbd, .kbd {
     top: 0;
     right: 0;
     bottom: 0;
+    /* Explicit height fallback. With position:fixed inside a flex row
+       parent and only top/bottom set, some browsers compute height from
+       the flex track instead of the anchors and end up at ~88px. */
+    height: 100vh;
+    height: 100dvh;
     width: min(85vw, 320px);
     background: var(--surface);
     border-left: 1px solid var(--border);
