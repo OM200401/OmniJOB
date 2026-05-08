@@ -306,6 +306,14 @@ DO_SPACES_KEY=...
 DO_SPACES_SECRET=...
 ```
 
+Optional error tracking (Sentry). Set on the droplet for the API and in
+the Vercel project env for the frontend. Leave blank to disable - the SDK
+init is gated on the DSN being non-empty.
+```
+SENTRY_DSN=https://...@o....ingest.sentry.io/...        # API
+VITE_SENTRY_DSN=https://...@o....ingest.sentry.io/...   # Frontend
+```
+
 ### Audit log inspection
 
 The auth audit log lives at `/var/lib/omnijob/audit.log` (one JSON object per line). Tail it during the first week of beta to spot abuse patterns:

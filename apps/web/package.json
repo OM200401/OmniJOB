@@ -11,6 +11,7 @@
     "test": "bun test src/lib"
   },
   "dependencies": {
+    "@sentry/react": "^10.52.0",
     "hash-wasm": "^4.11.0",
     "lucide-react": "^0.468.0",
     "pdfjs-dist": "^4.10.38",

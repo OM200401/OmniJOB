@@ -1,6 +1,15 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import * as Sentry from "@sentry/bun";
 import { config } from "./config";
+
+if (process.env["SENTRY_DSN"]) {
+  Sentry.init({
+    dsn: process.env["SENTRY_DSN"],
+    tracesSampleRate: 0.1,
+    environment: process.env["NODE_ENV"],
+  });
+}
 import { check, clientKeyFromHeaders, RULES, type RateLimitRule } from "./lib/ratelimit";
 import { health } from "./routes/health";
 import { jobs } from "./routes/jobs";
