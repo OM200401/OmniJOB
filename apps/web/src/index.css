@@ -1314,4 +1314,11 @@ kbd, .kbd {
 
   /* Keyboard-shortcut hint (/) is meaningless on touch devices. */
   .search-wrap > .kbd { display: none; }
+
+  /* Settings/Saved-search cards use .row-between to put a label group
+     on the left and an action button on the right. On phones the label
+     (an email or job title) wraps to multiple lines and crowds the
+     button; let the row wrap and the button drop below instead. */
+  .card .row-between { flex-wrap: wrap; row-gap: 12px; }
+  .card .row-between > * { min-width: 0; }
 }
