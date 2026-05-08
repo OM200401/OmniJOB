@@ -73,6 +73,20 @@ export function JobDetail() {
     };
   }, [id, meta]);
 
+  // Inject JobPosting JSON-LD so Google indexes us into Google for Jobs.
+  // Lives in <head> while this route is mounted; removed on unmount.
+  useEffect(() => {
+    if (!id || !meta) return;
+    const el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.id = `jobposting-${id}`;
+    el.textContent = JSON.stringify(buildJobPostingSchema(meta));
+    document.head.appendChild(el);
+    return () => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    };
+  }, [id, meta]);
+
   // Lazy-load match explanation once the job is loaded.
   useEffect(() => {
     if (!id || !meta || !resumeText || resumeText.length < 50) return;
@@ -416,6 +430,59 @@ function VerifiedSourcesPanel({ sources }: { sources: JobSources }) {
       </ul>
     </div>
   );
+}
+
+function periodToUnitText(period?: string): string {
+  switch (period) {
+    case "annual": return "YEAR";
+    case "monthly": return "MONTH";
+    case "weekly": return "WEEK";
+    case "daily": return "DAY";
+    case "hourly": return "HOUR";
+    default: return "YEAR";
+  }
+}
+
+function buildJobPostingSchema(meta: JobMetadata): Record<string, unknown> {
+  const baseTs = meta.posted_at ?? meta.scraped_at;
+  const datePosted = new Date(baseTs).toISOString();
+  const validThrough = new Date(baseTs + 30 * 86400 * 1000).toISOString();
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org/",
+    "@type": "JobPosting",
+    title: meta.title,
+    description: meta.description ?? meta.title,
+    datePosted,
+    validThrough,
+    employmentType: "FULL_TIME",
+    hiringOrganization: { "@type": "Organization", name: meta.company },
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: meta.location ?? "",
+        addressCountry: meta.country ?? "",
+      },
+    },
+    directApply: false,
+  };
+  if (
+    meta.salary_min !== undefined &&
+    meta.salary_max !== undefined &&
+    meta.salary_currency
+  ) {
+    schema.baseSalary = {
+      "@type": "MonetaryAmount",
+      currency: meta.salary_currency,
+      value: {
+        "@type": "QuantitativeValue",
+        minValue: meta.salary_min,
+        maxValue: meta.salary_max,
+        unitText: periodToUnitText(meta.salary_period),
+      },
+    };
+  }
+  return schema;
 }
 
 function timeAgo(ts: number): string {
