@@ -1302,6 +1302,16 @@ kbd, .kbd {
     display: inline; /* drawer panel still shows the email */
   }
 
-  /* Feed action buttons collapse to icon-priority labels. */
-  .feed-header > .row > .btn { flex: 1; min-width: 0; padding: 0 10px; }
+  /* Feed action buttons size to content and wrap to a second row when
+     they overflow (search/filter/save/update preferences are 4 items
+     that all rarely fit on one phone-width line). flex:1 was forcing
+     equal width, which clipped longer labels mid-word. */
+  .feed-header > .row > .btn,
+  .feed-header > .row > a.btn {
+    flex: 0 0 auto;
+    padding: 0 12px;
+  }
+
+  /* Keyboard-shortcut hint (/) is meaningless on touch devices. */
+  .search-wrap > .kbd { display: none; }
 }
