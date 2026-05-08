@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, BookmarkPlus, Search, Sparkles, X } from "lucide-react";
+import { Bell, BookmarkPlus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   api,
@@ -71,6 +71,7 @@ export function Feed() {
   const [hits, setHits] = useState<JobHit[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Saved-searches state. The "+N new" badge for each is computed on mount
   // by re-running the search in the background and diffing against
@@ -356,7 +357,14 @@ export function Feed() {
             </button>
           )}
         </div>
-        <div className="row gap-sm" style={{ marginLeft: "auto" }}>
+        <div className="row gap-sm feed-actions" style={{ marginLeft: "auto" }}>
+          <button
+            className="btn btn-secondary btn-sm filters-toggle"
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontal size={13} /> Filters{totalActive > 0 ? ` · ${totalActive}` : ""}
+          </button>
           {totalActive > 0 && (
             <button className="btn btn-ghost btn-sm" onClick={reset}>
               Clear filters · {totalActive}
@@ -421,7 +429,7 @@ export function Feed() {
         </div>
       )}
 
-      <div className="feed-grid">
+      <div className="feed-grid" data-filters-open={filtersOpen ? "true" : "false"}>
         <aside className="sidebar">
           {savedSearches.length > 0 && (
             <FilterSection title="Saved searches">
