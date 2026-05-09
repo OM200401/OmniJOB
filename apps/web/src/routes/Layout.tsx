@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   Search,
+  ScrollText,
   Settings as SettingsIcon,
   ShieldCheck,
   X,
@@ -76,6 +77,13 @@ export function Layout() {
                 title="What we never see"
               >
                 <ShieldCheck size={13} /> Privacy
+              </NavLink>
+              <NavLink
+                to="/terms"
+                className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                title="Terms of service"
+              >
+                <ScrollText size={13} /> Terms
               </NavLink>
               {session ? (
                 <>
