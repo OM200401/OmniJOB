@@ -134,15 +134,15 @@ async function main() {
 
   // Pass 1: bucket all active jobs by (company, title).
   while (true) {
-    const res: { points: Array<{ id: string | number; payload?: unknown }>; next_page_offset?: string | number | null } = await qdrant.scroll(
-      config.qdrant.jobsCollection,
-      {
-        limit: SCROLL_BATCH,
-        with_payload: true,
-        with_vector: false,
-        ...(offset !== undefined ? { offset } : {}),
-      },
-    );
+    // Let TS infer from the Qdrant client; next_page_offset is widened in the
+    // SDK types to include Record<string, unknown> for sparse-vector cursors,
+    // but for a regular scroll it's always string|number|null in practice.
+    const res = await qdrant.scroll(config.qdrant.jobsCollection, {
+      limit: SCROLL_BATCH,
+      with_payload: true,
+      with_vector: false,
+      ...(offset !== undefined ? { offset } : {}),
+    });
     for (const p of res.points) {
       total++;
       const payload = (p.payload ?? {}) as Record<string, unknown>;
@@ -169,8 +169,10 @@ async function main() {
       arr.push({ id: String(p.id), source, quality_hint, external_id });
       groups.set(key, arr);
     }
-    if (!res.next_page_offset) break;
-    offset = res.next_page_offset;
+    const next = res.next_page_offset;
+    if (next === null || next === undefined) break;
+    if (typeof next !== "string" && typeof next !== "number") break;
+    offset = next;
   }
   console.log(
     `scrolled total=${total} active=${activeTotal} buckets=${groups.size}`,

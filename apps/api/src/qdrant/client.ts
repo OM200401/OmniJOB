@@ -11,7 +11,24 @@ export const qdrant = new QdrantClient({
 });
 
 export type RemoteStatus = "remote" | "hybrid" | "onsite" | "unknown";
-export type SalaryPeriod = "annual" | "monthly" | "weekly" | "daily" | "hourly";
+// Mirrors apps/api/src/schemas/job.ts SalaryPeriod. Adapter-emitted period
+// strings vary ("annual" vs "year" vs "yearly"); the salary library maps every
+// accepted alias to the same annual multiplier, so widening the type here is
+// safe and keeps the schema and storage shapes in sync.
+export type SalaryPeriod =
+  | "annual"
+  | "year"
+  | "yearly"
+  | "monthly"
+  | "month"
+  | "weekly"
+  | "week"
+  | "biweek"
+  | "biweekly"
+  | "daily"
+  | "day"
+  | "hourly"
+  | "hour";
 
 export type JobMetadata = {
   title: string;
