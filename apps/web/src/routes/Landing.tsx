@@ -9,20 +9,17 @@ export function Landing() {
           <span className="dot" /> Live · {ATS_FACTS.companies}+ company boards indexed
         </span>
         <h1>
-          Job search that reads your résumé,<br />
-          not your <em>keywords</em>.
+          Every job.<br />
+          <em>One search.</em>
         </h1>
         <p className="lede">
-          OmniJob ranks live postings from Greenhouse, Lever and Ashby boards by
-          cosine similarity to your résumé. Encrypted on your device - the server
-          never sees the plaintext.
+          Stop tab-hopping between Greenhouse, Lever, Ashby, Workday and 10 more
+          boards. OmniJob pulls live postings from every source into a single
+          search ranked to you.
         </p>
         <div className="landing-actions">
           <Link to="/signup" className="btn btn-primary btn-lg">
-            Create your vault <ArrowRight size={15} />
-          </Link>
-          <Link to="/signin" className="btn btn-secondary btn-lg">
-            Sign in
+            Start searching <ArrowRight size={15} />
           </Link>
         </div>
       </section>
@@ -76,29 +73,6 @@ export function Landing() {
         </div>
       </div>
 
-      <section className="facts">
-        <div className="fact">
-          <h4>Encryption</h4>
-          <p>
-            Argon2id derives a 256-bit key from your password locally. Résumé +
-            saved jobs are AES-256-GCM ciphertext on the wire and at rest.
-          </p>
-        </div>
-        <div className="fact">
-          <h4>Data</h4>
-          <p>
-            Live postings via the public Greenhouse, Lever and Ashby APIs.
-            Embedded with nomic-embed-text (768 dim, cosine) on your machine.
-          </p>
-        </div>
-        <div className="fact">
-          <h4>No PII server-side</h4>
-          <p>
-            Your account id is SHA-256 of your email - the server never stores
-            the email itself, the password, or any plaintext résumé.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }
