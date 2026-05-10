@@ -103,11 +103,25 @@ export async function upsertJob(
   });
 }
 
+export type JobHit = {
+  id: string;
+  score: number;
+  payload: JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] };
+};
+
+export type JobSearchResult = {
+  hits: JobHit[];
+  // Size of the post-filter candidate pool. Useful for the UI to show
+  // "Showing 20 of N matches". Bounded above by fetchK so a returned `total`
+  // equal to fetchK means "at least this many" rather than an exact count.
+  total: number;
+};
+
 export async function searchJobs(
   vector: number[],
   k = 20,
   filter?: JobSearchFilter,
-): Promise<Array<{ id: string; score: number; payload: JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] } }>> {
+): Promise<JobSearchResult> {
   const must = [] as Array<Record<string, unknown>>;
   // Hide cross-source duplicates marked by scripts/dedupe.ts. Points without
   // is_active set are treated as active (default).
@@ -135,7 +149,13 @@ export async function searchJobs(
     filter?.max_age_days !== undefined
       ? Date.now() - filter.max_age_days * 24 * 3600 * 1000
       : undefined;
-  const fetchK = needsPostFilter ? Math.min(200, k * 5) : k;
+  // Pull a deeper candidate pool than the client asked for so that generic
+  // queries ("software", "graduate") have room to surface relevant matches
+  // beyond the tightest cosine-cluster, and so post-filters have a healthy
+  // pre-image to whittle down. The Qdrant cost of a single 200-limit ANN
+  // search is dominated by HNSW traversal, which is roughly constant in k
+  // up to a few hundred, so this is essentially free.
+  const fetchK = needsPostFilter ? Math.min(300, Math.max(k * 5, 200)) : Math.min(200, Math.max(k * 2, 100));
 
   const res = await qdrant.search(config.qdrant.jobsCollection, {
     vector,
@@ -149,7 +169,8 @@ export async function searchJobs(
   const wantLocation = filter?.location?.toLowerCase().trim() ?? "";
   const wantCompany = filter?.company?.toLowerCase().trim() ?? "";
 
-  const out: Array<{ id: string; score: number; payload: JobMetadata }> = [];
+  const out: JobHit[] = [];
+  let total = 0;
   for (const p of res) {
     const payload = p.payload as StoredJobPayload;
     // Re-classify on read. The stored payload was written by whatever
@@ -189,6 +210,8 @@ export async function searchJobs(
       continue;
     }
 
+    total += 1;
+    if (out.length >= k) continue; // keep counting so `total` reflects pool size
     const enriched: JobMetadata = {
       ...payload,
       experience_level: level,
@@ -200,9 +223,8 @@ export async function searchJobs(
       score: p.score,
       payload: { ...enriched, quality: quality.total, quality_breakdown: quality.components },
     });
-    if (out.length >= k) break;
   }
-  return out;
+  return { hits: out, total };
 }
 
 export async function getJob(externalId: string): Promise<(JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] }) | null> {

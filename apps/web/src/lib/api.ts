@@ -185,7 +185,7 @@ export const api = {
     }),
 
   searchJobs: (vector: number[], opts: SearchOpts = {}) =>
-    request<{ hits: JobHit[] }>("POST", "/jobs/search", {
+    request<{ hits: JobHit[]; total?: number }>("POST", "/jobs/search", {
       vector,
       ...(opts.k ? { k: opts.k } : {}),
       ...(opts.remote_status?.length ? { remote_status: opts.remote_status } : {}),

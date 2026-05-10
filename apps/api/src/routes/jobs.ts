@@ -8,7 +8,7 @@ export const jobs = new Elysia({ prefix: "/jobs" })
     "/search",
     async ({ body }) => {
       const k = body.k ?? 25;
-      const hits = await searchJobs(body.vector, k, {
+      const result = await searchJobs(body.vector, k, {
         ...(body.remote_status ? { remote_status: body.remote_status } : {}),
         ...(body.experience_level ? { experience_level: body.experience_level } : {}),
         ...(body.source ? { source: body.source } : {}),
@@ -20,7 +20,7 @@ export const jobs = new Elysia({ prefix: "/jobs" })
         ...(body.require_salary !== undefined ? { require_salary: body.require_salary } : {}),
         ...(body.max_age_days !== undefined ? { max_age_days: body.max_age_days } : {}),
       });
-      return { hits };
+      return { hits: result.hits, total: result.total };
     },
     { body: JobSearchSchema },
   )
