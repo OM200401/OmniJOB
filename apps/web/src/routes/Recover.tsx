@@ -12,6 +12,14 @@ import {
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { Alert } from "../components/Alert";
+import { PasswordStrengthMeter } from "../components/PasswordStrengthMeter";
+import {
+  validateEmail,
+  validateMatch,
+  validatePassword,
+  validateRecoveryKey,
+} from "../lib/validation";
+import { useFieldValidation } from "../lib/useFieldValidation";
 
 export function Recover() {
   const nav = useNavigate();
@@ -23,12 +31,23 @@ export function Recover() {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const emailFv = useFieldValidation(email, validateEmail);
+  const recoveryFv = useFieldValidation(recoveryKeyInput, validateRecoveryKey);
+  const passwordFv = useFieldValidation(newPassword, validatePassword);
+  const confirmFv = useFieldValidation(confirmNew, (v) => validateMatch(newPassword, v));
+
+  const formValid = emailFv.ok && recoveryFv.ok && passwordFv.ok && confirmFv.ok;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email address.");
-    if (newPassword.length < 8) return setErr("New password must be at least 8 characters.");
-    if (newPassword !== confirmNew) return setErr("Passwords don't match.");
+    if (!formValid) {
+      emailFv.markTouched();
+      recoveryFv.markTouched();
+      passwordFv.markTouched();
+      confirmFv.markTouched();
+      return;
+    }
 
     let recoveryBytes: Uint8Array;
     try {
@@ -124,15 +143,17 @@ export function Recover() {
           </span>
         </Alert>
 
-        <form onSubmit={onSubmit} style={{ marginTop: 14 }}>
+        <form onSubmit={onSubmit} style={{ marginTop: 14 }} noValidate>
           <Input
             label="Email"
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={emailFv.onBlur}
             disabled={busy}
             placeholder="you@example.com"
+            error={emailFv.show ? emailFv.msg : null}
           />
 
           <div className="field">
@@ -144,12 +165,18 @@ export function Recover() {
               placeholder="paste your 32-character-group recovery key - formatting doesn't matter"
               value={recoveryKeyInput}
               onChange={(e) => setRecoveryKeyInput(e.target.value)}
+              onBlur={recoveryFv.onBlur}
               disabled={busy}
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
+              aria-invalid={recoveryFv.show || undefined}
             />
-            <span className="hint">Hyphens, spaces and case are ignored.</span>
+            {recoveryFv.show ? (
+              <span className="field-error">{recoveryFv.msg}</span>
+            ) : (
+              <span className="hint">Hyphens, spaces and case are ignored.</span>
+            )}
           </div>
 
           <Input
@@ -158,16 +185,21 @@ export function Recover() {
             autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            onBlur={passwordFv.onBlur}
             disabled={busy}
             hint="8+ characters."
+            error={passwordFv.show ? passwordFv.msg : null}
           />
+          <PasswordStrengthMeter password={newPassword} />
           <Input
             label="Confirm new password"
             type="password"
             autoComplete="new-password"
             value={confirmNew}
             onChange={(e) => setConfirmNew(e.target.value)}
+            onBlur={confirmFv.onBlur}
             disabled={busy}
+            error={confirmFv.show ? confirmFv.msg : null}
           />
 
           {err && (
@@ -188,7 +220,7 @@ export function Recover() {
               size="lg"
               block
               loading={busy}
-              disabled={!email || !recoveryKeyInput || !newPassword}
+              disabled={!formValid || busy}
             >
               {busy ? "Re-wrapping key…" : (
                 <>Reset password <ArrowRight size={15} /></>

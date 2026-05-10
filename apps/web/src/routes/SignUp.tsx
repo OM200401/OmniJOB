@@ -12,6 +12,13 @@ import { useAuth } from "../lib/auth";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { Alert } from "../components/Alert";
+import { PasswordStrengthMeter } from "../components/PasswordStrengthMeter";
+import {
+  validateEmail,
+  validateMatch,
+  validatePassword,
+} from "../lib/validation";
+import { useFieldValidation } from "../lib/useFieldValidation";
 
 type Phase = "form" | "recovery";
 
@@ -30,12 +37,22 @@ export function SignUp() {
   const [confirmedSaved, setConfirmedSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const emailFv = useFieldValidation(email, validateEmail);
+  const passwordFv = useFieldValidation(password, validatePassword);
+  const confirmFv = useFieldValidation(confirm, (v) => validateMatch(password, v));
+
+  const formValid = emailFv.ok && passwordFv.ok && confirmFv.ok;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email address.");
-    if (password.length < 8) return setErr("Password must be at least 8 characters.");
-    if (password !== confirm) return setErr("Passwords don't match.");
+    // Reveal any pending field errors that hadn't been touched yet.
+    if (!formValid) {
+      emailFv.markTouched();
+      passwordFv.markTouched();
+      confirmFv.markTouched();
+      return;
+    }
     setBusy(true);
     try {
       const { recoveryKey } = await signUp(email, password);
@@ -100,16 +117,18 @@ export function SignUp() {
             </p>
           </div>
 
-          <form onSubmit={onSubmit}>
+          <form onSubmit={onSubmit} noValidate>
             <Input
               label="Email"
               type="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={emailFv.onBlur}
               disabled={busy}
               placeholder="you@example.com"
               hint="We never store your email - only SHA-256(email) as your account id."
+              error={emailFv.show ? emailFv.msg : null}
             />
             <Input
               label="Password"
@@ -117,22 +136,34 @@ export function SignUp() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onBlur={passwordFv.onBlur}
               disabled={busy}
               hint="8+ characters. Argon2id derivation takes ~1–2 seconds locally."
+              error={passwordFv.show ? passwordFv.msg : null}
             />
+            <PasswordStrengthMeter password={password} />
             <Input
               label="Confirm password"
               type="password"
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
+              onBlur={confirmFv.onBlur}
               disabled={busy}
+              error={confirmFv.show ? confirmFv.msg : null}
             />
 
             {err && <div style={{ marginTop: 14 }}><Alert variant="error">{err}</Alert></div>}
 
             <div style={{ marginTop: 18 }}>
-              <Button type="submit" variant="accent" size="lg" block loading={busy}>
+              <Button
+                type="submit"
+                variant="accent"
+                size="lg"
+                block
+                loading={busy}
+                disabled={!formValid || busy}
+              >
                 {busy ? "Deriving key…" : (
                   <>Continue <ArrowRight size={16} /></>
                 )}
