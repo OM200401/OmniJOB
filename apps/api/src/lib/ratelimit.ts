@@ -66,6 +66,28 @@ export function clientKeyFromHeaders(headers: Headers): string {
   return "unknown";
 }
 
+// Loopback addresses that signify "request originated on this host."
+const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1", "localhost"]);
+
+export function isLoopbackAddress(addr: string | null | undefined): boolean {
+  if (!addr) return false;
+  return LOOPBACK_ADDRESSES.has(addr.trim());
+}
+
+// Bypass the limiter only when the request looks purely local: no proxy
+// headers AND the direct peer is a loopback address. In production every
+// browser request enters via Caddy (which sets X-Forwarded-For), so a
+// missing XFF + loopback peer is a strong signal that the call came from
+// another process on the box (e.g. the crawler hitting localhost:3000
+// directly). Falling back to "absence of XFF" alone would let an external
+// caller skip the limiter if Caddy forgot to set the header, so we also
+// require the peer to be loopback.
+export function shouldBypassRateLimit(headers: Headers, peerAddress: string | null | undefined): boolean {
+  if (headers.get("x-forwarded-for")) return false;
+  if (headers.get("x-real-ip")) return false;
+  return isLoopbackAddress(peerAddress);
+}
+
 // Bucket definitions tuned for the B2s VM. Search is the hot path; embed and
 // match-explain hit Ollama and are heavy. Auth-write paths are throttled hard
 // to defang signup-flood attacks.

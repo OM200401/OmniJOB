@@ -10,7 +10,13 @@ if (process.env["SENTRY_DSN"]) {
     environment: process.env["NODE_ENV"],
   });
 }
-import { check, clientKeyFromHeaders, RULES, type RateLimitRule } from "./lib/ratelimit";
+import {
+  check,
+  clientKeyFromHeaders,
+  RULES,
+  shouldBypassRateLimit,
+  type RateLimitRule,
+} from "./lib/ratelimit";
 import { health } from "./routes/health";
 import { jobs } from "./routes/jobs";
 import { users } from "./routes/users";
@@ -55,10 +61,18 @@ const app = new Elysia()
       methods: ["GET", "POST", "DELETE", "OPTIONS"],
     }),
   )
-  .onRequest(({ request, set }) => {
+  .onRequest(({ request, set, server }) => {
     const url = new URL(request.url);
     const rule = ruleFor(request.method, url.pathname);
     if (!rule) return;
+    // Loopback bypass: in-process callers (e.g. the crawler running on the
+    // same VM and hitting http://localhost:3000 without going through Caddy)
+    // don't have X-Forwarded-For set and present as 127.0.0.1/::1 to Bun.
+    // Skipping the limiter for that exact shape stops us from rate-limiting
+    // ourselves while leaving real users (who all enter via Caddy and thus
+    // always carry X-Forwarded-For) fully governed.
+    const peer = server?.requestIP(request)?.address ?? null;
+    if (shouldBypassRateLimit(request.headers, peer)) return;
     const key = clientKeyFromHeaders(request.headers);
     const result = check(rule, key);
     set.headers["X-RateLimit-Limit"] = String(result.limit);
