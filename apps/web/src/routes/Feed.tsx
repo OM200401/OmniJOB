@@ -688,13 +688,66 @@ export function Feed() {
 
           {!err && hits && hits.length === 0 && (
             <EmptyState
-              title={totalActive > 0 ? "Nothing matches these filters" : "No jobs in the index"}
-              description={
-                totalActive > 0
-                  ? "Try loosening filters or removing the search query."
-                  : "Run the crawler to ingest live ATS data - see README §3."
+              title={
+                totalActive === 0
+                  ? "No jobs in the index"
+                  : debouncedQuery && totalActive - 1 > 0
+                    ? `No matches for "${debouncedQuery}" with these filters`
+                    : debouncedQuery
+                      ? `No matches for "${debouncedQuery}"`
+                      : "Nothing matches these filters"
               }
-              action={totalActive > 0 ? <button className="btn btn-secondary btn-sm" onClick={reset}>Clear filters</button> : undefined}
+              description={
+                totalActive === 0
+                  ? "Run the crawler to ingest live ATS data - see README §3."
+                  : debouncedQuery && totalActive - 1 > 0
+                    ? "Try removing filters, broadening the search, or one of the suggestions below."
+                    : debouncedQuery
+                      ? "Try a broader term, a related role, or one of the suggestions below."
+                      : "Try loosening filters."
+              }
+              action={
+                totalActive === 0 ? undefined : (
+                  <div className="row gap-sm" style={{ gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                    {debouncedQuery && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setQuery("")}
+                        type="button"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                    {totalActive - (debouncedQuery ? 1 : 0) > 0 && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={reset}
+                        type="button"
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                    {/* One-click suggestions when the query is short or
+                        unknown. Surfaces broader synonyms a user might not
+                        think to try. */}
+                    {debouncedQuery && (
+                      <>
+                        {suggestRelated(debouncedQuery).map((s) => (
+                          <button
+                            key={s}
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setQuery(s)}
+                            type="button"
+                            title={`Search for "${s}" instead`}
+                          >
+                            Try “{s}”
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )
+              }
             />
           )}
 
@@ -714,6 +767,40 @@ export function Feed() {
       </div>
     </div>
   );
+}
+
+// Small pivot suggestions surfaced from the empty state when a query
+// returned zero matches. Mirrors the API-side query-expansion dictionary,
+// but inverted: instead of expanding a token for the embedder, we give the
+// user one-click pivots to broader / adjacent terms. Hand-curated for the
+// failure modes the user actually reported.
+function suggestRelated(query: string): string[] {
+  const q = query.trim().toLowerCase();
+  const buckets: Array<{ match: RegExp; suggest: string[] }> = [
+    { match: /(new\s*grad|graduate|entry[\s-]?level)/, suggest: ["junior", "intern", "associate"] },
+    { match: /^junior$/, suggest: ["new grad", "associate", "entry level"] },
+    { match: /(intern|internship|co-?op)/, suggest: ["new grad", "junior", "early career"] },
+    { match: /^software$/, suggest: ["software engineer", "developer", "engineer"] },
+    { match: /^(developer|dev|engineer)$/, suggest: ["software engineer", "backend", "frontend"] },
+    { match: /(back[\s-]?end)/, suggest: ["software engineer", "platform", "infrastructure"] },
+    { match: /(front[\s-]?end)/, suggest: ["software engineer", "ui engineer", "web developer"] },
+    { match: /(full[\s-]?stack)/, suggest: ["software engineer", "backend", "frontend"] },
+    { match: /(machine\s*learning|^ml$|^ai$)/, suggest: ["data scientist", "research", "software engineer"] },
+    { match: /(data\s*scien|data\s*eng)/, suggest: ["analytics", "machine learning", "engineer"] },
+    { match: /(devops|sre)/, suggest: ["platform", "infrastructure", "cloud"] },
+    { match: /(security|infosec)/, suggest: ["engineer", "platform"] },
+    { match: /(mobile|ios|android)/, suggest: ["software engineer", "frontend"] },
+    { match: /(product\s*manager|^pm$)/, suggest: ["product", "program manager"] },
+    { match: /(designer|design)/, suggest: ["product designer", "ux", "ui"] },
+  ];
+  for (const b of buckets) {
+    if (b.match.test(q)) return b.suggest.slice(0, 3);
+  }
+  // Generic fallback: a single broader pivot to "software engineer" if the
+  // query is short and looks technical, otherwise no suggestions (we'd
+  // rather show nothing than misleading pivots).
+  if (q.length <= 16 && /[a-z]/.test(q)) return [];
+  return [];
 }
 
 function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
