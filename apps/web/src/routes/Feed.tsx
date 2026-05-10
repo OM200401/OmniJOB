@@ -139,10 +139,10 @@ export function Feed() {
     try {
       let vector: number[];
       if (noVault) {
-        const { vector: qv } = await api.embed(debouncedQuery);
+        const { vector: qv } = await api.embed(debouncedQuery, { expand: true });
         vector = qv;
       } else if (debouncedQuery.length >= 2) {
-        const { vector: qv } = await api.embed(debouncedQuery);
+        const { vector: qv } = await api.embed(debouncedQuery, { expand: true });
         vector = qv;
       } else {
         vector = skill!;
@@ -187,7 +187,7 @@ export function Feed() {
         try {
           let vector = skill;
           if (ss.query.length >= 2) {
-            const { vector: qv } = await api.embed(ss.query);
+            const { vector: qv } = await api.embed(ss.query, { expand: true });
             vector = qv;
           }
           const { hits: ssHits } = await api.searchJobs(vector, {

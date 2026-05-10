@@ -125,8 +125,11 @@ export class ApiError extends Error {
 export const api = {
   health: () => request<Health>("GET", "/health"),
 
-  embed: (text: string) =>
-    request<{ vector: number[]; dim: number }>("POST", "/embed", { text }),
+  embed: (text: string, opts: { expand?: boolean } = {}) =>
+    request<{ vector: number[]; dim: number; expanded?: boolean }>("POST", "/embed", {
+      text,
+      ...(opts.expand ? { expand: true } : {}),
+    }),
 
   registerUser: (
     uid: string,
