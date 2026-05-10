@@ -10,10 +10,12 @@ Type=oneshot
 User=om
 WorkingDirectory=/home/om/omnijob/apps/crawler
 ExecStart=/usr/local/go/bin/go run ./cmd/crawler
-# Concurrent embed/ingest workers. B2s has 2 vCPU; 3 saturates Ollama
-# without starving the API.
+# Concurrent embed/ingest workers. Ollama on a 2-vCPU box can only chew
+# through ~1 embed at a time without queueing past the 30s timeout.
+# Single-flight gives a high success rate at modest wall-clock cost; the
+# timer fires every 12h so throughput per pass isn't the binding constraint.
 Environment=API_URL=http://localhost:3000
-Environment=EMBED_CONCURRENCY=3
+Environment=EMBED_CONCURRENCY=1
 TimeoutStartSec=4h
 StandardOutput=append:/var/log/omnijob-crawler.log
 StandardError=append:/var/log/omnijob-crawler.log
