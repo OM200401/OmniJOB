@@ -15,6 +15,28 @@ import {
   uidFromEmail,
 } from "./crypto/util";
 
+// Persisted flag for users who chose "browse without resume" during
+// onboarding. Keyed under a stable string so other modules can poke at it
+// without round-tripping through React state if needed.
+export const VAULT_SKIPPED_KEY = "omnijob:vault:skipped";
+
+function readVaultSkipped(): boolean {
+  try {
+    return localStorage.getItem(VAULT_SKIPPED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeVaultSkipped(v: boolean): void {
+  try {
+    if (v) localStorage.setItem(VAULT_SKIPPED_KEY, "true");
+    else localStorage.removeItem(VAULT_SKIPPED_KEY);
+  } catch {
+    /* private mode / disabled storage - silently ignore */
+  }
+}
+
 export type Session = {
   uid: string;
   email: string;
@@ -30,6 +52,8 @@ export type SignUpResult = {
 
 type AuthCtx = {
   session: Session | null;
+  vaultSkipped: boolean;
+  setVaultSkipped: (v: boolean) => void;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
@@ -41,6 +65,12 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [vaultSkipped, setVaultSkippedState] = useState<boolean>(() => readVaultSkipped());
+
+  const setVaultSkipped = useCallback((v: boolean) => {
+    writeVaultSkipped(v);
+    setVaultSkippedState(v);
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string): Promise<SignUpResult> => {
     const uid = await uidFromEmail(email);
@@ -111,7 +141,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const signOut = useCallback(() => setSession(null), []);
+  const signOut = useCallback(() => {
+    // Clearing the skip flag too: a fresh sign-in shouldn't inherit a
+    // previous user's "skipped onboarding" choice.
+    writeVaultSkipped(false);
+    setVaultSkippedState(false);
+    setSession(null);
+  }, []);
 
   const saveProfile = useCallback(async (next: vault.ProfileBlob) => {
     setSession((prev) => {
@@ -132,8 +168,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ session, signUp, signIn, signOut, saveProfile, patchProfile }),
-    [session, signUp, signIn, signOut, saveProfile, patchProfile],
+    () => ({
+      session,
+      vaultSkipped,
+      setVaultSkipped,
+      signUp,
+      signIn,
+      signOut,
+      saveProfile,
+      patchProfile,
+    }),
+    [session, vaultSkipped, setVaultSkipped, signUp, signIn, signOut, saveProfile, patchProfile],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

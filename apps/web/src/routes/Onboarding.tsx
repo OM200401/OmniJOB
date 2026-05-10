@@ -52,7 +52,7 @@ const REMOTES: { value: RemotePref; label: string; hint: string }[] = [
 ];
 
 export function Onboarding() {
-  const { session, saveProfile } = useAuth();
+  const { session, saveProfile, setVaultSkipped } = useAuth();
   const nav = useNavigate();
 
   const initialPrefs = session?.profile.preferences;
@@ -99,6 +99,11 @@ export function Onboarding() {
     if (prev) setStep(prev);
   };
 
+  const skipForNow = () => {
+    setVaultSkipped(true);
+    nav("/feed");
+  };
+
   async function handleFile(file: File) {
     setErr(null);
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
@@ -141,6 +146,10 @@ export function Onboarding() {
         skillVector: vector,
         preferences: prefs,
       });
+      // User completed onboarding -> they no longer "skipped". Clearing
+      // here keeps the banner / settings card from lingering after they
+      // come back through this flow from the resume-add CTA.
+      setVaultSkipped(false);
       nav("/feed");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong.");
@@ -363,6 +372,17 @@ export function Onboarding() {
               {busy ? "Embedding…" : <>Find matches <ArrowRight size={14} /></>}
             </Button>
           )}
+        </div>
+
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <button
+            type="button"
+            className="skip-link"
+            onClick={skipForNow}
+            disabled={busy}
+          >
+            Skip for now -&gt; browse without resume
+          </button>
         </div>
       </div>
     </div>
