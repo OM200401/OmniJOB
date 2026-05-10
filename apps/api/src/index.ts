@@ -22,6 +22,7 @@ import { jobs } from "./routes/jobs";
 import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
+import { ensureTitleFullTextIndex } from "./qdrant/client";
 
 // Map URL paths to rate-limit buckets. Order matters - more specific patterns
 // must come first. Match-explain is /jobs/:id/match-explain, so we test that
@@ -120,5 +121,15 @@ console.log(`  Ollama: ${config.ollama.url} (model=${config.ollama.embedModel})`
 console.log(`  SQLite: ${config.sqlite.path}`);
 console.log(`  CORS:   ${config.isProd ? config.security.allowedOrigins.join(",") : "dev:reflect-origin"}`);
 console.log(`  Body cap: ${config.security.maxBodyBytes} bytes`);
+
+// Best-effort background migration. The hybrid keyword pass in
+// /jobs/search needs a full-text payload index on title; if it doesn't
+// exist yet (fresh dev box, in-flight prod deploy) we try to create it
+// here. Failures are logged but don't block the server - searchJobs has
+// a guard that disables the keyword pass cleanly when the index is
+// unavailable.
+void ensureTitleFullTextIndex()
+  .then(() => console.log(`  Hybrid: full-text index on title ready`))
+  .catch((e) => console.warn(`  Hybrid: index ensure failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

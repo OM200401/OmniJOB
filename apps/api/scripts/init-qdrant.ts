@@ -1,4 +1,4 @@
-import { qdrant } from "../src/qdrant/client";
+import { qdrant, ensureTitleFullTextIndex } from "../src/qdrant/client";
 import { config } from "../src/config";
 
 async function ensureCollection(name: string, dim: number) {
@@ -32,4 +32,8 @@ async function ensureCollection(name: string, dim: number) {
 
 await ensureCollection(config.qdrant.jobsCollection, config.qdrant.embeddingDim);
 await ensureCollection(config.qdrant.usersCollection, config.qdrant.embeddingDim);
+// Full-text payload index on title powers the hybrid keyword pass in
+// /jobs/search. Idempotent; safe to re-run on already-migrated indexes.
+await ensureTitleFullTextIndex();
+console.log(`+ ensured full-text payload index on "${config.qdrant.jobsCollection}.title"`);
 console.log("Qdrant init complete.");

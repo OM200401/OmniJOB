@@ -2,24 +2,35 @@ import { Elysia, t } from "elysia";
 import { JobIngestSchema, JobSearchSchema } from "../schemas/job";
 import { getJob, getJobSources, searchJobs, upsertJob } from "../qdrant/client";
 import { explainMatch } from "../lib/explain";
+import { expansionFor } from "../lib/query-expansion";
 
 export const jobs = new Elysia({ prefix: "/jobs" })
   .post(
     "/search",
     async ({ body }) => {
       const k = body.k ?? 25;
-      const result = await searchJobs(body.vector, k, {
-        ...(body.remote_status ? { remote_status: body.remote_status } : {}),
-        ...(body.experience_level ? { experience_level: body.experience_level } : {}),
-        ...(body.source ? { source: body.source } : {}),
-        ...(body.country ? { country: body.country } : {}),
-        ...(body.location ? { location: body.location } : {}),
-        ...(body.company ? { company: body.company } : {}),
-        ...(body.salary_min_usd !== undefined ? { salary_min_usd: body.salary_min_usd } : {}),
-        ...(body.salary_max_usd !== undefined ? { salary_max_usd: body.salary_max_usd } : {}),
-        ...(body.require_salary !== undefined ? { require_salary: body.require_salary } : {}),
-        ...(body.max_age_days !== undefined ? { max_age_days: body.max_age_days } : {}),
-      });
+      // Pull keyword tokens from the synonym dictionary when the caller
+      // forwards the raw query text. Unknown queries fall through to a
+      // single-token keyword pass on the raw string, which still helps
+      // for ATS-canonical terms ("rust", "kubernetes") not in the dict.
+      const keywords = body.query ? expansionFor(body.query).keywords : [];
+      const result = await searchJobs(
+        body.vector,
+        k,
+        {
+          ...(body.remote_status ? { remote_status: body.remote_status } : {}),
+          ...(body.experience_level ? { experience_level: body.experience_level } : {}),
+          ...(body.source ? { source: body.source } : {}),
+          ...(body.country ? { country: body.country } : {}),
+          ...(body.location ? { location: body.location } : {}),
+          ...(body.company ? { company: body.company } : {}),
+          ...(body.salary_min_usd !== undefined ? { salary_min_usd: body.salary_min_usd } : {}),
+          ...(body.salary_max_usd !== undefined ? { salary_max_usd: body.salary_max_usd } : {}),
+          ...(body.require_salary !== undefined ? { require_salary: body.require_salary } : {}),
+          ...(body.max_age_days !== undefined ? { max_age_days: body.max_age_days } : {}),
+        },
+        { keywords },
+      );
       return { hits: result.hits, total: result.total };
     },
     { body: JobSearchSchema },

@@ -117,10 +117,129 @@ export type JobSearchResult = {
   total: number;
 };
 
+// Reciprocal Rank Fusion constant. 60 is the value from the original
+// Cormack/Clarke/Buettcher paper and what most production hybrid-search
+// references (incl. Qdrant's own docs) use as a default. Larger k flattens
+// the contribution of top ranks; smaller k makes the top ranks dominate.
+const RRF_K = 60;
+
+type KeywordHit = { id: string | number; payload: StoredJobPayload };
+
+// Issue a Qdrant scroll for each keyword token against the title's
+// full-text payload index, then dedupe by point id. Each token returns
+// at most `limit` hits; total returned is bounded by `limit`. The first
+// time we observe a "no full-text index" error we cache the result and
+// short-circuit subsequent calls until the process restarts - the API
+// startup hook tries to create the index, so this is just a guard against
+// running before the migration has landed.
+let keywordIndexAvailable: boolean | undefined;
+
+async function keywordSearch(
+  keywords: string[],
+  limit: number,
+  baseFilter: Record<string, unknown>,
+): Promise<KeywordHit[]> {
+  if (keywordIndexAvailable === false) return [];
+  // Dedup tokens, drop any too-short to be useful, cap fan-out at 5 to
+  // bound the wall-clock cost when an expansion produces a long synonym
+  // list. Keywords are sorted long-first so the most specific match wins
+  // any ties in the RRF rank assignment below.
+  const tokens = Array.from(new Set(keywords.map((k) => k.trim().toLowerCase())))
+    .filter((k) => k.length >= 2)
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 5);
+  if (tokens.length === 0) return [];
+
+  const perToken = Math.max(20, Math.ceil(limit / tokens.length));
+  // Run each token's scroll in parallel. Qdrant's match_text matches the
+  // entire phrase as one query, so a multi-word keyword like "new grad"
+  // requires that exact ordering to fire - the dictionary already keeps
+  // each ATS phrasing as its own entry, so this is the desired behavior.
+  const merged = new Map<string, KeywordHit>();
+  await Promise.all(
+    tokens.map(async (tok) => {
+      try {
+        const res = await qdrant.scroll(config.qdrant.jobsCollection, {
+          limit: perToken,
+          with_payload: true,
+          with_vector: false,
+          filter: {
+            ...baseFilter,
+            must: [
+              ...((baseFilter as { must?: Array<Record<string, unknown>> }).must ?? []),
+              { key: "title", match: { text: tok } },
+            ],
+          },
+        });
+        for (const p of res.points) {
+          const key = String(p.id);
+          if (!merged.has(key)) {
+            merged.set(key, { id: p.id, payload: p.payload as StoredJobPayload });
+          }
+        }
+      } catch (e) {
+        // Most likely: payload index for "title" doesn't exist on this
+        // Qdrant deployment yet. Disable the keyword pass for the rest of
+        // this process so we don't pay the round-trip on every search.
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/index|text|field/i.test(msg)) {
+          if (keywordIndexAvailable !== false) {
+            console.warn(`[hybrid] keyword pass disabled: ${msg}`);
+            keywordIndexAvailable = false;
+          }
+        } else {
+          // Anything else: log but stay quiet to the caller. Vector-only
+          // results are still valid; we just lose the hybrid boost.
+          console.warn(`[hybrid] keyword scroll failed for "${tok}": ${msg}`);
+        }
+      }
+    }),
+  );
+  if (keywordIndexAvailable === undefined && merged.size >= 0) {
+    keywordIndexAvailable = true;
+  }
+  return Array.from(merged.values()).slice(0, limit);
+}
+
+// Idempotent migration: create the full-text payload index on "title" if
+// it doesn't already exist. Safe to call repeatedly. Used by both the
+// init-qdrant.ts script and the API process at startup.
+export async function ensureTitleFullTextIndex(): Promise<void> {
+  try {
+    await qdrant.createPayloadIndex(config.qdrant.jobsCollection, {
+      field_name: "title",
+      field_schema: {
+        type: "text",
+        tokenizer: "word",
+        min_token_len: 2,
+        max_token_len: 32,
+        lowercase: true,
+      },
+      wait: true,
+    });
+  } catch (e) {
+    // "already exists" is the happy path on every restart after the first.
+    // Don't surface it.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/exist|already/i.test(msg)) {
+      throw e;
+    }
+  }
+}
+
+export type HybridOptions = {
+  // Lowercased keyword tokens to OR-match against the title payload. When
+  // present and at least one yields a Qdrant full-text hit, the keyword
+  // ranking is fused with the vector ranking via RRF before post-filtering.
+  // Empty array or undefined disables the keyword pass.
+  keywords?: string[];
+};
+
 export async function searchJobs(
   vector: number[],
   k = 20,
   filter?: JobSearchFilter,
+  opts?: HybridOptions,
 ): Promise<JobSearchResult> {
   const must = [] as Array<Record<string, unknown>>;
   // Hide cross-source duplicates marked by scripts/dedupe.ts. Points without
@@ -157,12 +276,66 @@ export async function searchJobs(
   // up to a few hundred, so this is essentially free.
   const fetchK = needsPostFilter ? Math.min(300, Math.max(k * 5, 200)) : Math.min(200, Math.max(k * 2, 100));
 
-  const res = await qdrant.search(config.qdrant.jobsCollection, {
-    vector,
-    limit: fetchK,
-    with_payload: true,
-    filter: { must_not, ...(must.length ? { must } : {}) },
+  const baseFilter = { must_not, ...(must.length ? { must } : {}) };
+
+  // Vector and keyword passes run in parallel. The keyword pass scrolls for
+  // points whose title or description matches any expanded query token via
+  // Qdrant's full-text payload index. If the index isn't ready yet (fresh
+  // install or in-flight migration) the helper returns an empty array and
+  // we fall back to pure vector search - no error surfaces to the user.
+  const [vecRes, kwRes] = await Promise.all([
+    qdrant.search(config.qdrant.jobsCollection, {
+      vector,
+      limit: fetchK,
+      with_payload: true,
+      filter: baseFilter,
+    }),
+    opts?.keywords && opts.keywords.length > 0
+      ? keywordSearch(opts.keywords, fetchK, baseFilter)
+      : Promise.resolve([] as KeywordHit[]),
+  ]);
+
+  // RRF fusion. Each ranking contributes 1/(RRF_K + rank) to a point's
+  // fused score. Points that appear in both rankings sum the two; points
+  // that appear in only one are still represented. The fused score
+  // determines the post-filter loop order; the cosine score is preserved
+  // separately so the client UI ("78% match") keeps its meaning.
+  type Fused = {
+    id: string | number;
+    fused: number;
+    // Cosine score from the vector pass, or undefined if the point only
+    // appeared in the keyword pass. The route surfaces this to the client.
+    cosine: number | undefined;
+    payload: StoredJobPayload;
+  };
+  const fusedMap = new Map<string, Fused>();
+  vecRes.forEach((p, rank) => {
+    const key = String(p.id);
+    fusedMap.set(key, {
+      id: p.id,
+      fused: 1 / (RRF_K + rank + 1),
+      cosine: p.score,
+      payload: p.payload as StoredJobPayload,
+    });
   });
+  kwRes.forEach((p, rank) => {
+    const key = String(p.id);
+    const rrf = 1 / (RRF_K + rank + 1);
+    const existing = fusedMap.get(key);
+    if (existing) {
+      existing.fused += rrf;
+    } else {
+      // Keyword-only hit. Cosine is unknown; synthesize a reasonable score
+      // so the UI doesn't show 0%. We use a flat 0.55 (just under the
+      // "strong match" threshold at 0.6) - good enough to render as
+      // "55% match" without overclaiming relevance the vector pass didn't
+      // confirm.
+      fusedMap.set(key, { id: p.id, fused: rrf, cosine: 0.55, payload: p.payload });
+    }
+  });
+  // Sort by fused score, descending. Preserves vector-rank tiebreak in the
+  // common case where keywords didn't fire.
+  const res = Array.from(fusedMap.values()).sort((a, b) => b.fused - a.fused);
 
   const wantLevels = new Set<Level>(filter?.experience_level ?? []);
   const wantCountries = new Set<string>(filter?.country ?? []);
@@ -220,7 +393,10 @@ export async function searchJobs(
     const quality = qualityBreakdown(enriched);
     out.push({
       id: payload.external_id ?? String(p.id),
-      score: p.score,
+      // Surface the cosine score, not the RRF fused score - the UI renders
+      // this as a "% match" and the fused value (0.01-0.03 range) would
+      // collapse every match to 1-3%.
+      score: p.cosine ?? 0.55,
       payload: { ...enriched, quality: quality.total, quality_breakdown: quality.components },
     });
   }

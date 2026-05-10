@@ -78,6 +78,10 @@ export type Health = {
 
 export type SearchOpts = {
   k?: number;
+  // Raw user query text. Forwarded to the API so it can run a hybrid
+  // keyword + vector pass (RRF-fused). Optional - omit to use the
+  // existing pure-cosine ranking.
+  query?: string;
   remote_status?: RemoteStatus[];
   experience_level?: ExperienceLevel[];
   source?: SourceName[];
@@ -191,6 +195,7 @@ export const api = {
     request<{ hits: JobHit[]; total?: number }>("POST", "/jobs/search", {
       vector,
       ...(opts.k ? { k: opts.k } : {}),
+      ...(opts.query ? { query: opts.query } : {}),
       ...(opts.remote_status?.length ? { remote_status: opts.remote_status } : {}),
       ...(opts.experience_level?.length ? { experience_level: opts.experience_level } : {}),
       ...(opts.source?.length ? { source: opts.source } : {}),

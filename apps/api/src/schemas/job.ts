@@ -80,6 +80,11 @@ export const JobIngestSchema = t.Object({
 export const JobSearchSchema = t.Object({
   vector: VectorSchema,
   k: t.Optional(t.Integer({ minimum: 1, maximum: 200 })),
+  // Raw user query text. When supplied, the server runs a hybrid keyword
+  // pass alongside the vector search (RRF-fused) using tokens drawn from
+  // the synonym dictionary in lib/query-expansion. Omit to fall back to
+  // pure cosine ranking.
+  query: t.Optional(t.String({ maxLength: 512 })),
   remote_status: t.Optional(t.Array(RemoteStatus)),
   experience_level: t.Optional(t.Array(Level)),
   source: t.Optional(t.Array(Source)),

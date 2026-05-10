@@ -69,6 +69,10 @@ export function Feed() {
   const [hideStale, setHideStale] = useState(true); // hide postings 45d+ old
 
   const [hits, setHits] = useState<JobHit[] | null>(null);
+  // Server-reported candidate pool size (post-filter survivors). Used to
+  // render "Showing 20 of 137 matches" so users understand truncation.
+  // Falls back to hits.length when the API didn't supply a total.
+  const [totalMatches, setTotalMatches] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -129,6 +133,7 @@ export function Feed() {
     if (noVault) {
       if (debouncedQuery.length < 2) {
         setHits(null);
+        setTotalMatches(null);
         return;
       }
     } else if (!skill || skill.length === 0) {
@@ -148,8 +153,9 @@ export function Feed() {
         vector = skill!;
       }
 
-      const { hits } = await api.searchJobs(vector, {
+      const { hits, total } = await api.searchJobs(vector, {
         k: 60,
+        ...(debouncedQuery ? { query: debouncedQuery } : {}),
         ...(remotes.length > 0 && remotes.length < 3 ? { remote_status: remotes } : {}),
         ...(levels.length > 0 ? { experience_level: levels } : {}),
         ...(sources.length > 0 && sources.length < SOURCES.length ? { source: sources } : {}),
@@ -161,6 +167,7 @@ export function Feed() {
         ...(hideStale ? { max_age_days: 45 } : {}),
       });
       setHits(hits);
+      setTotalMatches(total ?? hits.length);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -192,6 +199,7 @@ export function Feed() {
           }
           const { hits: ssHits } = await api.searchJobs(vector, {
             k: 60,
+            ...(ss.query ? { query: ss.query } : {}),
             ...(ss.filters.remotes?.length ? { remote_status: ss.filters.remotes as RemoteStatus[] } : {}),
             ...(ss.filters.levels?.length ? { experience_level: ss.filters.levels as ExperienceLevel[] } : {}),
             ...(ss.filters.sources?.length ? { source: ss.filters.sources as SourceName[] } : {}),
@@ -653,7 +661,9 @@ export function Feed() {
               {busy
                 ? "Searching…"
                 : hits
-                  ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
+                  ? totalMatches !== null && totalMatches > hits.length
+                    ? `Showing ${hits.length} of ${totalMatches} matches`
+                    : `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
                   : noVault && !debouncedQuery
                     ? "Type a query to start"
                     : "Loading…"}
