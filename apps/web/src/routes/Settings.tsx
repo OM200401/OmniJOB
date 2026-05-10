@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Database, Lock, LogOut, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { Database, FileText, Lock, LogOut, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api, type Health, type JobHit } from "../lib/api";
 import { extractSkills, type ExtractedSkill } from "../lib/skills";
@@ -34,10 +34,16 @@ const AREA_LABEL: Record<string, string> = {
 };
 
 export function Settings() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, vaultSkipped } = useAuth();
   const nav = useNavigate();
   const [health, setHealth] = useState<Health | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Show the Personalize card only when the user actively skipped
+  // onboarding AND still has no résumé. Once they upload one, the
+  // existing Preferences card below covers the case.
+  const hasResume = Boolean(session?.profile.skillVector?.length);
+  const showPersonalizeCard = vaultSkipped && !hasResume;
 
   const refreshHealth = async () => {
     setErr(null);
@@ -65,6 +71,25 @@ export function Settings() {
       </div>
 
       <div className="col gap-md" style={{ maxWidth: 720 }}>
+        {showPersonalizeCard && (
+          <div className="card">
+            <div className="section row-between">
+              <div>
+                <div className="row gap-sm" style={{ marginBottom: 4 }}>
+                  <FileText size={13} className="muted" />
+                  <strong>Personalize your matches</strong>
+                </div>
+                <p className="text-sm muted">
+                  Add a résumé to get jobs ranked by your skills.
+                </p>
+              </div>
+              <Link to="/onboarding" className="btn btn-accent btn-sm">
+                <Sparkles size={13} /> Add résumé
+              </Link>
+            </div>
+          </div>
+        )}
+
         <div className="card">
           <div className="section row-between">
             <div>
