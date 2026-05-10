@@ -1032,6 +1032,19 @@ kbd, .kbd {
 }
 .skip-link:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ------------------------------------------------------------- no-vault feed banner */
+
+.no-vault-banner {
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+  color: var(--accent-hover);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+.no-vault-banner .link { color: var(--accent-hover); text-decoration: underline; }
+
 .page-header {
   display: flex;
   align-items: end;

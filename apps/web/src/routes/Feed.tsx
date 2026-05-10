@@ -43,7 +43,7 @@ const SOURCES: { value: SourceName; label: string }[] = [
 ];
 
 export function Feed() {
-  const { session, patchProfile } = useAuth();
+  const { session, patchProfile, vaultSkipped } = useAuth();
 
   const initialLevels: ExperienceLevel[] = session?.profile.preferences.level
     ? [session.profile.preferences.level]
@@ -87,6 +87,10 @@ export function Feed() {
   const pendingSavedSearchRef = useRef<string | null>(null);
 
   const skill = session?.profile.skillVector;
+  // No-vault mode: user has no résumé embedding to rank by. Either they
+  // skipped onboarding ("vaultSkipped"), or they signed in fresh and never
+  // finished it. In that case the typed query IS the only ranking signal.
+  const noVault = vaultSkipped || !skill || skill.length === 0;
   const savedSet = useMemo(
     () => new Set(session?.profile.savedJobIds ?? []),
     [session?.profile.savedJobIds],
@@ -119,14 +123,29 @@ export function Feed() {
   }, []);
 
   const search = useCallback(async () => {
-    if (!skill || skill.length === 0) return;
+    // In no-vault mode the typed query is the only ranking signal. With
+    // nothing typed there's nothing to search yet - keep results empty
+    // until the user enters a query rather than calling /embed("").
+    if (noVault) {
+      if (debouncedQuery.length < 2) {
+        setHits(null);
+        return;
+      }
+    } else if (!skill || skill.length === 0) {
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
-      let vector = skill;
-      if (debouncedQuery.length >= 2) {
+      let vector: number[];
+      if (noVault) {
         const { vector: qv } = await api.embed(debouncedQuery);
         vector = qv;
+      } else if (debouncedQuery.length >= 2) {
+        const { vector: qv } = await api.embed(debouncedQuery);
+        vector = qv;
+      } else {
+        vector = skill!;
       }
 
       const { hits } = await api.searchJobs(vector, {
@@ -147,7 +166,7 @@ export function Feed() {
     } finally {
       setBusy(false);
     }
-  }, [skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale]);
+  }, [noVault, skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale]);
 
   useEffect(() => {
     void search();
@@ -346,9 +365,22 @@ export function Feed() {
             ref={inputRef}
             type="text"
             className="search-input"
-            placeholder="Search roles, technologies, companies…"
+            placeholder={
+              noVault
+                ? "Search any role, technology, or company"
+                : "Search roles, technologies, companies…"
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Hitting Enter bypasses the typing-debounce so the search
+              // fires immediately. Useful in no-vault mode where the user
+              // has explicitly typed a query and expects an instant result.
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setDebouncedQuery(query.trim());
+              }
+            }}
           />
           <kbd className="kbd">/</kbd>
           {query && (
@@ -382,11 +414,23 @@ export function Feed() {
               <BookmarkPlus size={13} /> Save search
             </button>
           )}
-          <Link to="/onboarding" className="btn btn-secondary btn-sm">
-            <Sparkles size={13} /> Update preferences
-          </Link>
+          {!noVault && (
+            <Link to="/onboarding" className="btn btn-secondary btn-sm">
+              <Sparkles size={13} /> Update preferences
+            </Link>
+          )}
         </div>
       </div>
+
+      {noVault && (
+        <div className="no-vault-banner">
+          <span>
+            Browsing without a résumé.{" "}
+            <Link className="link" to="/onboarding">Add résumé</Link>{" "}
+            for personalized matching.
+          </span>
+        </div>
+      )}
 
       {showSaveDialog && (
         <div
@@ -610,16 +654,27 @@ export function Feed() {
                 ? "Searching…"
                 : hits
                   ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
-                  : "Loading…"}
+                  : noVault && !debouncedQuery
+                    ? "Type a query to start"
+                    : "Loading…"}
             </span>
             <span className="muted-2 text-xs">
               {debouncedQuery
                 ? <>Searching for <strong style={{ color: "var(--fg-2)" }}>“{debouncedQuery}”</strong></>
-                : "Ranked by your résumé embedding"}
+                : noVault
+                  ? "Search any role, technology, or company"
+                  : "Ranked by your résumé embedding"}
             </span>
           </div>
 
           {err && <Alert variant="error">{err}</Alert>}
+
+          {!err && noVault && !debouncedQuery && !hits && (
+            <EmptyState
+              title="Search any role, technology, or company"
+              description="Type a query above and press Enter. Results are ranked by semantic similarity to whatever you type."
+            />
+          )}
 
           {!err && hits && hits.length === 0 && (
             <EmptyState
