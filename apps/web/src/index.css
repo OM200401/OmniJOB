@@ -1045,6 +1045,56 @@ kbd, .kbd {
 }
 .no-vault-banner .link { color: var(--accent-hover); text-decoration: underline; }
 
+/* ------------------------------------------------------------- form validation */
+
+.field-error {
+  color: var(--danger);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+.field-success {
+  color: var(--success);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+/* Password strength: four-segment bar + text label. Segments fill in
+   left-to-right and color ramps red -> orange -> yellow -> green. */
+.pw-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.pw-strength-bar {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+.pw-strength-seg {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  transition: background 120ms var(--ease);
+}
+.pw-strength-seg[data-active="true"][data-tier="1"] { background: var(--danger); }
+.pw-strength-seg[data-active="true"][data-tier="2"] { background: var(--warning); }
+.pw-strength-seg[data-active="true"][data-tier="3"] { background: #d4a017; }
+.pw-strength-seg[data-active="true"][data-tier="4"] { background: var(--success); }
+
+.pw-strength-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: right;
+  color: var(--fg-3);
+}
+.pw-strength-label[data-tier="1"] { color: var(--danger); }
+.pw-strength-label[data-tier="2"] { color: var(--warning); }
+.pw-strength-label[data-tier="3"] { color: #b8860b; }
+.pw-strength-label[data-tier="4"] { color: var(--success); }
+
 .page-header {
   display: flex;
   align-items: end;
