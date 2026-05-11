@@ -153,10 +153,10 @@ export function Settings() {
             {err && <Alert variant="error">{err}</Alert>}
             {!err && (
               <div className="col gap-sm">
-                <HealthRow name="API" ok={Boolean(health?.status === "ok")} detail="Bun + Elysia, http://localhost:3000" />
-                <HealthRow name="Qdrant" ok={Boolean(health?.qdrant)} detail="Vector DB · 768-dim cosine" />
-                <HealthRow name="SQLite" ok={Boolean(health?.sqlite)} detail="Encrypted user blobs" />
-                <HealthRow name="Ollama" ok={Boolean(health?.ollama)} detail="nomic-embed-text - local embeddings" />
+                <HealthRow name="API" ok={Boolean(health?.status === "ok")} detail="Reverse-proxied, TLS terminated at edge" />
+                <HealthRow name="Vector index" ok={Boolean(health?.qdrant)} detail="768-dim cosine, semantic ranking" />
+                <HealthRow name="User store" ok={Boolean(health?.sqlite)} detail="Encrypted profile blobs only" />
+                <HealthRow name="Embedder" ok={Boolean(health?.ollama)} detail="Local model, runs on our server" />
               </div>
             )}
           </div>

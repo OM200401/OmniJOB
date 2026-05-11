@@ -79,7 +79,7 @@ const FIELDS: Field[] = [
     name: "Search queries",
     what: "What you typed into the search box",
     where: "plaintext",
-    detail: "Forwarded to the API to filter Qdrant results. We do not log queries or associate them with your uid; access logs are nginx-default and rotated daily.",
+    detail: "Forwarded to the API to filter results. We do not log queries or associate them with your uid; reverse-proxy access logs are rotated daily.",
   },
   {
     name: "Match-explain payload",
@@ -221,14 +221,9 @@ export function Privacy() {
 
         <div className="row-between">
           <Link to="/" className="btn btn-ghost btn-sm">Back to app</Link>
-          <a
-            className="btn btn-secondary btn-sm"
-            href="https://github.com/anthropics/claude-code/issues"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <Link to="/contact" className="btn btn-secondary btn-sm">
             Report a privacy issue
-          </a>
+          </Link>
         </div>
       </div>
     </div>

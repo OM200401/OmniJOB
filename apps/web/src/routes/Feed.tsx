@@ -914,7 +914,7 @@ export function Feed() {
               }
               description={
                 totalActive === 0
-                  ? "Run the crawler to ingest live ATS data - see README §3."
+                  ? "We're refreshing the index right now. Check back in a few minutes."
                   : debouncedQuery && totalActive - 1 > 0
                     ? "Try removing filters, broadening the search, or one of the suggestions below."
                     : debouncedQuery

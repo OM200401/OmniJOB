@@ -75,7 +75,7 @@ const SECTIONS: Section[] = [
   {
     heading: "11. Contact",
     body:
-      "For questions about these terms, account issues, or to report abuse, use the contact options listed in your account Settings page.",
+      "For questions about these terms, account issues, or to report abuse, use the contact form at /contact. Include enough detail that we can act on it; an email address is optional but helps us reply.",
   },
 ];
 

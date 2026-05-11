@@ -29,7 +29,7 @@ export function Landing() {
       <div className="preview-card">
         <div className="preview-chrome">
           <span className="dot" /> <span className="dot" /> <span className="dot" />
-          <span className="url">omnijob.local/feed</span>
+          <span className="url">omnijob.tech/feed</span>
         </div>
         <div className="preview-body">
           <div className="row" style={{ marginBottom: 14 }}>
