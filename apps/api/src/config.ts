@@ -34,10 +34,12 @@ export const config = {
   ollama: {
     url: env("OLLAMA_URL", "http://localhost:11434"),
     embedModel: env("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
-    // Hard cap on Ollama request time. The B2s VM running nomic-embed-text
-    // serves a normal request in ~200ms; >30s means the model is wedged or
-    // the queue is overwhelmed and clients should fail fast.
-    timeoutMs: num("OLLAMA_TIMEOUT_MS", 30_000),
+    // Hard cap on Ollama request time. Single-text embeds are ~200ms but
+    // batched requests (up to 64 inputs in one /api/embed call from the
+    // crawler) can take 60s+ on a 2-vCPU box when the text is long. 90s
+    // gives Ollama room to finish a large batch without our client giving
+    // up and triggering a wasted retry.
+    timeoutMs: num("OLLAMA_TIMEOUT_MS", 90_000),
   },
   sqlite: {
     // Local dev default is relative - production sets SQLITE_PATH=
