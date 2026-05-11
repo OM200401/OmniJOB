@@ -455,6 +455,16 @@ export function Feed() {
           )}
         </div>
         <div className="row gap-sm feed-actions" style={{ marginLeft: "auto" }}>
+          {busy && (
+            // Inline in-flight indicator next to the search controls so the
+            // user sees instant feedback that their keystroke registered.
+            // The results-meta line also flips to "Searching…" but this
+            // one is positionally adjacent to the input where attention is.
+            <span className="search-status" role="status" aria-live="polite">
+              <span className="spinner-xs" aria-hidden="true" />
+              <span>Searching...</span>
+            </span>
+          )}
           <button
             className="btn btn-secondary btn-sm filters-toggle"
             onClick={() => setFiltersOpen((o) => !o)}
@@ -713,17 +723,25 @@ export function Feed() {
         </aside>
 
         <section className="results" ref={resultsTopRef}>
+          {/* The "Showing X of Y matches" count is hidden while a search is
+              in flight to avoid presenting a stale number alongside the
+              in-flight indicator. A search-status spinner replaces it. */}
           <div className="results-meta">
             <span>
-              {busy
-                ? "Searching…"
-                : hits
-                  ? totalMatches !== null && totalMatches > hits.length
-                    ? `Showing ${hits.length} of ${totalMatches} matches`
-                    : `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
-                  : noVault && !debouncedQuery
-                    ? "Type a query to start"
-                    : "Loading…"}
+              {busy ? (
+                <span className="search-status" role="status" aria-live="polite">
+                  <span className="spinner-xs" aria-hidden="true" />
+                  <span>Searching...</span>
+                </span>
+              ) : hits ? (
+                totalMatches !== null && totalMatches > hits.length
+                  ? `Showing ${hits.length} of ${totalMatches} matches`
+                  : `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
+              ) : noVault && !debouncedQuery ? (
+                "Type a query to start"
+              ) : (
+                "Loading…"
+              )}
             </span>
             <span className="muted-2 text-xs">
               {debouncedQuery
@@ -736,14 +754,28 @@ export function Feed() {
 
           {err && <Alert variant="error">{err}</Alert>}
 
-          {!err && noVault && !debouncedQuery && !hits && (
+          {/* While a search is in flight AND the user has a query or filter
+              active, render skeleton rows in place of (potentially stale)
+              results so the page never looks frozen. Default landing -
+              no query, default filters - keeps its existing render path. */}
+          {!err && busy && totalActive > 0 && (
+            <div className="job-grid" aria-busy="true" aria-label="Searching">
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+            </div>
+          )}
+
+          {!err && !busy && noVault && !debouncedQuery && !hits && (
             <EmptyState
               title="Search any role, technology, or company"
               description="Type a query above and press Enter. Results are ranked by semantic similarity to whatever you type."
             />
           )}
 
-          {!err && hits && hits.length === 0 && (
+          {!err && !(busy && totalActive > 0) && hits && hits.length === 0 && (
             <EmptyState
               title={
                 totalActive === 0
@@ -808,7 +840,7 @@ export function Feed() {
             />
           )}
 
-          {hits && hits.length > 0 && (
+          {hits && hits.length > 0 && !(busy && totalActive > 0) && (
             <div className="job-grid">
               {hits.map((h) => (
                 <JobCard
@@ -821,7 +853,7 @@ export function Feed() {
             </div>
           )}
 
-          {hits && totalPages > 1 && (
+          {hits && totalPages > 1 && !(busy && totalActive > 0) && (
             <nav className="pagination" aria-label="Result pages">
               <button
                 className="btn btn-secondary btn-sm"
@@ -882,6 +914,33 @@ function suggestRelated(query: string): string[] {
   // rather show nothing than misleading pivots).
   if (q.length <= 16 && /[a-z]/.test(q)) return [];
   return [];
+}
+
+// Placeholder card rendered while a search is in flight. Mirrors the
+// visual silhouette of a real JobCard (circle logo + title/sub bars +
+// chips + meta/pill row) so the layout doesn't reflow when results
+// arrive. The pulse animation lives in index.css (skeleton-pulse).
+function JobCardSkeleton() {
+  return (
+    <div className="skeleton-card" aria-hidden="true">
+      <div className="skeleton-card-header">
+        <div className="skeleton-circle" />
+        <div className="skeleton-block skeleton-pill" />
+      </div>
+      <div className="skeleton-card-body">
+        <div className="skeleton-block skeleton-bar-title" />
+        <div className="skeleton-block skeleton-bar-sub" />
+      </div>
+      <div className="skeleton-card-chips">
+        <div className="skeleton-block skeleton-chip" />
+        <div className="skeleton-block skeleton-chip" />
+      </div>
+      <div className="skeleton-card-footer">
+        <div className="skeleton-block skeleton-bar-sub" style={{ width: "55%" }} />
+        <div className="skeleton-block skeleton-chip-sm" />
+      </div>
+    </div>
+  );
 }
 
 function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {

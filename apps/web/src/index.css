@@ -840,6 +840,95 @@ kbd, .kbd {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Small inline spinner used next to the "Searching..." text below the
+   search input. Sized to sit on a baseline with 12.5px text. */
+.spinner-xs {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.search-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--fg-3);
+}
+
+/* ---------------------------------------------------- job card skeletons
+   Rendered in place of the real result list while a search is in flight
+   AND the user has a query/filter active. Five rows of the same visual
+   silhouette as JobCard so the layout doesn't jump when results arrive. */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  min-height: 188px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.skeleton-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.skeleton-block {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+.skeleton-circle {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.skeleton-bar-title { height: 14px; width: 70%; }
+.skeleton-bar-sub   { height: 12px; width: 45%; }
+.skeleton-chip      { height: 18px; width: 64px; border-radius: 999px; }
+.skeleton-chip-sm   { height: 16px; width: 44px; border-radius: 4px; }
+.skeleton-pill      { height: 18px; width: 42px; border-radius: 4px; }
+.skeleton-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.skeleton-card-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.skeleton-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+@keyframes skeleton-pulse {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 0.85; }
+  100% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card { animation: none; opacity: 0.7; }
+  .spinner-xs, .spinner { animation: none; }
+}
+
 /* ------------------------------------------------------------- landing (minimalist) */
 
 .landing-hero {
