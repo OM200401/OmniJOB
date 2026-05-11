@@ -124,6 +124,13 @@ console.log(`  Ollama: ${config.ollama.url} (model=${config.ollama.embedModel})`
 console.log(`  SQLite: ${config.sqlite.path}`);
 console.log(`  CORS:   ${config.isProd ? config.security.allowedOrigins.join(",") : "dev:reflect-origin"}`);
 console.log(`  Body cap: ${config.security.maxBodyBytes} bytes`);
+console.log(
+  `  Contact: log=${config.security.contactLogPath} email=${
+    config.contact.resendApiKey && config.contact.toEmail
+      ? `resend->${config.contact.toEmail}`
+      : "disabled (set RESEND_API_KEY + CONTACT_TO_EMAIL)"
+  }`,
+);
 
 // Best-effort background migration. The hybrid keyword pass in
 // /jobs/search needs a full-text payload index on title; if it doesn't

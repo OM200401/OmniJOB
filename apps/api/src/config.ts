@@ -63,6 +63,21 @@ export const config = {
     // as the audit log: operator tails the file off the host filesystem.
     contactLogPath: env("CONTACT_LOG_PATH", isProd ? "/var/lib/omnijob/contact.log" : "./data/contact.log"),
   },
+  contact: {
+    // When set, each /contact submission is forwarded to this address via
+    // Resend after it lands on disk. Leave unset to disable email delivery
+    // and rely solely on the JSONL log.
+    resendApiKey: process.env["RESEND_API_KEY"] || undefined,
+    // Inbox that receives forwarded submissions. Must be the email that owns
+    // the Resend account while we're using the onboarding@resend.dev sender;
+    // once the omnijob.tech domain is verified in Resend we can send to any
+    // address.
+    toEmail: process.env["CONTACT_TO_EMAIL"] || undefined,
+    // From-address Resend will deliver as. Defaults to Resend's verified
+    // sandbox sender so this works without DNS setup. Override to
+    // `contact@omnijob.tech` (or similar) after verifying the domain.
+    fromEmail: env("CONTACT_FROM_EMAIL", "OmniJob Contact <onboarding@resend.dev>"),
+  },
 } as const;
 
 export type Config = typeof config;
