@@ -47,7 +47,10 @@ export function App() {
 }
 
 function HomeRedirect() {
-  const { session } = useAuth();
+  const { session, vaultSkipped } = useAuth();
   if (!session) return <Landing />;
-  return <Navigate to={session.profile.skillVector.length === 0 ? "/onboarding" : "/feed"} replace />;
+  // Sign-in landing: if there's a profile vector, go to /feed. If not,
+  // route to /onboarding unless the user has previously chosen to skip.
+  const hasProfile = session.profile.skillVector.length > 0;
+  return <Navigate to={hasProfile || vaultSkipped ? "/feed" : "/onboarding"} replace />;
 }
