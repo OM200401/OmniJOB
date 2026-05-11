@@ -38,6 +38,22 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    # Runtime tuning for the batched embed workload. We send up to 64 inputs
+    # per /api/embed call from the crawler/API; Ollama should treat itself
+    # as a single-tenant single-model server and lean on flash attention.
+    #   OLLAMA_KEEP_ALIVE=-1        keep nomic-embed-text resident forever
+    #                               (no cold-start penalty between bursts).
+    #   OLLAMA_MAX_LOADED_MODELS=1  we only ever serve one model; reject
+    #                               accidental fan-outs that would thrash RAM.
+    #   OLLAMA_FLASH_ATTENTION=1    safe and faster for embed-class models.
+    #   OLLAMA_NUM_PARALLEL=1       client-side batching already saturates
+    #                               the GPU; server-side parallelism would
+    #                               just multiply memory at our concurrency.
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_NUM_PARALLEL: "1"
     # Model cache lives on a named volume so nomic-embed-text (~275 MB)
     # survives container restarts. Pulled once via:
     #   docker exec omnijob-ollama ollama pull nomic-embed-text
