@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Bell, BookmarkPlus, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
@@ -42,31 +42,102 @@ const SOURCES: { value: SourceName; label: string }[] = [
   { value: "recruitee", label: "Recruitee" },
 ];
 
+// Allowed values for URL-encoded enum filters. Anything outside these sets
+// is dropped on parse so a crafted URL can't smuggle a bogus enum into the
+// API request.
+const EXP_VALUES = new Set<ExperienceLevel>([
+  "intern",
+  "junior",
+  "mid",
+  "senior",
+  "staff",
+  "principal",
+]);
+const REMOTE_VALUES = new Set<RemoteStatus>(["remote", "hybrid", "onsite"]);
+const SOURCE_VALUES = new Set<SourceName>([
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "workable",
+  "recruitee",
+]);
+
+function parseCsv<T extends string>(
+  raw: string | null,
+  allowed: Set<T>,
+): T[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => allowed.has(s as T)) as T[];
+}
+
+function parseInt0(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 export function Feed() {
   const { session, patchProfile, vaultSkipped } = useAuth();
+  // URL-derived state. The initializer reads the params ONCE on mount so
+  // that landing on /feed?q=foo&page=2 restores the user back to exactly
+  // that view. After mount, the URL is treated as a write-only mirror of
+  // local state via the syncing useEffect below.
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Snapshot the initial params so the seeding logic below doesn't re-fire
+  // on every URL write. We intentionally do NOT include `searchParams` in
+  // any deps - the URL is downstream of state after mount.
+  const initialParamsRef = useRef(searchParams);
 
-  const initialLevels: ExperienceLevel[] = session?.profile.preferences.level
-    ? [session.profile.preferences.level]
-    : [];
-  const initialRemotes: RemoteStatus[] =
-    session?.profile.preferences.remotePref &&
-    session.profile.preferences.remotePref !== "any"
+  const initialLevels: ExperienceLevel[] = (() => {
+    const fromUrl = parseCsv(initialParamsRef.current.get("exp"), EXP_VALUES);
+    if (fromUrl.length > 0) return fromUrl;
+    return session?.profile.preferences.level
+      ? [session.profile.preferences.level]
+      : [];
+  })();
+  const initialRemotes: RemoteStatus[] = (() => {
+    const fromUrl = parseCsv(initialParamsRef.current.get("remote"), REMOTE_VALUES);
+    if (fromUrl.length > 0) return fromUrl;
+    return session?.profile.preferences.remotePref &&
+      session.profile.preferences.remotePref !== "any"
       ? [session.profile.preferences.remotePref as RemoteStatus]
       : [];
+  })();
+  const initialQuery = initialParamsRef.current.get("q") ?? "";
+  const initialLocation = initialParamsRef.current.get("loc") ?? "";
+  const initialCompany = initialParamsRef.current.get("co") ?? "";
+  const initialSources = parseCsv(initialParamsRef.current.get("source"), SOURCE_VALUES);
+  const initialCountries = (() => {
+    const raw = initialParamsRef.current.get("country");
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => /^[A-Z]{2}$/.test(s));
+  })();
+  const initialSalaryMin = parseInt0(initialParamsRef.current.get("salmin"));
+  const initialRequireSalary = initialParamsRef.current.get("reqsal") === "1";
+  // hide_stale defaults to ON; only `0` flips it off.
+  const initialHideStale = initialParamsRef.current.get("hide_stale") !== "0";
+  const initialPage = Math.max(1, parseInt0(initialParamsRef.current.get("page")) ?? 1);
 
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [debouncedLocation, setDebouncedLocation] = useState("");
-  const [debouncedCompany, setDebouncedCompany] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  const [companyFilter, setCompanyFilter] = useState(initialCompany);
+  const [locationFilter, setLocationFilter] = useState(initialLocation);
+  const [debouncedLocation, setDebouncedLocation] = useState(initialLocation);
+  const [debouncedCompany, setDebouncedCompany] = useState(initialCompany);
   const [levels, setLevels] = useState<ExperienceLevel[]>(initialLevels);
   const [remotes, setRemotes] = useState<RemoteStatus[]>(initialRemotes);
-  const [sources, setSources] = useState<SourceName[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [salaryMin, setSalaryMin] = useState<number | null>(null); // USD-annual floor
-  const [requireSalary, setRequireSalary] = useState(false);
-  const [hideStale, setHideStale] = useState(true); // hide postings 45d+ old
+  const [sources, setSources] = useState<SourceName[]>(initialSources);
+  const [countries, setCountries] = useState<string[]>(initialCountries);
+  const [salaryMin, setSalaryMin] = useState<number | null>(initialSalaryMin); // USD-annual floor
+  const [requireSalary, setRequireSalary] = useState(initialRequireSalary);
+  const [hideStale, setHideStale] = useState(initialHideStale); // hide postings 45d+ old
 
   const [hits, setHits] = useState<JobHit[] | null>(null);
   // Server-reported candidate pool size (post-filter survivors). Used to
@@ -82,7 +153,7 @@ export function Feed() {
   // filters / saved-search selection change so we never request a page
   // that no longer exists.
   const PAGE_SIZE = 25;
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
 
   // Saved-searches state. The "+N new" badge for each is computed on mount
   // by re-running the search in the background and diffing against
@@ -96,6 +167,15 @@ export function Feed() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveName, setSaveName] = useState("");
   const pendingSavedSearchRef = useRef<string | null>(null);
+  // ID of the currently-active saved search (set when the user clicks one
+  // in the sidebar, or seeded from the `saved` URL param on mount). Used
+  // purely to round-trip the URL; we don't gate any rendering on it.
+  const initialSavedId = (() => {
+    const raw = initialParamsRef.current.get("saved");
+    if (!raw) return null;
+    return savedSearches.some((s) => s.id === raw) ? raw : null;
+  })();
+  const [activeSavedId, setActiveSavedId] = useState<string | null>(initialSavedId);
 
   const skill = session?.profile.skillVector;
   // No-vault mode: user has no résumé embedding to rank by. Either they
@@ -193,9 +273,15 @@ export function Feed() {
   // who types a new query would request offset=50 against a result set
   // that may have only 10 hits, landing them on an empty page. We deliberately
   // do NOT include `page` itself in the deps; the user clicking Prev/Next
-  // is the one path that should NOT reset.
+  // is the one path that should NOT reset. The first run is skipped so the
+  // URL-seeded `page` survives mount.
+  const firstFilterChangeRef = useRef(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (firstFilterChangeRef.current) {
+      firstFilterChangeRef.current = false;
+      return;
+    }
     setPage(1);
   }, [
     debouncedQuery,
@@ -208,6 +294,43 @@ export function Feed() {
     salaryMin,
     requireSalary,
     hideStale,
+  ]);
+
+  // Mirror local Feed state into the URL so that navigating away and back
+  // (e.g. clicking a JobCard then pressing the browser back button) restores
+  // the user's query, filters, and page. Uses `replace: true` so each
+  // keystroke or filter toggle does NOT push a new history entry - the
+  // back button always returns to wherever the user came from before /feed.
+  // Empty / default values are omitted to keep URLs short and shareable.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (debouncedQuery) next.set("q", debouncedQuery);
+    if (page > 1) next.set("page", String(page));
+    if (levels.length > 0) next.set("exp", levels.join(","));
+    if (remotes.length > 0) next.set("remote", remotes.join(","));
+    if (countries.length > 0) next.set("country", countries.join(","));
+    if (sources.length > 0) next.set("source", sources.join(","));
+    if (debouncedLocation) next.set("loc", debouncedLocation);
+    if (debouncedCompany) next.set("co", debouncedCompany);
+    if (salaryMin !== null) next.set("salmin", String(salaryMin));
+    if (requireSalary) next.set("reqsal", "1");
+    if (!hideStale) next.set("hide_stale", "0");
+    if (activeSavedId) next.set("saved", activeSavedId);
+    setSearchParams(next, { replace: true });
+  }, [
+    debouncedQuery,
+    page,
+    levels,
+    remotes,
+    countries,
+    sources,
+    debouncedLocation,
+    debouncedCompany,
+    salaryMin,
+    requireSalary,
+    hideStale,
+    activeSavedId,
+    setSearchParams,
   ]);
 
   // Background-evaluate saved searches once skill is loaded, so the sidebar
@@ -328,6 +451,7 @@ export function Feed() {
     setSalaryMin(ss.filters.salaryMin ?? null);
     setRequireSalary(Boolean(ss.filters.requireSalary));
     setPage(1);
+    setActiveSavedId(ss.id);
     pendingSavedSearchRef.current = ss.id;
   };
 
@@ -344,6 +468,7 @@ export function Feed() {
       delete next[id];
       return next;
     });
+    if (activeSavedId === id) setActiveSavedId(null);
   };
 
   useEffect(() => {
@@ -419,6 +544,7 @@ export function Feed() {
     setRequireSalary(false);
     setHideStale(true);
     setCountries([]);
+    setActiveSavedId(null);
   };
 
   return (
