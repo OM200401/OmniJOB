@@ -37,6 +37,14 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
   if (vectors.length === 0) {
     throw new Error(`ollama embed returned no vectors: ${JSON.stringify(data)}`);
   }
+  // Ollama 0.3+ returns one embedding per input string. A length mismatch
+  // means the server silently dropped or duplicated rows; failing loudly here
+  // keeps the crawler from associating the wrong vector with a job.
+  if (vectors.length !== cleaned.length) {
+    throw new Error(
+      `ollama embed count mismatch: sent ${cleaned.length} inputs, got ${vectors.length} vectors`,
+    );
+  }
   for (const v of vectors) {
     if (v.length !== config.qdrant.embeddingDim) {
       throw new Error(
