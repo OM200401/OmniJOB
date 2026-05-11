@@ -16,7 +16,12 @@ ExecStart=/usr/local/go/bin/go run ./cmd/crawler
 # timer fires every 12h so throughput per pass isn't the binding constraint.
 Environment=API_URL=http://localhost:3000
 Environment=EMBED_CONCURRENCY=1
-TimeoutStartSec=4h
+# A full pass across all 14 sources at concurrency=1 plus retries on
+# transient Ollama 5xx routinely exceeds 4 hours. Bump to 8h so a pass
+# completes naturally instead of getting SIGTERM'd mid-source. The
+# pre-embed exists-check (sink.Exists) makes subsequent passes much
+# faster by skipping jobs already in Qdrant.
+TimeoutStartSec=8h
 StandardOutput=append:/var/log/omnijob-crawler.log
 StandardError=append:/var/log/omnijob-crawler.log
 
