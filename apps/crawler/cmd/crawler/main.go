@@ -120,6 +120,18 @@ func worker(
 			continue
 		}
 
+		// Skip jobs already in Qdrant. Saves a ~2s Ollama embed roundtrip
+		// per duplicate; on a 4h-bounded pass with mostly-repeat sources
+		// this typically triples new-job throughput. On error we fall
+		// through and try to embed - better a redundant embed than a
+		// missed new job.
+		if existing, err := sink.Exists(ctx, job.ID); err != nil {
+			log.Printf("[w%d] exists-check %s: %v (will embed anyway)", id, job.ID, err)
+		} else if existing {
+			stats.inc(&stats.skipped)
+			continue
+		}
+
 		vec, err := emb.Embed(ctx, text)
 		if err != nil {
 			log.Printf("[w%d] embed %s: %v", id, job.ID, err)

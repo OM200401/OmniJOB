@@ -403,6 +403,19 @@ export async function searchJobs(
   return { hits: out, total };
 }
 
+// Lightweight existence check used by the crawler to skip jobs we've
+// already embedded. Calling retrieve with no payload/vector is much
+// cheaper than fetching+decoding the full record.
+export async function jobExists(externalId: string): Promise<boolean> {
+  const pointId = await pointIdFor(externalId);
+  const res = await qdrant.retrieve(config.qdrant.jobsCollection, {
+    ids: [pointId],
+    with_payload: false,
+    with_vector: false,
+  });
+  return res.length > 0;
+}
+
 export async function getJob(externalId: string): Promise<(JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] }) | null> {
   const pointId = await pointIdFor(externalId);
   const res = await qdrant.retrieve(config.qdrant.jobsCollection, {

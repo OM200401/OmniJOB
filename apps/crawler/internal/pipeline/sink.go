@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -21,6 +22,34 @@ func NewSink(apiURL string) *Sink {
 		apiURL: apiURL,
 		hc:     &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+// Exists asks the API whether a job with this external_id is already in
+// Qdrant. Returning true lets the worker skip the Ollama embed cost.
+// On any error we return false (and the error) so the caller can fall
+// through to embedding rather than miss a real new job.
+func (s *Sink) Exists(ctx context.Context, externalID string) (bool, error) {
+	u := s.apiURL + "/jobs/" + url.PathEscape(externalID) + "/exists"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := s.hc.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
+		return false, fmt.Errorf("exists check failed: %s: %s", resp.Status, b)
+	}
+	var out struct {
+		Exists bool `json:"exists"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return false, err
+	}
+	return out.Exists, nil
 }
 
 func (s *Sink) Ingest(ctx context.Context, j JobJSON) error {

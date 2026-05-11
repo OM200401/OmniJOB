@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { JobIngestSchema, JobSearchSchema } from "../schemas/job";
-import { getJob, getJobSources, searchJobs, upsertJob } from "../qdrant/client";
+import { getJob, getJobSources, jobExists, searchJobs, upsertJob } from "../qdrant/client";
 import { explainMatch } from "../lib/explain";
 import { expansionFor } from "../lib/query-expansion";
 
@@ -41,6 +41,16 @@ export const jobs = new Elysia({ prefix: "/jobs" })
       const meta = await getJob(params.id);
       if (!meta) return status(404, { error: "job not found" });
       return { id: params.id, payload: meta };
+    },
+    { params: t.Object({ id: t.String({ minLength: 1, maxLength: 256 }) }) },
+  )
+  // Cheap pre-embed check for the crawler. Lets a worker skip jobs
+  // already in Qdrant before paying the Ollama embed roundtrip.
+  .get(
+    "/:id/exists",
+    async ({ params }) => {
+      const exists = await jobExists(params.id);
+      return { exists };
     },
     { params: t.Object({ id: t.String({ minLength: 1, maxLength: 256 }) }) },
   )
