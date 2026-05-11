@@ -4,6 +4,7 @@ import {
   Bookmark,
   ClipboardList,
   LogOut,
+  Mail,
   Menu,
   Search,
   ScrollText,
@@ -84,6 +85,13 @@ export function Layout() {
                 title="Terms of service"
               >
                 <ScrollText size={13} /> Terms
+              </NavLink>
+              <NavLink
+                to="/contact"
+                className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                title="Get in touch"
+              >
+                <Mail size={13} /> Contact
               </NavLink>
               {session ? (
                 <>

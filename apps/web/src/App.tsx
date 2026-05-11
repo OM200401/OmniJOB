@@ -13,6 +13,7 @@ import { Settings } from "./routes/Settings";
 import { Applications } from "./routes/Applications";
 import { Privacy } from "./routes/Privacy";
 import { Terms } from "./routes/Terms";
+import { Contact } from "./routes/Contact";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
           <Route path="recover" element={<Recover />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
+          <Route path="contact" element={<Contact />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="onboarding" element={<Onboarding />} />

@@ -22,6 +22,7 @@ import { jobs } from "./routes/jobs";
 import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
+import { contact } from "./routes/contact";
 import { ensureTitleFullTextIndex } from "./qdrant/client";
 
 // Map URL paths to rate-limit buckets. Order matters - more specific patterns
@@ -38,6 +39,7 @@ function ruleFor(method: string, path: string): RateLimitRule | null {
   if (method === "POST" && (path === "/users/profile" || path === "/users/profile/blob")) {
     return RULES.profileWrite;
   }
+  if (method === "POST" && path === "/contact") return RULES.contact;
   return null;
 }
 
@@ -91,6 +93,7 @@ const app = new Elysia()
   .use(jobs)
   .use(users)
   .use(match)
+  .use(contact)
   .onError(({ error, code, set, path }) => {
     if (code === "VALIDATION") {
       const e = error as { all?: unknown[]; message?: string };

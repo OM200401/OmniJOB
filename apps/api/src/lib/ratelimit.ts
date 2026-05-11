@@ -98,4 +98,8 @@ export const RULES = {
   authRead: { name: "auth-read", limit: 30, windowMs: 60_000 },
   authWrite: { name: "auth-write", limit: 5, windowMs: 60 * 60_000 },
   profileWrite: { name: "profile-write", limit: 30, windowMs: 60_000 },
+  // Contact form is unauthenticated and writes to disk; cap aggressively
+  // (5 per hour per IP) so a single abuser can't fill the log faster than
+  // the operator can act on it.
+  contact: { name: "contact", limit: 5, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>;

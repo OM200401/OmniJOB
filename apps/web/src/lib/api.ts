@@ -226,4 +226,13 @@ export const api = {
 
   fetchJobSources: (id: string) =>
     request<JobSources>("GET", `/jobs/${encodeURIComponent(id)}/sources`),
+
+  contact: (body: {
+    name?: string;
+    email?: string;
+    subject: string;
+    message: string;
+    website?: string;
+  }) =>
+    request<{ status: string }>("POST", "/contact", body),
 };

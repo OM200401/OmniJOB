@@ -59,6 +59,9 @@ export const config = {
     // Append-only audit log for auth events. Defaults under the Azure VM's
     // host bind-mount so the file survives container restarts.
     auditLogPath: env("AUDIT_LOG_PATH", isProd ? "/var/lib/omnijob/audit.log" : "./data/audit.log"),
+    // Append-only JSONL of contact-form submissions. Same bind-mount strategy
+    // as the audit log: operator tails the file off the host filesystem.
+    contactLogPath: env("CONTACT_LOG_PATH", isProd ? "/var/lib/omnijob/contact.log" : "./data/contact.log"),
   },
 } as const;
 
