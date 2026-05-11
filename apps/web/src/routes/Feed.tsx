@@ -76,6 +76,13 @@ export function Feed() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // 1-indexed page state. The server slices a `pageSize` window off the
+  // post-filter pool starting at `(page - 1) * pageSize`. Stays in lockstep
+  // with the API contract; resets to 1 whenever the underlying query /
+  // filters / saved-search selection change so we never request a page
+  // that no longer exists.
+  const PAGE_SIZE = 25;
+  const [page, setPage] = useState(1);
 
   // Saved-searches state. The "+N new" badge for each is computed on mount
   // by re-running the search in the background and diffing against
@@ -153,8 +160,10 @@ export function Feed() {
         vector = skill!;
       }
 
+      const offset = (page - 1) * PAGE_SIZE;
       const { hits, total } = await api.searchJobs(vector, {
-        k: 60,
+        k: PAGE_SIZE,
+        offset,
         ...(debouncedQuery ? { query: debouncedQuery } : {}),
         ...(remotes.length > 0 && remotes.length < 3 ? { remote_status: remotes } : {}),
         ...(levels.length > 0 ? { experience_level: levels } : {}),
@@ -173,11 +182,33 @@ export function Feed() {
     } finally {
       setBusy(false);
     }
-  }, [noVault, skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale]);
+  }, [noVault, skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale, page]);
 
   useEffect(() => {
     void search();
   }, [search]);
+
+  // Reset to page 1 whenever the underlying query, any filter, or the
+  // active saved-search selection changes. Without this a user on page 3
+  // who types a new query would request offset=50 against a result set
+  // that may have only 10 hits, landing them on an empty page. We deliberately
+  // do NOT include `page` itself in the deps; the user clicking Prev/Next
+  // is the one path that should NOT reset.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedQuery,
+    debouncedLocation,
+    debouncedCompany,
+    levels,
+    remotes,
+    sources,
+    countries,
+    salaryMin,
+    requireSalary,
+    hideStale,
+  ]);
 
   // Background-evaluate saved searches once skill is loaded, so the sidebar
   // can show "+N new" badges. Bails on cancellation; failures per-search are
@@ -296,6 +327,7 @@ export function Feed() {
     setCompanyFilter(ss.filters.company ?? "");
     setSalaryMin(ss.filters.salaryMin ?? null);
     setRequireSalary(Boolean(ss.filters.requireSalary));
+    setPage(1);
     pendingSavedSearchRef.current = ss.id;
   };
 
@@ -338,6 +370,31 @@ export function Feed() {
     },
     [session, patchProfile],
   );
+
+  // Pagination math. `totalMatches` is the FULL post-filter pool size from
+  // the API; we slice it into PAGE_SIZE pages and use the result to gate the
+  // Prev/Next buttons and decide whether to render the control row at all.
+  const totalPages = Math.max(
+    1,
+    Math.ceil((totalMatches ?? 0) / PAGE_SIZE),
+  );
+  const resultsTopRef = useRef<HTMLElement>(null);
+  const goToPage = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages);
+    if (clamped === page) return;
+    setPage(clamped);
+    // Scroll back to the top of the results list so the user doesn't land
+    // mid-page after pressing Next. Fall back to window scroll if for some
+    // reason the ref isn't mounted.
+    requestAnimationFrame(() => {
+      const node = resultsTopRef.current;
+      if (node) {
+        node.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  };
 
   const totalActive =
     (debouncedQuery ? 1 : 0) +
@@ -655,7 +712,7 @@ export function Feed() {
           </FilterSection>
         </aside>
 
-        <section className="results">
+        <section className="results" ref={resultsTopRef}>
           <div className="results-meta">
             <span>
               {busy
@@ -762,6 +819,30 @@ export function Feed() {
                 />
               ))}
             </div>
+          )}
+
+          {hits && totalPages > 1 && (
+            <nav className="pagination" aria-label="Result pages">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 1 || busy}
+                type="button"
+              >
+                ← Prev
+              </button>
+              <span className="muted-2 text-xs" aria-live="polite">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => goToPage(page + 1)}
+                disabled={page === totalPages || hits.length < PAGE_SIZE || busy}
+                type="button"
+              >
+                Next →
+              </button>
+            </nav>
           )}
         </section>
       </div>

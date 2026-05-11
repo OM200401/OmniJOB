@@ -233,6 +233,10 @@ export type HybridOptions = {
   // ranking is fused with the vector ranking via RRF before post-filtering.
   // Empty array or undefined disables the keyword pass.
   keywords?: string[];
+  // Page offset into the post-filter result pool. The caller asks for `k`
+  // hits starting at this offset; `total` always reflects the FULL filtered
+  // set so the UI can compute total pages. Defaults to 0 (first page).
+  offset?: number;
 };
 
 export async function searchJobs(
@@ -342,8 +346,12 @@ export async function searchJobs(
   const wantLocation = filter?.location?.toLowerCase().trim() ?? "";
   const wantCompany = filter?.company?.toLowerCase().trim() ?? "";
 
-  const out: JobHit[] = [];
-  let total = 0;
+  // Collect the FULL post-filter set (in fused-rank order), then slice the
+  // requested page off the end. `total` is the size of this full set so the
+  // UI can compute `Math.ceil(total / k)` pages correctly. Building the page
+  // payload (quality breakdown etc.) only for the sliced window keeps the
+  // per-request cost roughly equal to the pre-pagination implementation.
+  const filtered: Array<{ p: typeof res[number]; level: Level; country: string | undefined; payload: StoredJobPayload }> = [];
   for (const p of res) {
     const payload = p.payload as StoredJobPayload;
     // Re-classify on read. The stored payload was written by whatever
@@ -383,23 +391,34 @@ export async function searchJobs(
       continue;
     }
 
-    total += 1;
-    if (out.length >= k) continue; // keep counting so `total` reflects pool size
+    filtered.push({ p, level, country, payload });
+  }
+
+  const total = filtered.length;
+  const offset = Math.max(0, opts?.offset ?? 0);
+  // Out-of-range offset (e.g. user landed on a stale deep-link to page 10
+  // after filters narrowed the pool): return an empty page but keep `total`
+  // so the client can show "Page X of Y" / fall back to page 1.
+  if (offset >= total) {
+    return { hits: [], total };
+  }
+  const window = filtered.slice(offset, offset + k);
+  const out: JobHit[] = window.map(({ p, level, country, payload }) => {
     const enriched: JobMetadata = {
       ...payload,
       experience_level: level,
       ...(country ? { country } : {}),
     };
     const quality = qualityBreakdown(enriched);
-    out.push({
+    return {
       id: payload.external_id ?? String(p.id),
       // Surface the cosine score, not the RRF fused score - the UI renders
       // this as a "% match" and the fused value (0.01-0.03 range) would
       // collapse every match to 1-3%.
       score: p.cosine ?? 0.55,
       payload: { ...enriched, quality: quality.total, quality_breakdown: quality.components },
-    });
-  }
+    };
+  });
   return { hits: out, total };
 }
 

@@ -78,6 +78,11 @@ export type Health = {
 
 export type SearchOpts = {
   k?: number;
+  // Page offset into the post-filter result pool. Used together with `k`
+  // for page-based pagination - the server returns `hits.slice(offset, offset+k)`
+  // and reports `total` as the full filtered pool size so the UI can render
+  // "Page X of Y". Default 0.
+  offset?: number;
   // Raw user query text. Forwarded to the API so it can run a hybrid
   // keyword + vector pass (RRF-fused). Optional - omit to use the
   // existing pure-cosine ranking.
@@ -195,6 +200,7 @@ export const api = {
     request<{ hits: JobHit[]; total?: number }>("POST", "/jobs/search", {
       vector,
       ...(opts.k ? { k: opts.k } : {}),
+      ...(opts.offset ? { offset: opts.offset } : {}),
       ...(opts.query ? { query: opts.query } : {}),
       ...(opts.remote_status?.length ? { remote_status: opts.remote_status } : {}),
       ...(opts.experience_level?.length ? { experience_level: opts.experience_level } : {}),

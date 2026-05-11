@@ -457,6 +457,18 @@ kbd, .kbd {
 }
 .results-meta strong { color: var(--fg); font-weight: 600; }
 
+/* Page-based pagination row at the bottom of the Feed result list. Hidden
+   entirely when totalPages <= 1 (the component skips rendering it). The
+   buttons reuse .btn .btn-secondary .btn-sm so they pick up the standard
+   brand hover / disabled treatment. */
+.pagination {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 0;
+}
+
 /* ------------------------------------------------------------- job grid (rectangular cards) */
 
 /* Card grid (Feed) - rectangular cards in an auto-filling grid. */

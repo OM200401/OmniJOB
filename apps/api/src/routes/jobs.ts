@@ -9,6 +9,7 @@ export const jobs = new Elysia({ prefix: "/jobs" })
     "/search",
     async ({ body }) => {
       const k = body.k ?? 25;
+      const offset = body.offset ?? 0;
       // Pull keyword tokens from the synonym dictionary when the caller
       // forwards the raw query text. Unknown queries fall through to a
       // single-token keyword pass on the raw string, which still helps
@@ -29,7 +30,7 @@ export const jobs = new Elysia({ prefix: "/jobs" })
           ...(body.require_salary !== undefined ? { require_salary: body.require_salary } : {}),
           ...(body.max_age_days !== undefined ? { max_age_days: body.max_age_days } : {}),
         },
-        { keywords },
+        { keywords, offset },
       );
       return { hits: result.hits, total: result.total };
     },

@@ -80,6 +80,11 @@ export const JobIngestSchema = t.Object({
 export const JobSearchSchema = t.Object({
   vector: VectorSchema,
   k: t.Optional(t.Integer({ minimum: 1, maximum: 200 })),
+  // Page offset into the post-filter result pool. Default 0 (first page).
+  // Bounded by max candidate pool (fetchK ceiling is 300, but the filtered
+  // total is what matters; the route clamps an out-of-range offset to an
+  // empty hits array while preserving `total` for the UI page math.
+  offset: t.Optional(t.Integer({ minimum: 0, maximum: 200, default: 0 })),
   // Raw user query text. When supplied, the server runs a hybrid keyword
   // pass alongside the vector search (RRF-fused) using tokens drawn from
   // the synonym dictionary in lib/query-expansion. Omit to fall back to
