@@ -9,10 +9,25 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/omnijob/crawler/internal/embed"
 	"github.com/omnijob/crawler/internal/pipeline"
 	"github.com/omnijob/crawler/internal/sources"
+)
+
+// Batching parameters for the consumer side. Each worker drains up to
+// embedBatchSize jobs from the channel, or flushes a smaller batch after
+// embedFlushTimeout so the worker never stalls when the channel slows.
+//
+// 16 is conservative for nomic-embed-text on a B2s VM: batched throughput
+// is ~13x single-shot per published Ollama benchmarks, and a 16-batch fits
+// comfortably under the 64-cap enforced server-side. 2s flush keeps tail
+// latency low for slow-trickling sources (RemoteOK paginates one page at
+// a time) without sacrificing batching wins for the bulky ones.
+const (
+	embedBatchSize    = 16
+	embedFlushTimeout = 2 * time.Second
 )
 
 func main() {
@@ -108,45 +123,171 @@ func worker(
 	sink *pipeline.Sink,
 	stats *counters,
 ) {
-	for job := range in {
+	for {
 		if ctx.Err() != nil {
 			return
 		}
+		batch, ok := drainBatch(ctx, in, embedBatchSize, embedFlushTimeout)
+		if len(batch) == 0 {
+			if !ok {
+				return // channel closed and drained
+			}
+			continue
+		}
+		processBatch(ctx, id, batch, emb, sink, stats)
+		if !ok {
+			return
+		}
+	}
+}
 
-		text := embedText(job)
-		if text == "" {
-			log.Printf("[w%d] skip %s (no text)", id, job.ID)
+// drainBatch collects up to `max` jobs from `in` and returns them along
+// with a flag indicating whether the channel is still open. It returns
+// early once the first job arrives and either the batch is full or the
+// flush deadline elapses, so a slow channel never strands jobs in limbo.
+//
+// Returns (batch, true) while the channel is open and (batch, false)
+// after the channel has been closed and fully drained; callers use the
+// flag to terminate.
+func drainBatch(
+	ctx context.Context,
+	in <-chan pipeline.JobJSON,
+	max int,
+	flush time.Duration,
+) ([]pipeline.JobJSON, bool) {
+	batch := make([]pipeline.JobJSON, 0, max)
+	// Block until the first job (or shutdown) so an idle worker doesn't
+	// spin. After the first arrival, switch to a flush-bounded loop.
+	select {
+	case <-ctx.Done():
+		return batch, false
+	case job, ok := <-in:
+		if !ok {
+			return batch, false
+		}
+		batch = append(batch, job)
+	}
+	deadline := time.NewTimer(flush)
+	defer deadline.Stop()
+	for len(batch) < max {
+		select {
+		case <-ctx.Done():
+			return batch, false
+		case <-deadline.C:
+			return batch, true
+		case job, ok := <-in:
+			if !ok {
+				return batch, false
+			}
+			batch = append(batch, job)
+		}
+	}
+	return batch, true
+}
+
+// processBatch runs the exists-check in parallel across the batch, then
+// sends one batched embed request for the survivors, and ingests each
+// resulting job one at a time. Failure handling:
+//   - exists-check error: log and proceed to embed (preserves the "better a
+//     redundant embed than a missed job" stance from the per-job worker).
+//   - whole-batch embed failure: log once, count every survivor as failed.
+//   - per-job ingest failure after a successful batch embed: count just
+//     that job as failed.
+func processBatch(
+	ctx context.Context,
+	id int,
+	batch []pipeline.JobJSON,
+	emb *embed.Client,
+	sink *pipeline.Sink,
+	stats *counters,
+) {
+	// Phase 1: parallel exists-check + text extraction. Texts are
+	// computed up front so jobs with empty text get counted as skipped
+	// without holding an HTTP slot for the exists call.
+	type prep struct {
+		job  pipeline.JobJSON
+		text string
+		skip bool
+	}
+	preps := make([]prep, len(batch))
+	for i, j := range batch {
+		preps[i].job = j
+		preps[i].text = embedText(j)
+		if preps[i].text == "" {
+			preps[i].skip = true
+			log.Printf("[w%d] skip %s (no text)", id, j.ID)
+		}
+	}
+
+	var wg sync.WaitGroup
+	for i := range preps {
+		if preps[i].skip {
+			continue
+		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			existing, err := sink.Exists(ctx, preps[i].job.ID)
+			if err != nil {
+				// Match the per-job behavior: on exists-check error,
+				// embed anyway rather than risk losing a new job.
+				log.Printf("[w%d] exists-check %s: %v (will embed anyway)", id, preps[i].job.ID, err)
+				return
+			}
+			if existing {
+				preps[i].skip = true
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	// Count skips and collect the survivors that need embedding.
+	survivors := make([]int, 0, len(preps))
+	texts := make([]string, 0, len(preps))
+	for i := range preps {
+		if preps[i].skip {
 			stats.inc(&stats.skipped)
 			continue
 		}
+		survivors = append(survivors, i)
+		texts = append(texts, preps[i].text)
+	}
+	if len(survivors) == 0 {
+		return
+	}
 
-		// Skip jobs already in Qdrant. Saves a ~2s Ollama embed roundtrip
-		// per duplicate; on a 4h-bounded pass with mostly-repeat sources
-		// this typically triples new-job throughput. On error we fall
-		// through and try to embed - better a redundant embed than a
-		// missed new job.
-		if existing, err := sink.Exists(ctx, job.ID); err != nil {
-			log.Printf("[w%d] exists-check %s: %v (will embed anyway)", id, job.ID, err)
-		} else if existing {
-			stats.inc(&stats.skipped)
-			continue
-		}
-
-		vec, err := emb.Embed(ctx, text)
-		if err != nil {
-			log.Printf("[w%d] embed %s: %v", id, job.ID, err)
+	// Phase 2: single batched embed call.
+	vecs, err := emb.EmbedBatch(ctx, texts)
+	if err != nil {
+		log.Printf("[w%d] embed batch (n=%d): %v", id, len(survivors), err)
+		for range survivors {
 			stats.inc(&stats.failed)
-			continue
 		}
-		job.Vector = vec
+		return
+	}
+	// Defense in depth - EmbedBatch already enforces this, but a partial
+	// response slipping through would mis-pair (job, vector). Treat as a
+	// whole-batch failure.
+	if len(vecs) != len(survivors) {
+		log.Printf("[w%d] embed batch length mismatch: sent %d got %d", id, len(survivors), len(vecs))
+		for range survivors {
+			stats.inc(&stats.failed)
+		}
+		return
+	}
 
+	// Phase 3: per-job ingest. /jobs/ingest isn't batched server-side and
+	// Qdrant wasn't the bottleneck - the wins are from collapsing the N
+	// embed roundtrips into one.
+	for vi, pi := range survivors {
+		job := preps[pi].job
+		job.Vector = vecs[vi]
 		if err := sink.Ingest(ctx, job); err != nil {
 			log.Printf("[w%d] ingest %s: %v", id, job.ID, err)
 			stats.inc(&stats.failed)
 			continue
 		}
-
-		log.Printf("[w%d] ✓ %s - %s @ %s", id, job.ID, job.Metadata.Title, job.Metadata.Company)
+		log.Printf("[w%d] ok %s - %s @ %s", id, job.ID, job.Metadata.Title, job.Metadata.Company)
 		stats.inc(&stats.ingested)
 	}
 }

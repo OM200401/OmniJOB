@@ -41,13 +41,13 @@ func NewClient(apiURL string) *Client {
 	}
 }
 
-type embedRequest struct {
-	Text string `json:"text"`
+type embedBatchRequest struct {
+	Texts []string `json:"texts"`
 }
 
-type embedResponse struct {
-	Vector []float32 `json:"vector"`
-	Dim    int       `json:"dim"`
+type embedBatchResponse struct {
+	Vectors [][]float32 `json:"vectors"`
+	Dim     int         `json:"dim"`
 }
 
 // retryKind classifies a failed attempt so the loop can pick the right
@@ -65,18 +65,50 @@ const (
 // are retried with backoff; non-retryable failures (other 4xx) and final
 // errors are returned to the caller so it can log+skip the job. If the
 // parent context is cancelled mid-backoff, ctx.Err() is returned.
+//
+// Implemented as a thin wrapper around EmbedBatch so the single-text and
+// batch paths share retry/backoff/timeout policy and stay in sync.
 func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
-	t := truncate(text, maxChars)
-	body, err := json.Marshal(embedRequest{Text: t})
+	vecs, err := c.EmbedBatch(ctx, []string{text})
+	if err != nil {
+		return nil, err
+	}
+	if len(vecs) != 1 {
+		return nil, fmt.Errorf("embed: expected 1 vector, got %d", len(vecs))
+	}
+	return vecs[0], nil
+}
+
+// EmbedBatch sends a slice of texts to /embed in a single request and
+// returns one vector per input, in the same order. Each text is truncated
+// to maxChars individually. Retry/backoff policy is identical to Embed:
+// 429 and 5xx are retried with bounded backoff, other errors fail fast,
+// and ctx cancellation is honored during backoff sleeps.
+//
+// Returns an error if the server returns a different number of vectors
+// than texts sent; partial batches are treated as a whole-batch failure so
+// the caller never sees a mis-aligned (text, vector) pair.
+func (c *Client) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	if len(texts) == 0 {
+		return nil, nil
+	}
+	trunc := make([]string, len(texts))
+	for i, t := range texts {
+		trunc[i] = truncate(t, maxChars)
+	}
+	body, err := json.Marshal(embedBatchRequest{Texts: trunc})
 	if err != nil {
 		return nil, err
 	}
 
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		vec, kind, after, err := c.embedOnce(ctx, body)
+		vecs, kind, after, err := c.embedBatchOnce(ctx, body)
 		if err == nil {
-			return vec, nil
+			if len(vecs) != len(texts) {
+				return nil, fmt.Errorf("embed batch: sent %d texts, got %d vectors", len(texts), len(vecs))
+			}
+			return vecs, nil
 		}
 		lastErr = err
 		if kind == retryNone || attempt == maxRetries {
@@ -90,10 +122,10 @@ func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
 	return nil, lastErr
 }
 
-// embedOnce performs a single POST to /embed. On a transient failure it
-// returns the kind of retry the caller should perform and, for 429s, the
-// server-suggested delay parsed from Retry-After.
-func (c *Client) embedOnce(ctx context.Context, body []byte) ([]float32, retryKind, time.Duration, error) {
+// embedBatchOnce performs a single POST to /embed with a batch payload.
+// On transient failure it returns the kind of retry the caller should
+// perform and, for 429s, the server-suggested delay parsed from Retry-After.
+func (c *Client) embedBatchOnce(ctx context.Context, body []byte) ([][]float32, retryKind, time.Duration, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.APIURL+"/embed", bytes.NewReader(body))
 	if err != nil {
 		return nil, retryNone, 0, err
@@ -124,11 +156,11 @@ func (c *Client) embedOnce(ctx context.Context, body []byte) ([]float32, retryKi
 			return nil, retryNone, 0, err
 		}
 	}
-	var out embedResponse
+	var out embedBatchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, retryNone, 0, err
 	}
-	return out.Vector, retryNone, 0, nil
+	return out.Vectors, retryNone, 0, nil
 }
 
 // nextDelay picks the sleep duration before the next attempt. For 429s we
