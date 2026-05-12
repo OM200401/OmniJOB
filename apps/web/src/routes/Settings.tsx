@@ -196,7 +196,10 @@ function SkillGapCard() {
         k: 50,
         max_age_days: 45,
       });
-      const yourSkills = extractSkills(session.profile.resumeText);
+      // Resume extraction uses the user's onboarded industry preference so
+      // a nurse's resume gets parsed against the healthcare lexicon, not tech.
+      const userIndustry = session.profile.preferences.industry ?? undefined;
+      const yourSkills = extractSkills(session.profile.resumeText, userIndustry);
       const yourSkillNames = new Set(yourSkills.map((s) => s.name));
 
       const gapCounts = new Map<string, GapRow>();
@@ -204,7 +207,11 @@ function SkillGapCard() {
 
       for (const h of hits as JobHit[]) {
         const text = [h.payload.title, h.payload.description ?? ""].join("\n");
-        const jobSkills = extractSkills(text);
+        // Use the job's classified industry so skill extraction runs against
+        // the right lexicon. Falls back to the user's preference industry
+        // (set during onboarding) when the job's tag is missing.
+        const jobIndustry = h.payload.industry ?? session.profile.preferences.industry ?? undefined;
+        const jobSkills = extractSkills(text, jobIndustry);
         for (const s of jobSkills) {
           if (yourSkillNames.has(s.name)) {
             const cur = confirmedCounts.get(s.name);

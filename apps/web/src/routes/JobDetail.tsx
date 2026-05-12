@@ -247,6 +247,7 @@ export function JobDetail() {
             <SkillsPanel
               jobText={[meta.title, meta.description ?? ""].join("\n")}
               resumeText={resumeText ?? ""}
+              industry={meta.industry}
             />
 
             {(explaining || pairs) && (
@@ -582,12 +583,23 @@ function QualityPanel({
   );
 }
 
-function SkillsPanel({ jobText, resumeText }: { jobText: string; resumeText: string }) {
+function SkillsPanel({
+  jobText,
+  resumeText,
+  industry,
+}: {
+  jobText: string;
+  resumeText: string;
+  industry?: import("../lib/api").Industry;
+}) {
   const { matched, missing } = useMemo(() => {
-    const job = extractSkills(jobText);
-    const resume = extractSkills(resumeText);
+    // Use the job's industry to pick the right skill lexicon. A healthcare
+    // posting compares against the healthcare lexicon (RN License, IV
+    // Therapy, Epic, ...) rather than the tech default (Python, React, ...).
+    const job = extractSkills(jobText, industry);
+    const resume = extractSkills(resumeText, industry);
     return diffSkills(resume, job);
-  }, [jobText, resumeText]);
+  }, [jobText, resumeText, industry]);
 
   if (matched.length === 0 && missing.length === 0) return null;
 

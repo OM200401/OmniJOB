@@ -6,6 +6,21 @@
 //
 // Names are the canonical display form. Aliases are alternate spellings or
 // abbreviations that map back to the canonical name.
+//
+// Phase 1C: split into per-industry banks. The `SKILLS` array below stays
+// as the tech bank (the original lexicon). Non-tech banks live in
+// apps/web/src/lib/skills/*.ts and are routed through extractSkills via
+// the inferred industry. SkillCategory grew to cover non-tech domains
+// (certification, clinical, regulatory, specialty, operations, soft) -
+// adding values is backwards-compatible since the UI doesn't gate render
+// on the category.
+import type { Industry } from "./crypto/vault";
+import { HEALTHCARE_SKILLS } from "./skills/healthcare";
+import { RETAIL_SKILLS } from "./skills/retail";
+import { TRADES_SKILLS } from "./skills/trades";
+import { GOVERNMENT_SKILLS } from "./skills/government";
+import { FOOD_SERVICE_SKILLS } from "./skills/food_service";
+
 export type SkillEntry = {
   name: string;
   aliases?: string[];
@@ -22,7 +37,15 @@ export type SkillCategory =
   | "ml-ai"
   | "data"
   | "tooling"
-  | "concept";
+  | "concept"
+  // Non-tech categories introduced in Phase 1C. Used by the per-industry
+  // banks for healthcare / retail / trades / government / food_service.
+  | "certification"
+  | "clinical"
+  | "regulatory"
+  | "specialty"
+  | "operations"
+  | "soft";
 
 export const SKILLS: SkillEntry[] = [
   // Languages
@@ -250,7 +273,35 @@ function compile(entry: SkillEntry): CompiledEntry {
   return { ...entry, regex };
 }
 
-const COMPILED: CompiledEntry[] = SKILLS.map(compile);
+const COMPILED_TECH: CompiledEntry[] = SKILLS.map(compile);
+
+// Per-industry lexicon registry. Each entry compiles its bank lazily on the
+// first extractSkills call for that industry. Tech is the default fallback
+// when no industry hint is provided.
+const LEXICONS: Partial<Record<Industry, SkillEntry[]>> = {
+  tech: SKILLS,
+  healthcare: HEALTHCARE_SKILLS,
+  retail: RETAIL_SKILLS,
+  food_service: FOOD_SERVICE_SKILLS,
+  trades: TRADES_SKILLS,
+  government: GOVERNMENT_SKILLS,
+};
+
+// Compiled cache. Lazily populated so the regex compilation cost is only
+// paid for industries actually consulted at runtime.
+const COMPILED_CACHE: Partial<Record<Industry, CompiledEntry[]>> = {
+  tech: COMPILED_TECH,
+};
+
+function compiledFor(industry: Industry): CompiledEntry[] {
+  const cached = COMPILED_CACHE[industry];
+  if (cached) return cached;
+  const bank = LEXICONS[industry];
+  if (!bank) return COMPILED_TECH; // Fallback to tech when no bank exists.
+  const compiled = bank.map(compile);
+  COMPILED_CACHE[industry] = compiled;
+  return compiled;
+}
 
 export type ExtractedSkill = {
   name: string;
@@ -258,12 +309,16 @@ export type ExtractedSkill = {
 };
 
 // Returns canonical skill names found in `text`, in original order, deduped.
-// Pure function - safe to memoize on the caller side.
-export function extractSkills(text: string): ExtractedSkill[] {
+// `industry` (when known) selects the per-industry lexicon - for a "Registered
+// Nurse" job the healthcare bank is used instead of the tech bank, so the
+// SkillsPanel finds the relevant matches. Omitting `industry` defaults to
+// the tech lexicon (back-compat with existing callers).
+export function extractSkills(text: string, industry?: Industry): ExtractedSkill[] {
   if (!text) return [];
+  const compiled = industry ? compiledFor(industry) : COMPILED_TECH;
   const seen = new Set<string>();
   const out: ExtractedSkill[] = [];
-  for (const entry of COMPILED) {
+  for (const entry of compiled) {
     if (seen.has(entry.name)) continue;
     if (entry.regex.test(text)) {
       seen.add(entry.name);
