@@ -144,7 +144,7 @@ export function JobDetail() {
 
   const onApplyClick = () => {
     markApplied();
-    window.open(meta?.source_url, "_blank", "noreferrer");
+    window.open(meta?.source_url, "_blank", "noopener,noreferrer");
   };
 
   const [resumeCopied, setResumeCopied] = useState(false);

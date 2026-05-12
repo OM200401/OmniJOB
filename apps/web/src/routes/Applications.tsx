@@ -260,7 +260,7 @@ function ApplicationRow({
             <a
               href={meta.source_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="btn btn-secondary btn-sm"
             >
               <ExternalLink size={12} />

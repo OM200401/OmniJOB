@@ -93,7 +93,7 @@ export function Saved() {
                   <a
                     href={it.meta.source_url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="btn btn-secondary btn-sm"
                     onClick={(e) => e.stopPropagation()}
                   >

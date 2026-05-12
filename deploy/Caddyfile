@@ -7,8 +7,6 @@
 # Access-Control-Allow-Origin which broke as soon as a second origin
 # (omnijob.tech vs www.omnijob.tech) needed to call the API. Single
 # source of truth in the API; Caddy just reverse-proxies.
-#
-# Replace omnijob.tech with your domain.
 
 {
     email om@omnijob.tech
@@ -19,10 +17,33 @@
 api.omnijob.tech {
     encode zstd gzip
 
+    # Defence-in-depth headers. The API serves JSON, not HTML, so most of
+    # these headers are moot for the browser - but they're cheap, and
+    # consistent posture across api + web reduces the surface for misconfig.
     header {
+        # HSTS: TLS-only for 2 years on this hostname + subdomains, preloaded.
         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        # MIME-type sniffing off - sniffing-induced XSS pivots on misclassified
+        # JSON responses don't apply to us, but defence-in-depth is free.
         X-Content-Type-Options "nosniff"
+        # Don't leak the requesting path in cross-origin referrers.
         Referrer-Policy "strict-origin-when-cross-origin"
+        # The API never legitimately renders inside an iframe. Block framing
+        # entirely so a clickjacking page can't embed an authenticated
+        # response.
+        X-Frame-Options "DENY"
+        # CSP for an API: lock down everything since the response is JSON.
+        # frame-ancestors duplicates X-Frame-Options for modern browsers
+        # that prefer CSP.
+        Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        # Cross-origin isolation: API never serves resources to other
+        # origins via <img>/<script> tags, so same-origin is correct.
+        Cross-Origin-Resource-Policy "same-origin"
+        # Camera/mic/geo permissions denied - the API doesn't request them
+        # but the header is a free signal to user agents.
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        # Don't advertise Caddy version in Server header.
+        -Server
     }
 
     reverse_proxy 127.0.0.1:3000 {
