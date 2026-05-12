@@ -19,6 +19,12 @@ type JobMetadata struct {
 	SalaryPeriod    string `json:"salary_period,omitempty"`   // annual | monthly | hourly | weekly | daily
 	RemoteStatus    string `json:"remote_status,omitempty"`
 	ExperienceLevel string `json:"experience_level,omitempty"`
+	// Industry / JobFamily are server-classified at ingest if absent, but
+	// adapters MAY pre-fill them when the source carries the signal
+	// natively (USAJobs always = government; hospital-network Workday tenants
+	// = healthcare). Pre-filling skips one classifier pass per job.
+	Industry        string `json:"industry,omitempty"`
+	JobFamily       string `json:"job_family,omitempty"`
 	Source          string `json:"source,omitempty"`
 	SourceURL       string `json:"source_url"`
 	ScrapedAt       int64  `json:"scraped_at"`
