@@ -46,6 +46,16 @@ api.omnijob.tech {
         -Server
     }
 
+    # Block external access to the write-side ingest endpoint. The crawler
+    # talks to the API directly on 127.0.0.1:3000 (bypassing Caddy), so
+    # denying external traffic here doesn't affect legitimate ingest. It
+    # closes off an unauthenticated POST that would otherwise let any
+    # caller insert arbitrary jobs into the index.
+    @ingest path /jobs/ingest
+    handle @ingest {
+        respond "Not Found" 404
+    }
+
     reverse_proxy 127.0.0.1:3000 {
         health_uri /health
         health_interval 30s
