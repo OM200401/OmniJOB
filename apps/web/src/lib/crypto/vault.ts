@@ -112,6 +112,7 @@ export type SavedSearch = {
 export type SavedSearchFilters = {
   levels?: string[];
   remotes?: string[];
+  industries?: string[];
   sources?: string[];
   countries?: string[];
   location?: string;

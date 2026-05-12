@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Database, FileText, Lock, LogOut, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { api, type Health, type JobHit } from "../lib/api";
+import { api, INDUSTRY_OPTIONS, type Health, type JobHit } from "../lib/api";
 import { extractSkills, type ExtractedSkill } from "../lib/skills";
 import { Button } from "../components/Button";
 import { Alert } from "../components/Alert";
@@ -21,6 +21,9 @@ const REMOTE_LABEL: Record<string, string> = {
   hybrid: "Hybrid",
   onsite: "Onsite",
 };
+const INDUSTRY_LABEL: Record<string, string> = Object.fromEntries(
+  INDUSTRY_OPTIONS.map((o) => [o.value, o.label]),
+);
 const AREA_LABEL: Record<string, string> = {
   engineering: "Software engineering",
   "ml-ai": "ML / AI",
@@ -124,6 +127,7 @@ export function Settings() {
           </div>
           <div className="section col gap-sm">
             <Row k="Goal" v={prefs.lookingFor || <em className="muted-2">not set</em>} />
+            <Row k="Industry" v={prefs.industry ? INDUSTRY_LABEL[prefs.industry] : <em className="muted-2">not set</em>} />
             <Row k="Level" v={prefs.level ? LEVEL_LABEL[prefs.level] : <em className="muted-2">not set</em>} />
             <Row k="Areas" v={
               prefs.areas.length > 0 ? (

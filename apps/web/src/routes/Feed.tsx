@@ -385,6 +385,7 @@ export function Feed() {
             ...(ss.query ? { query: ss.query } : {}),
             ...(ss.filters.remotes?.length ? { remote_status: ss.filters.remotes as RemoteStatus[] } : {}),
             ...(ss.filters.levels?.length ? { experience_level: ss.filters.levels as ExperienceLevel[] } : {}),
+            ...(ss.filters.industries?.length ? { industry: ss.filters.industries as Industry[] } : {}),
             ...(ss.filters.sources?.length ? { source: ss.filters.sources as SourceName[] } : {}),
             ...(ss.filters.countries?.length ? { country: ss.filters.countries } : {}),
             ...(ss.filters.location ? { location: ss.filters.location } : {}),
@@ -432,6 +433,7 @@ export function Feed() {
     () => ({
       ...(levels.length ? { levels } : {}),
       ...(remotes.length ? { remotes } : {}),
+      ...(industries.length ? { industries } : {}),
       ...(sources.length ? { sources } : {}),
       ...(countries.length ? { countries } : {}),
       ...(debouncedLocation ? { location: debouncedLocation } : {}),
@@ -439,7 +441,7 @@ export function Feed() {
       ...(salaryMin !== null ? { salaryMin } : {}),
       ...(requireSalary ? { requireSalary } : {}),
     }),
-    [levels, remotes, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary],
+    [levels, remotes, industries, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary],
   );
 
   const hasSavableState =
@@ -473,6 +475,7 @@ export function Feed() {
     setQuery(ss.query);
     setLevels((ss.filters.levels ?? []) as ExperienceLevel[]);
     setRemotes((ss.filters.remotes ?? []) as RemoteStatus[]);
+    setIndustries((ss.filters.industries ?? []) as Industry[]);
     setSources((ss.filters.sources ?? []) as SourceName[]);
     setCountries(ss.filters.countries ?? []);
     setLocationFilter(ss.filters.location ?? "");
