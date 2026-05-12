@@ -65,6 +65,27 @@ export type ExperienceLevel =
   | "staff"
   | "principal";
 
+// Mirror of the api-side Industry union. Kept in this file because the
+// profile blob is the source of truth for what the user opted into during
+// onboarding, and crypto/vault.ts already carries the rest of the profile
+// schema. If the api adds a new industry literal, mirror it here.
+export type Industry =
+  | "tech"
+  | "healthcare"
+  | "retail"
+  | "food_service"
+  | "trades"
+  | "government"
+  | "education"
+  | "finance"
+  | "manufacturing"
+  | "logistics"
+  | "legal"
+  | "nonprofit"
+  | "media"
+  | "science"
+  | "other";
+
 export type RoleArea =
   | "engineering"
   | "ml-ai"
@@ -101,6 +122,10 @@ export type SavedSearchFilters = {
 
 export type Preferences = {
   lookingFor: string;
+  // Phase 1C: industry is the strongest filter signal we have on a user's
+  // intent. Optional so the existing 1A-tech-only profiles migrate cleanly
+  // (the migration runs at every login - see migrateProfile below).
+  industry: Industry | null;
   level: ExperienceLevel | null;
   areas: RoleArea[];
   remotePref: RemotePref;
@@ -110,6 +135,7 @@ export type Preferences = {
 
 export const DEFAULT_PREFS: Preferences = {
   lookingFor: "",
+  industry: null,
   level: null,
   areas: [],
   remotePref: "any",

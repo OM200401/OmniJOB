@@ -6,15 +6,16 @@ export function Landing() {
     <div className="container-marketing">
       <section className="landing-hero">
         <span className="landing-eyebrow">
-          <span className="dot" /> Live · {ATS_FACTS.companies}+ company boards indexed
+          <span className="dot" /> Live · across every industry, ranked to you
         </span>
         <h1>
           Every job.<br />
           <em>One search.</em>
         </h1>
         <p className="lede">
-          Stop tab-hopping between Greenhouse, Lever, Ashby, Workday and 10 more
-          boards. OmniJob pulls live postings from every source into a single
+          Stop tab-hopping between dozens of job boards and company career
+          pages. OmniJob pulls live postings from every source - tech,
+          healthcare, retail, trades, government, and more - into one
           search ranked to you.
         </p>
         <div className="landing-actions">
@@ -25,7 +26,10 @@ export function Landing() {
       </section>
 
       {/* Live-ish product preview - non-interactive but the same components
-          the real feed uses, so the landing reads as the product itself. */}
+          the real feed uses, so the landing reads as the product itself.
+          Phase 1C: examples rotate across industries (tech / healthcare /
+          trades) to reinforce the "every job" message instead of signalling
+          "this is for software engineers". */}
       <div className="preview-card">
         <div className="preview-chrome">
           <span className="dot" /> <span className="dot" /> <span className="dot" />
@@ -36,7 +40,7 @@ export function Landing() {
             <div className="search-wrap" style={{ maxWidth: "100%", flex: 1 }}>
               <Search size={15} className="search-icon" />
               <span style={{ flex: 1, padding: "0 8px", color: "var(--fg-2)" }}>
-                ml platform engineer · python · kubernetes
+                find roles across every industry
               </span>
               <kbd className="kbd">/</kbd>
             </div>
@@ -44,12 +48,12 @@ export function Landing() {
 
           <div className="job-list">
             <PreviewRow
-              company="Anthropic"
-              title="Senior Software Engineer, Inference Platform"
-              location="San Francisco · Remote"
+              company="Mayo Clinic"
+              title="Registered Nurse, ICU"
+              location="Rochester, MN · Onsite"
               level="Senior"
-              age="2d"
-              score={92}
+              age="4h"
+              score={94}
               highlight
             />
             <PreviewRow
@@ -62,10 +66,10 @@ export function Landing() {
               highlight
             />
             <PreviewRow
-              company="Vercel"
-              title="Software Engineer, Edge Runtime"
-              location="Remote"
-              level="Mid"
+              company="IBEW Local 3"
+              title="Journeyman Electrician"
+              location="New York, NY · Onsite"
+              level="Senior"
               age="1d"
               score={81}
             />
@@ -76,10 +80,6 @@ export function Landing() {
     </div>
   );
 }
-
-const ATS_FACTS = {
-  companies: "40",
-};
 
 function PreviewRow({
   company,

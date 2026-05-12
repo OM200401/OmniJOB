@@ -13,6 +13,43 @@ export type ExperienceLevel =
   | "manager"
   | "director"
   | "executive";
+export type Industry =
+  | "tech"
+  | "healthcare"
+  | "retail"
+  | "food_service"
+  | "trades"
+  | "government"
+  | "education"
+  | "finance"
+  | "manufacturing"
+  | "logistics"
+  | "legal"
+  | "nonprofit"
+  | "media"
+  | "science"
+  | "other";
+
+// Display labels + ordering for the industry filter UI. Kept in sync with
+// the api-side Industry literal union (apps/api/src/lib/industry.ts).
+export const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = [
+  { value: "tech", label: "Tech / Software" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "retail", label: "Retail" },
+  { value: "food_service", label: "Food service" },
+  { value: "trades", label: "Trades" },
+  { value: "government", label: "Government" },
+  { value: "education", label: "Education" },
+  { value: "finance", label: "Finance" },
+  { value: "manufacturing", label: "Manufacturing" },
+  { value: "logistics", label: "Logistics" },
+  { value: "legal", label: "Legal" },
+  { value: "nonprofit", label: "Nonprofit" },
+  { value: "media", label: "Media" },
+  { value: "science", label: "Science" },
+  { value: "other", label: "Other" },
+];
+
 export type SourceName =
   | "greenhouse"
   | "lever"
@@ -42,6 +79,8 @@ export type JobMetadata = {
   salary_period?: SalaryPeriod;
   remote_status?: RemoteStatus;
   experience_level?: ExperienceLevel;
+  industry?: Industry;
+  job_family?: string;
   source?: string;
   source_url: string;
   scraped_at: number;
@@ -89,6 +128,8 @@ export type SearchOpts = {
   query?: string;
   remote_status?: RemoteStatus[];
   experience_level?: ExperienceLevel[];
+  industry?: Industry[];
+  job_family?: string[];
   source?: SourceName[];
   country?: string[]; // ISO-2 codes
   location?: string;  // free-text city/region match
@@ -204,6 +245,8 @@ export const api = {
       ...(opts.query ? { query: opts.query } : {}),
       ...(opts.remote_status?.length ? { remote_status: opts.remote_status } : {}),
       ...(opts.experience_level?.length ? { experience_level: opts.experience_level } : {}),
+      ...(opts.industry?.length ? { industry: opts.industry } : {}),
+      ...(opts.job_family?.length ? { job_family: opts.job_family } : {}),
       ...(opts.source?.length ? { source: opts.source } : {}),
       ...(opts.country?.length ? { country: opts.country } : {}),
       ...(opts.location ? { location: opts.location } : {}),

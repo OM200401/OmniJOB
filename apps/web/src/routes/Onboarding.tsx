@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
+import { INDUSTRY_OPTIONS } from "../lib/api";
 import { extractPdfText } from "../lib/pdf";
 import {
   type ExperienceLevel,
+  type Industry,
   type Preferences,
   type RemotePref,
   type RoleArea,
@@ -20,7 +22,7 @@ import {
 import { Button } from "../components/Button";
 import { Alert } from "../components/Alert";
 
-const STEPS = ["goal", "level", "areas", "resume"] as const;
+const STEPS = ["industry", "goal", "level", "areas", "resume"] as const;
 type Step = (typeof STEPS)[number];
 
 const LEVELS: { value: ExperienceLevel; label: string; hint: string }[] = [
@@ -58,6 +60,7 @@ export function Onboarding() {
   const initialPrefs = session?.profile.preferences;
   const [step, setStep] = useState<Step>(STEPS[0]);
 
+  const [industry, setIndustry] = useState<Industry | null>(initialPrefs?.industry ?? null);
   const [lookingFor, setLookingFor] = useState(initialPrefs?.lookingFor ?? "");
   const [level, setLevel] = useState<ExperienceLevel | null>(initialPrefs?.level ?? null);
   const [areas, setAreas] = useState<RoleArea[]>(initialPrefs?.areas ?? []);
@@ -78,6 +81,8 @@ export function Onboarding() {
   const stepIdx = STEPS.indexOf(step);
   const canNext = (() => {
     switch (step) {
+      case "industry":
+        return industry !== null;
       case "goal":
         return lookingFor.trim().length >= 8;
       case "level":
@@ -135,6 +140,7 @@ export function Onboarding() {
       const { vector } = await api.embed(queryText);
       const prefs: Preferences = {
         ...session.profile.preferences,
+        industry,
         lookingFor: lookingFor.trim(),
         level,
         areas,
@@ -163,6 +169,35 @@ export function Onboarding() {
       <Stepper step={stepIdx} total={STEPS.length} />
 
       <div className="card section">
+        {step === "industry" && (
+          <div className="col gap-md">
+            <div>
+              <h2>What industry?</h2>
+              <p className="muted text-sm">
+                We use this to tune ranking, surface the right filters, and
+                show roles that fit your domain. You can change this later
+                in Settings.
+              </p>
+            </div>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              {INDUSTRY_OPTIONS.map((opt) => {
+                const selected = industry === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`pill-toggle ${selected ? "selected" : ""}`}
+                    onClick={() => setIndustry(opt.value)}
+                  >
+                    {selected && <Check size={12} style={{ marginRight: 4 }} />}
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {step === "goal" && (
           <div className="col gap-md">
             <div>

@@ -161,7 +161,6 @@ export const SKILLS: SkillEntry[] = [
   { name: "LangChain",        aliases: [],                                   category: "ml-ai" },
   { name: "LlamaIndex",       aliases: ["llama-index"],                      category: "ml-ai" },
   { name: "OpenAI",           aliases: [],                                   category: "ml-ai" },
-  { name: "Anthropic",        aliases: [],                                   category: "ml-ai" },
   { name: "RAG",              aliases: ["retrieval-augmented generation"],   category: "ml-ai" },
   { name: "LLM",              aliases: ["large language model"],             category: "ml-ai" },
   { name: "Fine-tuning",      aliases: ["finetuning"],                       category: "ml-ai" },

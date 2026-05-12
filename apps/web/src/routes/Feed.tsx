@@ -4,7 +4,9 @@ import { Bell, BookmarkPlus, Search, SlidersHorizontal, Sparkles, X } from "luci
 import { useAuth } from "../lib/auth";
 import {
   api,
+  INDUSTRY_OPTIONS,
   type ExperienceLevel,
+  type Industry,
   type JobHit,
   type RemoteStatus,
   type SourceName,
@@ -33,6 +35,15 @@ const LEVELS: { value: ExperienceLevel; label: string }[] = [
   { value: "principal", label: "Principal" },
 ];
 
+// Off-IC ladder, surfaced as its own filter group. Pre-1C these existed in
+// the schema (apps/api/src/schemas/job.ts Level) but were excluded from the
+// UI - a director job could be ingested but no filter could reach it.
+const LEVELS_MANAGEMENT: { value: ExperienceLevel; label: string }[] = [
+  { value: "manager", label: "Manager" },
+  { value: "director", label: "Director" },
+  { value: "executive", label: "Executive / VP" },
+];
+
 const SOURCES: { value: SourceName; label: string }[] = [
   { value: "greenhouse", label: "Greenhouse" },
   { value: "lever", label: "Lever" },
@@ -52,6 +63,9 @@ const EXP_VALUES = new Set<ExperienceLevel>([
   "senior",
   "staff",
   "principal",
+  "manager",
+  "director",
+  "executive",
 ]);
 const REMOTE_VALUES = new Set<RemoteStatus>(["remote", "hybrid", "onsite"]);
 const SOURCE_VALUES = new Set<SourceName>([
@@ -62,6 +76,7 @@ const SOURCE_VALUES = new Set<SourceName>([
   "workable",
   "recruitee",
 ]);
+const INDUSTRY_VALUES = new Set<Industry>(INDUSTRY_OPTIONS.map((o) => o.value));
 
 function parseCsv<T extends string>(
   raw: string | null,
@@ -111,6 +126,15 @@ export function Feed() {
   const initialLocation = initialParamsRef.current.get("loc") ?? "";
   const initialCompany = initialParamsRef.current.get("co") ?? "";
   const initialSources = parseCsv(initialParamsRef.current.get("source"), SOURCE_VALUES);
+  const initialIndustries: Industry[] = (() => {
+    const fromUrl = parseCsv(initialParamsRef.current.get("ind"), INDUSTRY_VALUES);
+    if (fromUrl.length > 0) return fromUrl;
+    // Seed from preferences (set during onboarding). Empty array = no
+    // industry filter applied; the user is browsing across industries.
+    return session?.profile.preferences.industry
+      ? [session.profile.preferences.industry as Industry]
+      : [];
+  })();
   const initialCountries = (() => {
     const raw = initialParamsRef.current.get("country");
     if (!raw) return [];
@@ -134,6 +158,7 @@ export function Feed() {
   const [levels, setLevels] = useState<ExperienceLevel[]>(initialLevels);
   const [remotes, setRemotes] = useState<RemoteStatus[]>(initialRemotes);
   const [sources, setSources] = useState<SourceName[]>(initialSources);
+  const [industries, setIndustries] = useState<Industry[]>(initialIndustries);
   const [countries, setCountries] = useState<string[]>(initialCountries);
   const [salaryMin, setSalaryMin] = useState<number | null>(initialSalaryMin); // USD-annual floor
   const [requireSalary, setRequireSalary] = useState(initialRequireSalary);
@@ -247,6 +272,7 @@ export function Feed() {
         ...(debouncedQuery ? { query: debouncedQuery } : {}),
         ...(remotes.length > 0 && remotes.length < 3 ? { remote_status: remotes } : {}),
         ...(levels.length > 0 ? { experience_level: levels } : {}),
+        ...(industries.length > 0 ? { industry: industries } : {}),
         ...(sources.length > 0 && sources.length < SOURCES.length ? { source: sources } : {}),
         ...(countries.length > 0 ? { country: countries } : {}),
         ...(debouncedLocation ? { location: debouncedLocation } : {}),
@@ -262,7 +288,7 @@ export function Feed() {
     } finally {
       setBusy(false);
     }
-  }, [noVault, skill, debouncedQuery, remotes, levels, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale, page]);
+  }, [noVault, skill, debouncedQuery, remotes, levels, industries, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale, page]);
 
   useEffect(() => {
     void search();
@@ -289,6 +315,7 @@ export function Feed() {
     debouncedCompany,
     levels,
     remotes,
+    industries,
     sources,
     countries,
     salaryMin,
@@ -308,6 +335,7 @@ export function Feed() {
     if (page > 1) next.set("page", String(page));
     if (levels.length > 0) next.set("exp", levels.join(","));
     if (remotes.length > 0) next.set("remote", remotes.join(","));
+    if (industries.length > 0) next.set("ind", industries.join(","));
     if (countries.length > 0) next.set("country", countries.join(","));
     if (sources.length > 0) next.set("source", sources.join(","));
     if (debouncedLocation) next.set("loc", debouncedLocation);
@@ -322,6 +350,7 @@ export function Feed() {
     page,
     levels,
     remotes,
+    industries,
     countries,
     sources,
     debouncedLocation,
@@ -527,6 +556,7 @@ export function Feed() {
     (debouncedLocation ? 1 : 0) +
     levels.length +
     remotes.length +
+    industries.length +
     sources.length +
     countries.length +
     (salaryMin !== null ? 1 : 0) +
@@ -539,6 +569,7 @@ export function Feed() {
     setLocationFilter("");
     setLevels([]);
     setRemotes([]);
+    setIndustries([]);
     setSources([]);
     setSalaryMin(null);
     setRequireSalary(false);
@@ -721,8 +752,38 @@ export function Feed() {
             </FilterSection>
           )}
 
+          <FilterSection title="Industry">
+            {INDUSTRY_OPTIONS.map((i) => (
+              <FilterCheck
+                key={i.value}
+                label={i.label}
+                checked={industries.includes(i.value)}
+                onChange={() =>
+                  setIndustries((cur) =>
+                    cur.includes(i.value) ? cur.filter((x) => x !== i.value) : [...cur, i.value],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
           <FilterSection title="Experience">
             {LEVELS.map((l) => (
+              <FilterCheck
+                key={l.value}
+                label={l.label}
+                checked={levels.includes(l.value)}
+                onChange={() =>
+                  setLevels((cur) =>
+                    cur.includes(l.value) ? cur.filter((x) => x !== l.value) : [...cur, l.value],
+                  )
+                }
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Management">
+            {LEVELS_MANAGEMENT.map((l) => (
               <FilterCheck
                 key={l.value}
                 label={l.label}
