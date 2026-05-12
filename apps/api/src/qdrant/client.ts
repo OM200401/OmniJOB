@@ -107,10 +107,15 @@ export async function upsertJob(
     metadata.industry && metadata.job_family
       ? { industry: metadata.industry, jobFamily: metadata.job_family }
       : classifyIndustry(metadata.title, metadata.description);
+  const industry = metadata.industry ?? inferred.industry;
+  // Seniority is now industry-aware and may return null when no pattern matches
+  // any bank. Omit the field rather than storing null so existing filters that
+  // gate on `experience_level` continue to behave as "unknown is hidden".
+  const inferredLevel = metadata.experience_level ?? classifyTitle(metadata.title, industry);
   const payload: StoredJobPayload = {
     ...metadata,
-    experience_level: metadata.experience_level ?? classifyTitle(metadata.title),
-    industry: metadata.industry ?? inferred.industry,
+    ...(inferredLevel ? { experience_level: inferredLevel } : {}),
+    industry,
     ...(metadata.job_family
       ? { job_family: metadata.job_family }
       : inferred.jobFamily
@@ -402,7 +407,7 @@ export async function searchJobs(
   // UI can compute `Math.ceil(total / k)` pages correctly. Building the page
   // payload (quality breakdown etc.) only for the sliced window keeps the
   // per-request cost roughly equal to the pre-pagination implementation.
-  const filtered: Array<{ p: typeof res[number]; level: Level; country: string | undefined; payload: StoredJobPayload }> = [];
+  const filtered: Array<{ p: typeof res[number]; level: Level | null; country: string | undefined; payload: StoredJobPayload }> = [];
   for (const p of res) {
     const payload = p.payload as StoredJobPayload;
     // Re-classify on read. The stored payload was written by whatever
@@ -410,10 +415,16 @@ export async function searchJobs(
     // pre-dates the location/seniority audit fixes (e.g. it tagged
     // "San Francisco, CA" as country=CA / Canada). Trust the live classifier;
     // fall back to stored country only when the classifier can't resolve it.
-    const level: Level = classifyTitle(payload.title);
+    // The seniority classifier is industry-aware now - pass the stored
+    // industry so e.g. "Charge Nurse" doesn't fall through tech rules.
+    const level: Level | null = classifyTitle(payload.title, payload.industry);
     const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
 
-    if (wantLevels.size > 0 && !wantLevels.has(level)) continue;
+    // Unknown level (null) is treated as "doesn't match" when a level filter
+    // is in effect. This is deliberate: the level filter expresses
+    // "show me roles we've confidently ranked at this seniority"; unranked
+    // titles shouldn't sneak through.
+    if (wantLevels.size > 0 && (level === null || !wantLevels.has(level))) continue;
     if (wantCountries.size > 0 && (!country || !wantCountries.has(country))) continue;
     if (wantLocation && !payload.location.toLowerCase().includes(wantLocation)) continue;
     if (wantCompany && !payload.company.toLowerCase().includes(wantCompany)) continue;
@@ -457,7 +468,7 @@ export async function searchJobs(
   const out: JobHit[] = window.map(({ p, level, country, payload }) => {
     const enriched: JobMetadata = {
       ...payload,
-      experience_level: level,
+      ...(level !== null ? { experience_level: level } : {}),
       ...(country ? { country } : {}),
     };
     const quality = qualityBreakdown(enriched);
@@ -498,9 +509,10 @@ export async function getJob(externalId: string): Promise<(JobMetadata & { quali
   const payload = p.payload as StoredJobPayload;
   // Re-classify on read (see search()). Stored payload pre-dates the audit.
   const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
+  const level = classifyTitle(payload.title, payload.industry);
   const enriched: JobMetadata = {
     ...payload,
-    experience_level: classifyTitle(payload.title),
+    ...(level !== null ? { experience_level: level } : {}),
     ...(country ? { country } : {}),
   };
   const quality = qualityBreakdown(enriched);

@@ -3,7 +3,10 @@ import { ALL_LEVELS, classifyTitle, levelsAtOrBelow } from "./seniority";
 
 describe("classifyTitle", () => {
   const cases: Array<[string, ReturnType<typeof classifyTitle>]> = [
-    ["Software Engineer", "mid"],
+    // Bare "Software Engineer" matches no rule in any bank - now returns null
+    // (Phase 1B). The pre-1B classifier defaulted to mid; that masked the
+    // "we don't know" case behind a false-positive mid bucket.
+    ["Software Engineer", null],
     ["Senior Software Engineer", "senior"],
     ["Sr. Software Engineer", "senior"],
     ["Lead Backend Engineer", "senior"],
@@ -36,12 +39,16 @@ describe("classifyTitle", () => {
     });
   }
 
-  test("unrecognised title defaults to mid", () => {
-    expect(classifyTitle("Backend Engineer")).toBe("mid");
+  // Phase 1B: classifier returns null instead of defaulting to mid. The
+  // pre-1B default forced every unrecognized title into the mid bucket,
+  // which inflated mid across non-tech industries and made level-filter
+  // results meaningless for confidently-ranked queries.
+  test("unrecognised title returns null", () => {
+    expect(classifyTitle("Backend Engineer")).toBeNull();
   });
 
-  test("empty title defaults to mid", () => {
-    expect(classifyTitle("")).toBe("mid");
+  test("empty title returns null", () => {
+    expect(classifyTitle("")).toBeNull();
   });
 
   test("director takes precedence over senior keyword", () => {
@@ -81,20 +88,21 @@ describe("classifyTitle - new-grad / early-career patterns", () => {
 });
 
 describe("classifyTitle - Engineer I / II / III / IV / V (roman + arabic)", () => {
-  // "Engineer I" = junior; "II" = mid (default); "III" = senior; "IV"/"V" = staff.
-  // For arabic numerals only "1" maps to junior - Engineer 4/5 at MSFT/Google
-  // are senior+ so we deliberately leave them as the mid default.
+  // "Engineer I" = junior; "II" = unranked (null); "III" = senior; "IV"/"V" = staff.
+  // Phase 1B: II and arabic 2/4/5 now return null because no rule matches them
+  // explicitly. The pre-1B behavior fell through to a mid default; the new
+  // contract is "unranked means we don't know, hide from level filters".
   const cases: Array<[string, ReturnType<typeof classifyTitle>]> = [
     ["Software Engineer I", "junior"],
     ["Software Engineer 1", "junior"],
-    ["Software Engineer II", "mid"],
+    ["Software Engineer II", null],
     ["Software Engineer III", "senior"],
     ["Reliability Engineer III", "senior"],
     ["Engineer IV", "staff"],
     ["Engineer V", "staff"],
-    ["Engineer 2, Data Engineering", "mid"],
-    ["Engineer 4, Software Development", "mid"],
-    ["Engineer 5, Platform", "mid"],
+    ["Engineer 2, Data Engineering", null],
+    ["Engineer 4, Software Development", null],
+    ["Engineer 5, Platform", null],
     ["Senior Software Engineer II, ML/AI Platform", "senior"],
     ["Principal Java Engineer II - ML", "principal"],
   ];
@@ -103,6 +111,41 @@ describe("classifyTitle - Engineer I / II / III / IV / V (roman + arabic)", () =
       expect(classifyTitle(title)).toBe(expected);
     });
   }
+});
+
+describe("classifyTitle - industry-aware (Phase 1B)", () => {
+  test("'Charge Nurse' classifies as staff under healthcare bank", () => {
+    expect(classifyTitle("Charge Nurse", "healthcare")).toBe("staff");
+  });
+  test("'New Grad RN' classifies as junior under healthcare bank", () => {
+    expect(classifyTitle("New Grad RN", "healthcare")).toBe("junior");
+  });
+  test("'Attending Physician' classifies as principal under healthcare bank", () => {
+    expect(classifyTitle("Attending Physician", "healthcare")).toBe("principal");
+  });
+  test("'Master Electrician' classifies as principal under trades bank", () => {
+    expect(classifyTitle("Master Electrician", "trades")).toBe("principal");
+  });
+  test("'Apprentice Plumber' classifies as junior under trades bank", () => {
+    expect(classifyTitle("Apprentice Plumber", "trades")).toBe("junior");
+  });
+  test("'Shift Supervisor' classifies as manager (common rules) regardless of industry", () => {
+    // Supervisor is in COMMON so it wins before any industry bank.
+    expect(classifyTitle("Shift Supervisor", "retail")).toBe("manager");
+  });
+  test("'Sales Associate' classifies as junior under retail bank", () => {
+    expect(classifyTitle("Sales Associate", "retail")).toBe("junior");
+  });
+  test("'GS-13 Analyst' classifies as senior under government bank", () => {
+    expect(classifyTitle("GS-13 Analyst", "government")).toBe("senior");
+  });
+  test("'Associate Professor' classifies as senior under education bank", () => {
+    expect(classifyTitle("Associate Professor", "education")).toBe("senior");
+  });
+  test("known industry falls back to tech for ambiguous titles", () => {
+    // "Senior Engineer" is not in HEALTHCARE_RULES but matches TECH senior.
+    expect(classifyTitle("Senior Engineer", "healthcare")).toBe("senior");
+  });
 });
 
 describe("classifyTitle - Senior/Staff/Principal Associate disambiguation", () => {
