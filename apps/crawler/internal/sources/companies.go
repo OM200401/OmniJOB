@@ -618,6 +618,25 @@ var DefaultWorkday = []WorkdayCompany{
 	{Display: "HSBC",            Tenant: "hsbc",         Region: "wd3",  Site: "External"},
 	{Display: "UBS",             Tenant: "ubs",          Region: "wd3",  Site: "global"},
 	{Display: "BNP Paribas",     Tenant: "bnpparibas",   Region: "wd3",  Site: "BNP-PARIBAS-CAREERS"},
+
+	// Hospital networks (Phase 2 - healthcare expansion). Tenants below are
+	// publicly documented Workday URLs. The crawler logs+skips on 404, so
+	// stale slugs are wasteful but not breaking - verify via the careers
+	// page URL pattern `https://{tenant}.{region}.myworkdayjobs.com/{site}`
+	// before adding new ones.
+	{Display: "HCA Healthcare",          Tenant: "hcahealthcare",     Region: "wd1", Site: "HCA_External"},
+	{Display: "Kaiser Permanente",       Tenant: "kp",                Region: "wd5", Site: "External"},
+	{Display: "Mass General Brigham",    Tenant: "partners",          Region: "wd5", Site: "Partners"},
+	{Display: "AdventHealth",            Tenant: "adventhealth",      Region: "wd1", Site: "External"},
+	{Display: "Tenet Healthcare",        Tenant: "tenethealth",       Region: "wd1", Site: "External"},
+	{Display: "Northwell Health",        Tenant: "northwell",         Region: "wd1", Site: "Northwell_Health_External"},
+	{Display: "Mayo Clinic",             Tenant: "mayofoundation",    Region: "wd1", Site: "Mayo_External"},
+	{Display: "Providence Health",       Tenant: "providence",        Region: "wd1", Site: "External"},
+	{Display: "McLaren Health Care",     Tenant: "mclaren",           Region: "wd1", Site: "External"},
+
+	// Retail / food service (Phase 2 - retail expansion).
+	{Display: "Macy's",                  Tenant: "macys",             Region: "wd1", Site: "External"},
+	{Display: "McDonald's",              Tenant: "mcdonalds",         Region: "wd1", Site: "External"},
 }
 
 var DefaultRecruitee = []string{
