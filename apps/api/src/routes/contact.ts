@@ -52,7 +52,20 @@ const escapeHtml = (s: string) =>
 
 async function forwardToResend(sub: Submission): Promise<void> {
   const { resendApiKey, toEmail, fromEmail } = config.contact;
-  if (!resendApiKey || !toEmail) return;
+  if (!resendApiKey || !toEmail) {
+    // Surface the skip so an operator debugging a missing email immediately
+    // sees the cause instead of silent nothing. Reasons spelled out so a
+    // wrong-name env var (e.g. RESEND_KEY vs RESEND_API_KEY) is obvious.
+    console.warn(
+      `[contact] skipping resend forward: ` +
+        `apiKey=${resendApiKey ? "set" : "MISSING"} ` +
+        `to=${toEmail ? "set" : "MISSING"}`,
+    );
+    return;
+  }
+  console.log(
+    `[contact] forwarding to resend (to=${toEmail}, from=${fromEmail})`,
+  );
 
   const subject = `[OmniJob contact] ${sub.subject}`;
   // Plain-text body — most email clients render it cleanly and we don't
@@ -101,6 +114,11 @@ async function forwardToResend(sub: Submission): Promise<void> {
       const detail = await res.text().catch(() => "");
       console.error(
         `[contact] resend forward failed: ${res.status} ${res.statusText} ${detail.slice(0, 200)}`,
+      );
+    } else {
+      const body = (await res.json().catch(() => null)) as { id?: string } | null;
+      console.log(
+        `[contact] resend forward delivered (id=${body?.id ?? "unknown"})`,
       );
     }
   } catch (e) {
