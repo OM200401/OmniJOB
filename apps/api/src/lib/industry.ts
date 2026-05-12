@@ -54,10 +54,21 @@ const INDUSTRY_RULES: Array<{ industry: Industry; patterns: RegExp[] }> = [
   {
     industry: "healthcare",
     patterns: [
-      /\b(rn|lpn|cna|bsn|msn|dnp|np|pa-?c)\b/i,
+      // Credentials. 'do' / 'md' / 'dpt' as bare 2-3 letter sequences are too
+      // common as English words (verb "do", state code "MD") and produced
+      // ~5-10% false positives in Phase 1A backfill (Walmart "Meat Cutter
+      // and Wrapper" matched because the description began "Why do people
+      // love shopping..."). We catch periodised forms (M.D., D.O.) instead.
+      /\b(rn|lpn|cna|bsn|msn|dnp|np|pa-?c|dds|dvm|psyd)\b/i,
+      /\b(M\.D\.|D\.O\.|D\.D\.S\.|D\.V\.M\.|D\.P\.T\.)/,
+      // Credential-as-suffix: "Jane Smith, MD" / "Dr. Jones MD". Requires a
+      // capitalised name or honorific immediately before the credential,
+      // which rules out common-English-word matches.
+      /,\s+(MD|DO|DPT)\b/,
+      /\bDr\.\s+[A-Z][a-z]+,?\s+(MD|DO|DPT)\b/,
       /\b(nurse|nursing|midwife|midwifery)\b/i,
       /\b(physician|surgeon|surgical|anesthesiolog)/i,
-      /\b(doctor|md|do|dds|dvm|dpt|psyd|phd\s+psychology)\b/i,
+      /\b(doctor|phd\s+psychology)\b/i,
       /\b(hospital|clinic|patient|medical\s+(center|office|practice))\b/i,
       /\b(pharmacy|pharmacist|pharmacolog|pharmaceutical\s+technician)\b/i,
       /\b(dental|dentist|hygienist|orthodontist)\b/i,

@@ -71,6 +71,39 @@ describe("classifyIndustry", () => {
     expect(classifyIndustry("").industry).toBe("other");
   });
 
+  // Regressions from Phase 1A backfill: bare 'do' / 'md' in the description
+  // (extremely common English) matched the healthcare credential alternation
+  // and mis-tagged retail/food roles as healthcare. Phase-1B-tail fix.
+  test("does not classify retail roles as healthcare via 'do' in description", () => {
+    expect(
+      classifyIndustry(
+        "Meat Cutter and Wrapper",
+        "Why do people love shopping for fresh food at Sam's Club? Our members tell us one of the biggest reasons is our hard-working and happy-to-help fresh food associates.",
+      ).industry,
+    ).not.toBe("healthcare");
+  });
+
+  test("does not classify food-service roles as healthcare via 'Do' in description", () => {
+    expect(
+      classifyIndustry(
+        "Grab & Go Food Associate",
+        "Why do people love eating in our café at Sam's Club? Do you have a passion for preparing food?",
+      ).industry,
+    ).not.toBe("healthcare");
+  });
+
+  test("still classifies legitimate periodised credentials as healthcare", () => {
+    expect(
+      classifyIndustry("Smith Family Practice", "Dr. Jane Smith, M.D. accepting new patients").industry,
+    ).toBe("healthcare");
+  });
+
+  test("classifies credentials in suffix form (Name, MD)", () => {
+    expect(
+      classifyIndustry("Concierge Medicine Practice", "Lead clinician: Dr. Jane Smith, MD with 20 years experience").industry,
+    ).toBe("healthcare");
+  });
+
   test("returns job family for high-confidence matches", () => {
     expect(classifyIndustry("Registered Nurse").jobFamily).toBe("registered_nurse");
     expect(classifyIndustry("Senior Software Engineer").jobFamily).toBe("software_engineering");
