@@ -1,4 +1,4 @@
-import { qdrant, ensureTitleFullTextIndex } from "../src/qdrant/client";
+import { qdrant, ensureTitleFullTextIndex, ensureIndustryIndexes } from "../src/qdrant/client";
 import { config } from "../src/config";
 
 async function ensureCollection(name: string, dim: number) {
@@ -36,4 +36,8 @@ await ensureCollection(config.qdrant.usersCollection, config.qdrant.embeddingDim
 // /jobs/search. Idempotent; safe to re-run on already-migrated indexes.
 await ensureTitleFullTextIndex();
 console.log(`+ ensured full-text payload index on "${config.qdrant.jobsCollection}.title"`);
+// Keyword payload indexes on industry + job_family so industry filters in
+// /jobs/search use Qdrant's hash lookup instead of full-scan.
+await ensureIndustryIndexes();
+console.log(`+ ensured keyword payload indexes on "${config.qdrant.jobsCollection}.{industry,job_family}"`);
 console.log("Qdrant init complete.");

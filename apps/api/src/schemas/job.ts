@@ -28,6 +28,32 @@ export const Source = t.Union([
   t.Literal("recruitee"),
 ]);
 
+// Industry rollup. Kept stable; new verticals add literals here rather than
+// invent ad-hoc strings. "other" is the explicit catch-all so callers can
+// tell "we don't know" apart from "we forgot to classify".
+export const Industry = t.Union([
+  t.Literal("tech"),
+  t.Literal("healthcare"),
+  t.Literal("retail"),
+  t.Literal("food_service"),
+  t.Literal("trades"),
+  t.Literal("government"),
+  t.Literal("education"),
+  t.Literal("finance"),
+  t.Literal("manufacturing"),
+  t.Literal("logistics"),
+  t.Literal("legal"),
+  t.Literal("nonprofit"),
+  t.Literal("media"),
+  t.Literal("science"),
+  t.Literal("other"),
+]);
+
+// Job family is a finer rollup than industry. Free string but normalized
+// snake_case slug ("registered_nurse", "software_engineering", "cashier"); see
+// JOB_FAMILY_RULES in lib/industry.ts for the canonical bank.
+const JobFamily = t.String({ minLength: 1, maxLength: 64, pattern: "^[a-z0-9_]+$" });
+
 // Adapter-emitted period strings vary ("annual" vs "year" vs "yearly" vs
 // "per year"). Accept the common aliases at the API boundary; the salary
 // library maps every accepted form to its canonical multiplier.
@@ -62,6 +88,11 @@ export const JobMetadataSchema = t.Object({
   salary_period: t.Optional(SalaryPeriod),
   remote_status: t.Optional(RemoteStatus),
   experience_level: t.Optional(Level),
+  // Industry / job_family are derived server-side at ingest if absent (see
+  // upsertJob calling classifyIndustry). Crawlers MAY pre-fill them, but the
+  // canonical labelling lives in apps/api/src/lib/industry.ts.
+  industry: t.Optional(Industry),
+  job_family: t.Optional(JobFamily),
   source: t.Optional(t.String({ maxLength: 64 })),
   source_url: t.String({ maxLength: 2048 }),
   scraped_at: t.Number(),
@@ -92,6 +123,8 @@ export const JobSearchSchema = t.Object({
   query: t.Optional(t.String({ maxLength: 512 })),
   remote_status: t.Optional(t.Array(RemoteStatus)),
   experience_level: t.Optional(t.Array(Level)),
+  industry: t.Optional(t.Array(Industry)),
+  job_family: t.Optional(t.Array(JobFamily)),
   source: t.Optional(t.Array(Source)),
   country: t.Optional(t.Array(Country)),
   location: t.Optional(t.String({ maxLength: 256 })),

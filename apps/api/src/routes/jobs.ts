@@ -21,6 +21,8 @@ export const jobs = new Elysia({ prefix: "/jobs" })
         {
           ...(body.remote_status ? { remote_status: body.remote_status } : {}),
           ...(body.experience_level ? { experience_level: body.experience_level } : {}),
+          ...(body.industry ? { industry: body.industry } : {}),
+          ...(body.job_family ? { job_family: body.job_family } : {}),
           ...(body.source ? { source: body.source } : {}),
           ...(body.country ? { country: body.country } : {}),
           ...(body.location ? { location: body.location } : {}),

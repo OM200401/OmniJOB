@@ -23,7 +23,7 @@ import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
 import { contact } from "./routes/contact";
-import { ensureTitleFullTextIndex } from "./qdrant/client";
+import { ensureTitleFullTextIndex, ensureIndustryIndexes } from "./qdrant/client";
 
 // Map URL paths to rate-limit buckets. Order matters - more specific patterns
 // must come first. Match-explain is /jobs/:id/match-explain, so we test that
@@ -141,5 +141,10 @@ console.log(
 void ensureTitleFullTextIndex()
   .then(() => console.log(`  Hybrid: full-text index on title ready`))
   .catch((e) => console.warn(`  Hybrid: index ensure failed: ${e instanceof Error ? e.message : e}`));
+// Industry / job_family keyword indexes so Phase 1 industry filtering hits
+// Qdrant's hash lookup instead of full-scan. Idempotent.
+void ensureIndustryIndexes()
+  .then(() => console.log(`  Industry: keyword indexes on industry/job_family ready`))
+  .catch((e) => console.warn(`  Industry: index ensure failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

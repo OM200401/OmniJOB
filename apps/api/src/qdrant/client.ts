@@ -2,6 +2,7 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 import { config } from "../config";
 import { classifyTitle, type Level } from "../lib/seniority";
 import { classifyCountry } from "../lib/location";
+import { classifyIndustry, type Industry } from "../lib/industry";
 import { salaryOverlapsUSD } from "../lib/salary";
 import { qualityBreakdown, type QualityBreakdown } from "../lib/quality";
 
@@ -42,6 +43,11 @@ export type JobMetadata = {
   salary_period?: SalaryPeriod;
   remote_status?: RemoteStatus;
   experience_level?: Level;
+  // Industry / job_family are populated by classifyIndustry() during ingest
+  // when not pre-supplied. Stored on the payload + filterable via Qdrant
+  // payload indexes (see ensureIndustryIndexes below).
+  industry?: Industry;
+  job_family?: string;
   source?: string;
   source_url: string;
   scraped_at: number;
@@ -64,6 +70,8 @@ type StoredJobPayload = JobMetadata & { external_id: string };
 export type JobSearchFilter = {
   remote_status?: RemoteStatus[];
   experience_level?: Level[];
+  industry?: Industry[];
+  job_family?: string[];
   source?: string[];
   country?: string[];
   location?: string;
@@ -91,9 +99,23 @@ export async function upsertJob(
 ): Promise<void> {
   const pointId = await pointIdFor(id);
   const country = metadata.country ?? classifyCountry(metadata.location) ?? undefined;
+  // Server-side industry classification. Crawlers MAY pre-fill industry /
+  // job_family (preferable when the source carries the signal natively - e.g.
+  // USAJobs always = government), but for the bulk of the index the classifier
+  // runs here on the title + first 300 chars of description.
+  const inferred =
+    metadata.industry && metadata.job_family
+      ? { industry: metadata.industry, jobFamily: metadata.job_family }
+      : classifyIndustry(metadata.title, metadata.description);
   const payload: StoredJobPayload = {
     ...metadata,
     experience_level: metadata.experience_level ?? classifyTitle(metadata.title),
+    industry: metadata.industry ?? inferred.industry,
+    ...(metadata.job_family
+      ? { job_family: metadata.job_family }
+      : inferred.jobFamily
+        ? { job_family: inferred.jobFamily }
+        : {}),
     ...(country ? { country } : {}),
     external_id: id,
   };
@@ -227,6 +249,25 @@ export async function ensureTitleFullTextIndex(): Promise<void> {
   }
 }
 
+// Idempotent migration: create keyword payload indexes for industry and
+// job_family. Without these, filtering on industry would force a full
+// collection scan instead of using Qdrant's payload-index hash lookup.
+// Same swallow-on-already-exists shape as ensureTitleFullTextIndex.
+export async function ensureIndustryIndexes(): Promise<void> {
+  for (const field of ["industry", "job_family"] as const) {
+    try {
+      await qdrant.createPayloadIndex(config.qdrant.jobsCollection, {
+        field_name: field,
+        field_schema: "keyword",
+        wait: true,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/exist|already/i.test(msg)) throw e;
+    }
+  }
+}
+
 export type HybridOptions = {
   // Lowercased keyword tokens to OR-match against the title payload. When
   // present and at least one yields a Qdrant full-text hit, the keyword
@@ -256,6 +297,16 @@ export async function searchJobs(
   }
   if (filter?.source?.length) {
     must.push({ key: "source", match: { any: filter.source } });
+  }
+  // Industry / job_family are payload-indexed (see ensureIndustryIndexes) so
+  // filtering happens server-side in Qdrant rather than in the post-filter
+  // loop below. This keeps the candidate pool tight on industry-narrowed
+  // searches (e.g. "show me only healthcare RN postings").
+  if (filter?.industry?.length) {
+    must.push({ key: "industry", match: { any: filter.industry } });
+  }
+  if (filter?.job_family?.length) {
+    must.push({ key: "job_family", match: { any: filter.job_family } });
   }
 
   const needsPostFilter =
