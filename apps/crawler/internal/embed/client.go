@@ -35,9 +35,14 @@ type Client struct {
 }
 
 func NewClient(apiURL string) *Client {
+	// 180s accommodates a 16-text batch on a CPU-only Ollama under load. A
+	// real production probe measured 73s/batch when the droplet was busy; the
+	// old 60s ceiling caused every batch to fail with "context deadline
+	// exceeded" while Ollama was still computing. Revisit when Phase 4 moves
+	// the embedder to a GPU box.
 	return &Client{
 		APIURL: apiURL,
-		HTTP:   &http.Client{Timeout: 60 * time.Second},
+		HTTP:   &http.Client{Timeout: 180 * time.Second},
 	}
 }
 
