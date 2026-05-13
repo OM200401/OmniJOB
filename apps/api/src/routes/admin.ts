@@ -249,6 +249,13 @@ function utcDateKey(ms: number): string {
 
 // Per-country point counts using Qdrant's count endpoint with a payload
 // filter. Cheap because country is keyword-indexed (ensureCountryIndex).
+//
+// exact: true is required: on small subsets (CA ~ 6% of total), Qdrant's
+// approximate count derives from index statistics and can be 30-50% off,
+// which surfaced as a 777-vs-1290 mismatch between this counter and the
+// /history chart (which already used exact: true). The full-scan cost on
+// a payload-indexed field is small and bounded - faster than letting an
+// inaccurate headline number live on the dashboard.
 async function indexByCountry(codes: string[]): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   await Promise.all(
@@ -259,7 +266,7 @@ async function indexByCountry(codes: string[]): Promise<Record<string, number>> 
             must: [{ key: "country", match: { value: code } }],
             must_not: [{ key: "is_active", match: { value: false } }],
           },
-          exact: false,
+          exact: true,
         });
         out[code] = res.count ?? 0;
       } catch {
