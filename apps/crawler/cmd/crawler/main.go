@@ -422,7 +422,17 @@ func buildSources(include []string) []sources.Source {
 		if len(feeds) == 0 {
 			feeds = sources.DefaultSitemapFeeds
 		}
-		out = append(out, sources.NewSitemap(feeds, envInt("SITEMAP_FETCH_CONCURRENCY", 4)))
+		// SITEMAP_CACHE_DIR holds per-feed "URLs we've already scraped"
+		// snapshots. With this set, re-runs only fetch novel URLs from
+		// each sitemap instead of re-walking the whole thing every 12h.
+		// Default keeps the cache alongside crawler working dir so it
+		// survives across runs of the same service. Empty string disables
+		// caching (debugging / forced re-scrape).
+		out = append(out, sources.NewSitemap(
+			feeds,
+			envInt("SITEMAP_FETCH_CONCURRENCY", 4),
+			env("SITEMAP_CACHE_DIR", ".cache/sitemap"),
+		))
 	}
 	return out
 }

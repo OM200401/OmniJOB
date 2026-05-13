@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -8,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -54,9 +57,17 @@ type Sitemap struct {
 	// because we're talking to single-host CDNs and don't want to look
 	// abusive. Override via SITEMAP_FETCH_CONCURRENCY.
 	FetchConcurrency int
+	// Directory where per-feed "URLs we've already successfully scraped"
+	// caches are persisted. Each feed gets a {label}.txt file containing
+	// one URL per line. On subsequent runs the adapter skips any URL
+	// present in the cache, which turns full sitemap re-walks from
+	// "fetch every page" into "fetch only deltas". Empty string disables
+	// caching (re-fetches everything every run). Override via
+	// SITEMAP_CACHE_DIR.
+	CacheDir string
 }
 
-func NewSitemap(feeds []SitemapFeed, concurrency int) *Sitemap {
+func NewSitemap(feeds []SitemapFeed, concurrency int, cacheDir string) *Sitemap {
 	if concurrency <= 0 {
 		concurrency = 4
 	}
@@ -65,6 +76,7 @@ func NewSitemap(feeds []SitemapFeed, concurrency int) *Sitemap {
 		// Default 1000 max pages per feed unless overridden.
 		Feeds:            feeds,
 		FetchConcurrency: concurrency,
+		CacheDir:         cacheDir,
 	}
 }
 
@@ -127,6 +139,24 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 	if err != nil {
 		return fmt.Errorf("sitemap fetch: %w", err)
 	}
+
+	// Filter against the per-feed seen-URL cache before applying the
+	// MaxPages cap. Order matters: if we cap first and then filter, we
+	// might cap at 1500 URLs that are all already-seen and emit nothing,
+	// even though the next 100 in the sitemap are brand new. Filtering
+	// first means MaxPages bounds the *novel* work this run.
+	seen, _ := s.loadSeen(feed.SourceLabel)
+	if len(seen) > 0 {
+		filtered := make([]string, 0, len(urls))
+		for _, u := range urls {
+			if _, ok := seen[u]; !ok {
+				filtered = append(filtered, u)
+			}
+		}
+		log.Printf("[sitemap:%s] cache hit: %d of %d URLs skipped (already scraped)", feed.SourceLabel, len(urls)-len(filtered), len(urls))
+		urls = filtered
+	}
+
 	maxPages := feed.MaxPages
 	if maxPages <= 0 {
 		maxPages = 1000
@@ -136,6 +166,9 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 		urls = urls[:maxPages]
 	}
 	log.Printf("[sitemap:%s] %d job URLs", feed.SourceLabel, len(urls))
+	if len(urls) == 0 {
+		return nil
+	}
 
 	// Fanout page fetches under a small concurrency budget. Each worker
 	// pulls a URL, extracts JSON-LD, emits the JobJSON. Errors are logged
@@ -144,6 +177,9 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 	var wg sync.WaitGroup
 	var count, errors int
 	var mu sync.Mutex
+	// Successfully-emitted URLs go here for end-of-feed cache flush.
+	// Pre-sized at len(urls) because every URL in `work` could succeed.
+	scraped := make([]string, 0, len(urls))
 
 	for i := 0; i < s.FetchConcurrency; i++ {
 		wg.Add(1)
@@ -161,6 +197,12 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 					continue
 				}
 				if job == nil {
+					// Page fetched fine but had no JobPosting JSON-LD. Still
+					// record it as "scraped" so we don't refetch next run -
+					// the absence of JSON-LD is a stable property of the URL.
+					mu.Lock()
+					scraped = append(scraped, url)
+					mu.Unlock()
 					continue
 				}
 				select {
@@ -169,6 +211,7 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 				case out <- *job:
 					mu.Lock()
 					count++
+					scraped = append(scraped, url)
 					mu.Unlock()
 				}
 			}
@@ -180,14 +223,77 @@ func (s *Sitemap) fetchFeed(ctx context.Context, feed SitemapFeed, out chan<- pi
 		case <-ctx.Done():
 			close(work)
 			wg.Wait()
+			s.appendSeen(feed.SourceLabel, scraped)
 			return ctx.Err()
 		case work <- u:
 		}
 	}
 	close(work)
 	wg.Wait()
-	log.Printf("[sitemap:%s] %d jobs emitted, %d errors", feed.SourceLabel, count, errors)
+	if err := s.appendSeen(feed.SourceLabel, scraped); err != nil {
+		log.Printf("[sitemap:%s] cache write: %v", feed.SourceLabel, err)
+	}
+	log.Printf("[sitemap:%s] %d jobs emitted, %d errors, %d URLs cached", feed.SourceLabel, count, errors, len(scraped))
 	return nil
+}
+
+// loadSeen reads the per-feed cache file into a set. A missing file is
+// not an error - it just means this is the first run for this feed. We
+// also silently tolerate malformed cache files because the worst-case
+// fallback is "re-fetch URLs we've already seen", which is the pre-cache
+// behavior and not a correctness problem.
+func (s *Sitemap) loadSeen(label string) (map[string]struct{}, error) {
+	if s.CacheDir == "" {
+		return nil, nil
+	}
+	path := filepath.Join(s.CacheDir, label+".txt")
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer f.Close()
+	out := make(map[string]struct{}, 1024)
+	scanner := bufio.NewScanner(f)
+	// Many sitemaps emit very long URLs; bufio.Scanner default 64KB line
+	// buffer is plenty but bumping to 1MB removes a foot-gun.
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		u := strings.TrimSpace(scanner.Text())
+		if u != "" {
+			out[u] = struct{}{}
+		}
+	}
+	return out, scanner.Err()
+}
+
+// appendSeen appends newly-scraped URLs to the per-feed cache file.
+// O_APPEND on POSIX is atomic for writes smaller than PIPE_BUF, which
+// our per-line writes are; we still flush in one batch to keep IO low.
+// On the first run for a feed the cache dir may not exist - we create
+// it lazily.
+func (s *Sitemap) appendSeen(label string, urls []string) error {
+	if s.CacheDir == "" || len(urls) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(s.CacheDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir cache: %w", err)
+	}
+	path := filepath.Join(s.CacheDir, label+".txt")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	for _, u := range urls {
+		if _, err := w.WriteString(u + "\n"); err != nil {
+			return err
+		}
+	}
+	return w.Flush()
 }
 
 // collectJobURLs follows the sitemap (or sitemap-index → child sitemaps)
