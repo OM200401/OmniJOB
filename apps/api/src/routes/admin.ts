@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { existsSync, statSync } from "node:fs";
-import { open } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import { config } from "../config";
 import { qdrant } from "../qdrant/client";
 import { db } from "../db/sqlite";
@@ -132,6 +132,8 @@ export const admin = new Elysia({ prefix: "/admin" })
       // Qdrant unreachable: leave at 0 rather than 500 the whole endpoint.
     }
 
+    const crawler = await crawlerProgress();
+
     return {
       generated_at: new Date().toISOString(),
       users: {
@@ -144,5 +146,119 @@ export const admin = new Elysia({ prefix: "/admin" })
       index: {
         jobs: jobCount,
       },
+      crawler,
     };
   });
+
+// Parse the tail of /var/log/omnijob-crawler.log to surface the in-flight
+// or last-completed run's stats. We tail the last ~256KB to avoid loading
+// the whole log on every poll. Resilient to missing file / read failure -
+// returns null so the caller can still serve the rest of the stats.
+const CRAWLER_LOG_TAIL_BYTES = 256 * 1024;
+const CRAWLER_LOG_PATH = process.env["CRAWLER_LOG_PATH"] ?? "/var/log/omnijob-crawler.log";
+
+async function crawlerProgress(): Promise<{
+  log_path: string;
+  current_run: {
+    started_at: string;
+    elapsed_minutes: number;
+    sources: string[];
+    concurrency: number | null;
+    ok: number;
+    skipped_or_done: number;
+    embed_failures: number;
+    latest_log_line: string;
+  } | null;
+  previous_run_summary: string | null;
+} | null> {
+  if (!existsSync(CRAWLER_LOG_PATH)) return null;
+  try {
+    const stat = statSync(CRAWLER_LOG_PATH);
+    const start = Math.max(0, stat.size - CRAWLER_LOG_TAIL_BYTES);
+    const fh = await open(CRAWLER_LOG_PATH, "r");
+    let text: string;
+    try {
+      const buf = Buffer.alloc(stat.size - start);
+      await fh.read(buf, 0, buf.length, start);
+      text = buf.toString("utf8");
+    } finally {
+      await fh.close();
+    }
+
+    const lines = text.split("\n").filter(Boolean);
+    if (lines.length === 0) return { log_path: CRAWLER_LOG_PATH, current_run: null, previous_run_summary: null };
+
+    // Find the most recent "starting crawler" line - that's the head of the
+    // current run. Anything before it is the prior run.
+    let startIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i]!.includes("starting crawler")) {
+        startIdx = i;
+        break;
+      }
+    }
+
+    let previousRunSummary: string | null = null;
+    if (startIdx > 0) {
+      // The line immediately before the current "starting crawler" is the
+      // previous run's "done - ingested=..." summary (or close to it).
+      for (let i = startIdx - 1; i >= Math.max(0, startIdx - 10); i--) {
+        if (lines[i]!.includes("done - ingested=")) {
+          previousRunSummary = lines[i] ?? null;
+          break;
+        }
+      }
+    }
+
+    if (startIdx < 0) {
+      return { log_path: CRAWLER_LOG_PATH, current_run: null, previous_run_summary: previousRunSummary };
+    }
+
+    const startLine = lines[startIdx]!;
+    const tsMatch = startLine.match(/^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2})/);
+    const startedRaw = tsMatch ? tsMatch[1]! : "";
+    const startedIso = startedRaw
+      ? new Date(startedRaw.replace(/\//g, "-").replace(" ", "T") + "Z").toISOString()
+      : "";
+    const elapsedMinutes = startedIso
+      ? Math.round((Date.now() - Date.parse(startedIso)) / 60_000)
+      : 0;
+
+    const sourcesMatch = startLine.match(/sources=\[([^\]]+)\]/);
+    const sources = sourcesMatch ? sourcesMatch[1]!.split(/\s+/).filter(Boolean) : [];
+    const concurrencyMatch = startLine.match(/concurrency=(\d+)/);
+    const concurrency = concurrencyMatch ? Number(concurrencyMatch[1]) : null;
+
+    let ok = 0;
+    let embedFailures = 0;
+    let skippedOrDone = 0;
+    let latestLog = startLine;
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const ln = lines[i]!;
+      latestLog = ln;
+      if (/\[w\d+\] ok /.test(ln)) ok++;
+      else if (/context deadline exceeded/.test(ln)) embedFailures++;
+      else if (/\bjobs$/.test(ln)) skippedOrDone++;
+    }
+
+    return {
+      log_path: CRAWLER_LOG_PATH,
+      current_run: {
+        started_at: startedIso,
+        elapsed_minutes: elapsedMinutes,
+        sources,
+        concurrency,
+        ok,
+        skipped_or_done: skippedOrDone,
+        embed_failures: embedFailures,
+        latest_log_line: latestLog,
+      },
+      previous_run_summary: previousRunSummary,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Silence the unused-import warning for readFile - referenced for future use.
+void readFile;
