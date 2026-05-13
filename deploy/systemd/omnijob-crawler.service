@@ -10,15 +10,18 @@ Type=oneshot
 User=om
 WorkingDirectory=/home/om/omnijob/apps/crawler
 ExecStart=/usr/local/go/bin/go run ./cmd/crawler
-# Concurrent embed/ingest workers. Ollama on a 2-vCPU box can still only
-# embed one batch at a time on CPU, but the embed client timeout is now
-# 180s (commit e319418, was 60s) and the per-batch HTTP exists-checks
-# and ingest POSTs parallelize cleanly across workers - so while one
-# worker is blocked on Ollama, the others keep the exists-check and
-# ingest pipelines busy. Concurrency=3 cuts wall-clock by ~30-40% on
-# the post-fix runs.
+# Concurrent embed/ingest workers. Ollama on a 2-vCPU box can only embed
+# one batch at a time on CPU. concurrency=3 caused an Ollama-internal
+# timeout cascade (>4000 503s per run) once the sitemap adapter started
+# pumping more pages through; concurrency=2 keeps two batches queued
+# without the third one timing out waiting in line, and lets the
+# exists-check + ingest legs still overlap with the embed wait.
+# concurrency=1 was safest pre-fix but throttled wall-clock unnecessarily.
+# Operator can override at runtime via the drop-in at
+# /etc/systemd/system/omnijob-crawler.service.d/concurrency.conf if
+# the trade-off shifts (e.g. after GPU embedder migration).
 Environment=API_URL=http://localhost:3000
-Environment=EMBED_CONCURRENCY=3
+Environment=EMBED_CONCURRENCY=2
 # A full pass across all sources used to routinely hit the 8h cap. With
 # the concurrency bump and the 60s->180s timeout fix above, passes now
 # finish well under 8h. Cap kept at 8h as a backstop so a hung source
