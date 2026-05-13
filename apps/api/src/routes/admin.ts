@@ -138,6 +138,7 @@ export const admin = new Elysia({ prefix: "/admin" })
     const countryCounts = await indexByCountry(["CA", "US", "GB", "IN", "FR", "DE"]);
 
     const crawler = await crawlerProgress();
+    const history = await jobsHistory(HISTORY_DAYS);
 
     return {
       generated_at: new Date().toISOString(),
@@ -153,8 +154,84 @@ export const admin = new Elysia({ prefix: "/admin" })
         by_country: countryCounts,
       },
       crawler,
+      history,
     };
   });
+
+// Number of daily buckets in the history series. 30 days fits comfortably
+// in a chart and exceeds our current crawler history, so the leading days
+// show as flat baseline (which itself communicates "before we started").
+const HISTORY_DAYS = 30;
+
+// jobsHistory returns the cumulative total + Canadian job counts at the
+// end of each of the last HISTORY_DAYS UTC days. Computed by issuing one
+// scraped_at-range count per (day, scope), using the integer payload
+// index built in ensureScrapedAtIndex (so each count is O(log N)).
+//
+// Cached in-memory keyed by the most recent UTC midnight - history only
+// changes when a new day rolls over, so a per-day cache TTL is exact: we
+// recompute the whole series at most once per day per process. Within
+// the same day, repeat fetches hit memory.
+type HistoryResult = {
+  buckets: string[]; // ISO date YYYY-MM-DD, oldest first
+  total: number[];
+  ca: number[];
+};
+
+let historyCache: { dayKey: string; data: HistoryResult } | null = null;
+
+async function jobsHistory(days: number): Promise<HistoryResult> {
+  const todayKey = utcDateKey(Date.now());
+  if (historyCache && historyCache.dayKey === todayKey) {
+    return historyCache.data;
+  }
+  // Build end-of-day timestamps (UTC midnight + 1 day) for each bucket,
+  // oldest first. count({scraped_at: {lt: dayEnd}}) gives us cumulative
+  // total at that instant.
+  const now = Date.now();
+  const todayMidnight = Math.floor(now / DAY_MS) * DAY_MS;
+  const ends: number[] = [];
+  const labels: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const end = todayMidnight - i * DAY_MS + DAY_MS;
+    ends.push(end);
+    labels.push(utcDateKey(end - DAY_MS));
+  }
+
+  const [total, ca] = await Promise.all([
+    Promise.all(ends.map((end) => countBefore(end))),
+    Promise.all(ends.map((end) => countBefore(end, "CA"))),
+  ]);
+
+  const data: HistoryResult = { buckets: labels, total, ca };
+  historyCache = { dayKey: todayKey, data };
+  return data;
+}
+
+async function countBefore(beforeMs: number, country?: string): Promise<number> {
+  try {
+    const must: Array<Record<string, unknown>> = [
+      { key: "scraped_at", range: { lt: beforeMs } },
+    ];
+    if (country) {
+      must.push({ key: "country", match: { value: country } });
+    }
+    const res = await qdrant.count(config.qdrant.jobsCollection, {
+      filter: {
+        must,
+        must_not: [{ key: "is_active", match: { value: false } }],
+      },
+      exact: true,
+    });
+    return res.count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function utcDateKey(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
 
 // Per-country point counts using Qdrant's count endpoint with a payload
 // filter. Cheap because country is keyword-indexed (ensureCountryIndex).

@@ -333,4 +333,9 @@ export type AdminStats = {
     } | null;
     previous_run_summary: string | null;
   } | null;
+  history?: {
+    buckets: string[]; // YYYY-MM-DD, oldest first
+    total: number[];
+    ca: number[];
+  };
 };

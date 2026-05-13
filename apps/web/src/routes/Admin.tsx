@@ -198,6 +198,22 @@ export function Admin() {
                   <Mini key={code} label={code} value={count.toLocaleString()} />
                 ))}
             </div>
+            {stats.history && stats.history.buckets.length > 1 && (
+              <div className="card" style={{ padding: 14, marginTop: 14 }}>
+                <div className="row" style={{ alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div className="text-sm" style={{ fontWeight: 600 }}>Jobs over time · last {stats.history.buckets.length}d</div>
+                  <div className="row gap-sm muted-2 text-xs" style={{ gap: 12 }}>
+                    <span><LegendDot color="var(--accent)" /> total</span>
+                    <span><LegendDot color="#dc2626" /> Canadian 🇨🇦</span>
+                  </div>
+                </div>
+                <HistoryChart
+                  buckets={stats.history.buckets}
+                  total={stats.history.total}
+                  ca={stats.history.ca}
+                />
+              </div>
+            )}
           </section>
 
           {/* Events */}
@@ -321,6 +337,171 @@ function Mini({
         {value}
       </div>
     </div>
+  );
+}
+
+// HistoryChart renders two overlaid line series (total + Canadian) as
+// inline SVG. Each line is independently scaled to the chart height so
+// the much-smaller CA series doesn't collapse into the baseline next to
+// the total. The right-edge value of each line is annotated; intermediate
+// values surface via the dotted day markers + tooltip on hover.
+function HistoryChart({
+  buckets,
+  total,
+  ca,
+}: {
+  buckets: string[];
+  total: number[];
+  ca: number[];
+}) {
+  const w = 720;
+  const h = 160;
+  const padL = 8;
+  const padR = 64; // room for end-value labels
+  const padT = 8;
+  const padB = 22;
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+  const n = buckets.length;
+
+  const totalMax = Math.max(1, ...total);
+  const caMax = Math.max(1, ...ca);
+
+  const pathFor = (series: number[], max: number) =>
+    series
+      .map((v, i) => {
+        const x = padL + (n === 1 ? 0 : (i * innerW) / (n - 1));
+        const y = padT + innerH - (v / max) * innerH;
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+
+  const ticks = pickTicks(buckets);
+  const lastTotal = total[n - 1] ?? 0;
+  const lastCa = ca[n - 1] ?? 0;
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      style={{ width: "100%", height: "auto", maxHeight: 200, display: "block" }}
+      role="img"
+      aria-label="Cumulative jobs over time"
+    >
+      {/* horizontal baseline */}
+      <line
+        x1={padL}
+        y1={padT + innerH}
+        x2={padL + innerW}
+        y2={padT + innerH}
+        stroke="currentColor"
+        strokeOpacity={0.15}
+      />
+
+      {/* day-tick markers along x axis */}
+      {ticks.map(({ i, label }) => {
+        const x = padL + (n === 1 ? 0 : (i * innerW) / (n - 1));
+        return (
+          <g key={i}>
+            <line
+              x1={x}
+              y1={padT + innerH}
+              x2={x}
+              y2={padT + innerH + 4}
+              stroke="currentColor"
+              strokeOpacity={0.3}
+            />
+            <text
+              x={x}
+              y={padT + innerH + 16}
+              fontSize="10"
+              textAnchor="middle"
+              fill="currentColor"
+              fillOpacity={0.55}
+            >
+              {label}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* total line */}
+      <path
+        d={pathFor(total, totalMax)}
+        fill="none"
+        stroke="var(--accent, #3b82f6)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* CA line - keep visually distinct from total */}
+      <path
+        d={pathFor(ca, caMax)}
+        fill="none"
+        stroke="#dc2626"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* end-of-line value labels */}
+      <text
+        x={padL + innerW + 6}
+        y={padT + innerH - (lastTotal / totalMax) * innerH + 4}
+        fontSize="11"
+        fill="var(--accent, #3b82f6)"
+        fontWeight={600}
+      >
+        {lastTotal.toLocaleString()}
+      </text>
+      <text
+        x={padL + innerW + 6}
+        y={padT + innerH - (lastCa / caMax) * innerH + 4}
+        fontSize="11"
+        fill="#dc2626"
+        fontWeight={600}
+      >
+        {lastCa.toLocaleString()}
+      </text>
+    </svg>
+  );
+}
+
+// pickTicks picks ~5 evenly-spaced day labels so x-axis text doesn't
+// overlap. Always includes the first and last bucket.
+function pickTicks(buckets: string[]): Array<{ i: number; label: string }> {
+  const n = buckets.length;
+  if (n === 0) return [];
+  const target = 5;
+  const step = Math.max(1, Math.floor((n - 1) / (target - 1)));
+  const out: Array<{ i: number; label: string }> = [];
+  for (let i = 0; i < n; i += step) {
+    out.push({ i, label: monthDay(buckets[i]!) });
+  }
+  // Always include the last index even if step didn't land on it.
+  if (out[out.length - 1]?.i !== n - 1) {
+    out.push({ i: n - 1, label: monthDay(buckets[n - 1]!) });
+  }
+  return out;
+}
+
+function monthDay(iso: string): string {
+  // Take "YYYY-MM-DD" -> "MM-DD" without timezone shifts (display only).
+  return iso.slice(5);
+}
+
+function LegendDot({ color }: { color: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 8,
+        height: 8,
+        borderRadius: 999,
+        background: color,
+        marginRight: 4,
+        verticalAlign: "middle",
+      }}
+    />
   );
 }
 
