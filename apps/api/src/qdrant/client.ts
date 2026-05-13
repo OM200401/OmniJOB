@@ -299,6 +299,25 @@ export async function ensureScrapedAtIndex(): Promise<void> {
   }
 }
 
+// Idempotent migration: create a keyword payload index on country so the
+// country filter uses Qdrant's hash lookup instead of a full-collection
+// scroll + in-memory post-filter. Country is very low cardinality (~190 ISO
+// codes) and was the recall bottleneck for sparse-country queries like
+// junior + Canada: the post-filter window only saw a fraction of the
+// matching pool.
+export async function ensureCountryIndex(): Promise<void> {
+  try {
+    await qdrant.createPayloadIndex(config.qdrant.jobsCollection, {
+      field_name: "country",
+      field_schema: "keyword",
+      wait: true,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/exist|already/i.test(msg)) throw e;
+  }
+}
+
 export type HybridOptions = {
   // Lowercased keyword tokens to OR-match against the title payload. When
   // present and at least one yields a Qdrant full-text hit, the keyword
@@ -340,6 +359,11 @@ export async function searchJobs(
     must.push({ key: "job_family", match: { any: filter.job_family } });
   }
 
+  // Country is *partially* server-side filtered: a should-clause below
+  // narrows the candidate pool to {stored country in wanted set} ∪
+  // {countryless points}, both of which can resolve to the wanted country
+  // at read time. The post-filter still re-classifies and drops final
+  // mismatches, so the in-memory `country` check below stays.
   const needsPostFilter =
     Boolean(filter?.experience_level?.length) ||
     Boolean(filter?.country?.length) ||
@@ -362,7 +386,21 @@ export async function searchJobs(
   // up to a few hundred, so this is essentially free.
   const fetchK = needsPostFilter ? Math.min(300, Math.max(k * 5, 200)) : Math.min(200, Math.max(k * 2, 100));
 
-  const baseFilter = { must_not, ...(must.length ? { must } : {}) };
+  const baseFilter: Record<string, unknown> = {
+    must_not,
+    ...(must.length ? { must } : {}),
+  };
+  // Country server-side hint: keep stored-country == wanted OR stored country
+  // is empty. Empty-country points still flow through because the read-time
+  // classifyCountry(location) may resolve them to the wanted country (e.g. a
+  // "Toronto, ON" location string with no stored country). The post-filter
+  // re-classifies and drops anything that doesn't actually resolve.
+  if (filter?.country?.length) {
+    baseFilter.should = [
+      { key: "country", match: { any: filter.country } },
+      { is_empty: { key: "country" } },
+    ];
+  }
 
   // Browse mode is taken when the caller doesn't supply a query vector
   // (no résumé and no typed query). Instead of ANN ranking we scroll the

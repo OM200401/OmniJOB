@@ -24,6 +24,7 @@ import { match } from "./routes/match";
 import { embed } from "./routes/embed";
 import { contact } from "./routes/contact";
 import {
+  ensureCountryIndex,
   ensureIndustryIndexes,
   ensureScrapedAtIndex,
   ensureTitleFullTextIndex,
@@ -155,5 +156,12 @@ void ensureIndustryIndexes()
 void ensureScrapedAtIndex()
   .then(() => console.log(`  Browse: integer index on scraped_at ready`))
   .catch((e) => console.warn(`  Browse: index ensure failed: ${e instanceof Error ? e.message : e}`));
+// Keyword index on country so the country filter uses Qdrant's hash lookup
+// instead of relying entirely on the in-memory post-filter pass. Critical
+// for sparse-country queries (~2-3% Canadian inventory) where the recent
+// slice didn't contain enough matches. Idempotent.
+void ensureCountryIndex()
+  .then(() => console.log(`  Country: keyword index on country ready`))
+  .catch((e) => console.warn(`  Country: index ensure failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

@@ -1,5 +1,6 @@
 import {
   qdrant,
+  ensureCountryIndex,
   ensureIndustryIndexes,
   ensureScrapedAtIndex,
   ensureTitleFullTextIndex,
@@ -49,4 +50,8 @@ console.log(`+ ensured keyword payload indexes on "${config.qdrant.jobsCollectio
 // scroll points ordered by recency.
 await ensureScrapedAtIndex();
 console.log(`+ ensured integer payload index on "${config.qdrant.jobsCollection}.scraped_at"`);
+// Keyword payload index on country so the country filter is a Qdrant hash
+// lookup rather than a full-collection scroll + in-memory match.
+await ensureCountryIndex();
+console.log(`+ ensured keyword payload index on "${config.qdrant.jobsCollection}.country"`);
 console.log("Qdrant init complete.");
