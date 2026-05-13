@@ -631,3 +631,325 @@ Beehiiv
 Buttondown
 Ghost
 Medium
+
+# === Canada-focused expansion (2026-05-12) ===
+# Goal: maximize Canadian inventory by probing every Canadian employer of
+# any size against every ATS we adapt. Sectors: tech, banking, telecom,
+# retail, healthcare, energy, public sector. Many of these companies use
+# US-based ATS providers (Greenhouse/Lever/Ashby) for global hiring.
+
+# Tech / software / SaaS
+Shopify
+Hootsuite
+Wealthsimple
+1Password
+Lightspeed Commerce
+OpenText
+BlackBerry
+Coveo
+D2L
+Top Hat
+ApplyBoard
+Vidyard
+Klue
+Trulioo
+TouchBistro
+Klipfolio
+Wave Accounting
+SnapCommerce
+Jobber
+Thinkific
+Clio
+Hopper
+Ritual
+League
+Ada
+Benevity
+Rangle
+Achievers
+Plooto
+Vena Solutions
+Loopio
+Procurify
+Drop
+Borrowell
+Koho
+Brim Financial
+Nuvei
+Lightspeed
+Faire
+Tucows
+OpenDoor Canada
+Wattpad
+Rewind
+Voiceflow
+Cohere
+Element AI
+Kindred
+Wattpad
+Tealbook
+DarwinAI
+Maple
+Mejuri
+Eight Sleep
+Lululemon Athletica
+Aritzia
+Visier
+Workleap
+Coveo Solutions
+Recurly
+PointClickCare
+Verafin
+Verint
+TouchBistro Inc
+RB
+Granicus
+Hopper Cloud
+Stream
+Skupos
+Trimble
+TheScore
+Bench Accounting
+Knockri
+PocketHealth
+Vidyard
+Boast
+Drive Capital
+Helcim
+Bitstrips
+Snowplow
+Cinchy
+Diagram
+Float
+LifeWorks
+Rumble
+Mosaic Manufacturing
+ECommerce Inc
+Slang
+ApplyBoard
+
+# Canadian banks + financial services
+RBC
+Royal Bank of Canada
+TD Bank
+TD Canada Trust
+Scotiabank
+Bank of Nova Scotia
+BMO
+Bank of Montreal
+CIBC
+Canadian Imperial Bank of Commerce
+National Bank of Canada
+Sun Life Financial
+Manulife
+Sun Life
+Canada Life
+Great-West Life
+iA Financial Group
+Industrial Alliance
+Equitable Bank
+Tangerine
+Simplii Financial
+ATB Financial
+Desjardins
+Vancity
+Coast Capital Savings
+Meridian Credit Union
+Servus Credit Union
+
+# Canadian telecom + media
+Bell Canada
+Bell Media
+Rogers Communications
+TELUS
+Shaw Communications
+Cogeco
+Quebecor
+TVA Group
+CBC
+Corus Entertainment
+Postmedia
+The Globe and Mail
+Torstar
+Cineplex
+
+# Canadian retail + consumer
+Loblaw
+Loblaws
+Shoppers Drug Mart
+Canadian Tire
+Sobeys
+Empire Company
+Metro
+Couche-Tard
+Tim Hortons
+Restaurant Brands International
+Lululemon
+Indigo Books and Music
+Hudson's Bay
+Roots Canada
+Aritzia
+Reitmans
+Mountain Equipment Company
+MEC
+Holt Renfrew
+Sleep Country
+Dollarama
+London Drugs
+Jean Coutu
+Recipe Unlimited
+
+# Canadian healthcare networks + providers
+Sunnybrook Health Sciences Centre
+University Health Network
+SickKids
+Hospital for Sick Children
+Alberta Health Services
+Vancouver Coastal Health
+Fraser Health
+Hamilton Health Sciences
+Trillium Health Partners
+Unity Health Toronto
+Sinai Health
+North York General
+William Osler Health
+Humber River Hospital
+Niagara Health
+Ottawa Hospital
+Centre for Addiction and Mental Health
+CAMH
+McGill University Health Centre
+CHUM
+CHU Sainte-Justine
+Vancouver General Hospital
+BC Children's Hospital
+SaskHealth
+Saskatchewan Health Authority
+Nova Scotia Health
+Eastern Health
+Atlantic Health Sciences
+Horizon Health Network
+Maple
+Felix Health
+Loop Health
+Cleo
+Rocket Doctor
+Beam Dental
+Sun Pharma
+
+# Canadian energy + mining + industrial
+Enbridge
+Suncor Energy
+Canadian Natural Resources
+Imperial Oil
+Cenovus Energy
+TC Energy
+Pembina Pipeline
+Husky Energy
+Tourmaline Oil
+Barrick Gold
+Teck Resources
+Hydro One
+BC Hydro
+Hydro-Quebec
+Northland Power
+Brookfield Renewable
+Boralex
+Innergex
+Magna International
+Linamar
+Bombardier
+CAE
+MDA Space Systems
+Pratt and Whitney Canada
+Stelco
+ArcelorMittal Dofasco
+
+# Canadian airlines + transport + logistics
+Air Canada
+WestJet
+Porter Airlines
+Flair Airlines
+Lynx Air
+CN Rail
+Canadian National Railway
+CP Rail
+Canadian Pacific Railway
+TTC
+Toronto Transit Commission
+Metrolinx
+Via Rail
+Translink
+STM Montreal
+Purolator
+Canada Post
+SmartCentres
+Cogir
+
+# Canadian public sector + crown corporations
+Government of Canada
+Canada Revenue Agency
+Public Service Commission of Canada
+Government of Ontario
+Government of British Columbia
+Government of Alberta
+Government of Quebec
+Government of Manitoba
+City of Toronto
+City of Vancouver
+City of Montreal
+City of Calgary
+City of Ottawa
+Export Development Canada
+Business Development Bank of Canada
+BDC Canada
+CMHC
+
+# Canadian universities + colleges
+University of Toronto
+University of British Columbia
+McGill University
+University of Waterloo
+Western University
+McMaster University
+Queens University
+University of Alberta
+University of Calgary
+Concordia University
+Simon Fraser University
+University of Montreal
+University of Ottawa
+Carleton University
+York University
+Ryerson University
+Toronto Metropolitan University
+Dalhousie University
+Universite Laval
+HEC Montreal
+Universite de Montreal
+University of Manitoba
+University of Saskatchewan
+Memorial University
+
+# Canadian consulting + professional services
+Deloitte Canada
+KPMG Canada
+PwC Canada
+EY Canada
+Accenture Canada
+McKinsey Toronto
+BCG Toronto
+Bain Toronto
+Capital One Canada
+Stantec
+WSP Global
+SNC-Lavalin
+AtkinsRealis
+IBI Group
+Hatch
+Aecom Canada
+Colliers International
+Pomerleau
+EllisDon
+PCL Construction
+

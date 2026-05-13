@@ -39,11 +39,15 @@ func main() {
 	// Personio and Teamtailor adapters exist but are gated on operator-curated
 	// tenant lists (PERSONIO_COMPANIES / TEAMTAILOR_COMPANIES env vars) since
 	// their public endpoints are opt-in per tenant. USAJobs / Adzuna / Reed /
-	// Jooble / Careerjet are gated on free API keys (USAJOBS_API_KEY,
-	// ADZUNA_APP_ID+ADZUNA_APP_KEY, REED_API_KEY, JOOBLE_API_KEY,
-	// CAREERJET_AFFID). The Muse works with or without MUSE_API_KEY (key
-	// raises the rate limit). Pass `-sources` or SOURCES to opt in.
-	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse"), "comma-separated subset of sources to run")
+	// Careerjet are gated on free API keys (USAJOBS_API_KEY, ADZUNA_APP_ID+
+	// ADZUNA_APP_KEY, REED_API_KEY, CAREERJET_AFFID) and stay out of the
+	// default rotation until the operator provisions them. Jooble is in the
+	// default list with a key-gated no-op: it logs "[jooble] skipped" without
+	// JOOBLE_API_KEY and activates automatically when the env var lands, so
+	// the operator only needs to set the key on the droplet to turn it on.
+	// The Muse works with or without MUSE_API_KEY (key raises the rate limit).
+	// Pass `-sources` or SOURCES to opt in to other gated sources.
+	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse,jooble"), "comma-separated subset of sources to run")
 	flag.Parse()
 
 	include := splitCSV(*includeStr)
