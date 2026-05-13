@@ -67,6 +67,22 @@ var DefaultGreenhouse = []string{
 	"audaxhealth", "discord-inc", "cardless", "stordcom",
 	"glean", "harvey", "anthropicai",
 
+	// Canada expansion 2026-05-12. Canadian tech companies on Greenhouse.
+	"coveo",           // Quebec - enterprise search
+	"d2l",             // Kitchener-Waterloo - Brightspace LMS
+	"klue",            // Vancouver - competitive intelligence
+	"vidyard",         // Kitchener-Waterloo - video for sales
+	"tophat",          // Toronto - edtech
+	"applyboard",      // Kitchener-Waterloo - study abroad
+	"league",          // Toronto - health benefits platform
+	"ada",             // Toronto - support automation
+	"benevity",        // Calgary - corporate giving
+	"jobber",          // Edmonton - home-services SaaS
+	"thinkific",       // Vancouver - online courses
+	"clio",            // Vancouver - legal practice software
+	"hopper",          // Montreal - travel (note: also already listed above)
+	"ritualco",        // Toronto - food ordering
+
 	// auto-discovered 2026-05-07 (98)
 	"10xgenomics",
 	"adaptivebiotechnologies",
@@ -201,6 +217,16 @@ var DefaultLever = []string{
 	"applovin-jobs", "discord-jobs",
 	"sentryio",
 	"dailyweb",
+
+	// Canada expansion 2026-05-12. Canadian tech companies on Lever.
+	"hootsuite",       // Vancouver
+	"touchbistro",     // Toronto - restaurant POS
+	"trulioo",         // Vancouver - identity verification
+	"klipfolio",       // Ottawa - dashboards
+	"vidyard",         // Kitchener-Waterloo (also tried on Greenhouse)
+	"d2l-jobs",        // alt slug for D2L
+	"waveapps",        // Toronto - accounting (acquired by H&R Block)
+	"snapcommerce",    // Toronto - commerce
 
 	// auto-discovered 2026-05-07 (43)
 	"acceldata",
@@ -637,6 +663,51 @@ var DefaultWorkday = []WorkdayCompany{
 	// Retail / food service (Phase 2 - retail expansion).
 	{Display: "Macy's",                  Tenant: "macys",             Region: "wd1", Site: "External"},
 	{Display: "McDonald's",              Tenant: "mcdonalds",         Region: "wd1", Site: "External"},
+
+	// Canada expansion 2026-05-12. The Canadian inventory is ~2.5% of the
+	// index; this seed batch targets the largest Canadian employers across
+	// banking, telecom, retail, tech, and healthcare to lift recall on
+	// country=CA queries. Slugs are speculative where vendor docs don't
+	// expose them publicly; 404s log+skip, no breakage.
+
+	// Canadian banks (Workday-heavy sector).
+	{Display: "RBC",                     Tenant: "rbc",               Region: "wd3", Site: "RBC_Careers"},
+	{Display: "TD Bank",                 Tenant: "td",                Region: "wd3", Site: "TD_External_Career_Site"},
+	{Display: "Scotiabank",              Tenant: "scotiabank",        Region: "wd3", Site: "Scotiabank_Careers"},
+	{Display: "BMO",                     Tenant: "bmo",               Region: "wd3", Site: "External"},
+	{Display: "CIBC",                    Tenant: "cibc",              Region: "wd3", Site: "campus"},
+	{Display: "Sun Life Financial",      Tenant: "sunlife",           Region: "wd3", Site: "Sunlife"},
+	{Display: "Manulife",                Tenant: "manulife",          Region: "wd3", Site: "External"},
+
+	// Canadian telecom.
+	{Display: "Bell Canada",             Tenant: "bell",              Region: "wd3", Site: "Bell_External_Career_Site"},
+	{Display: "Rogers Communications",   Tenant: "rogers",            Region: "wd3", Site: "Rogers_External_Career_Site"},
+	{Display: "TELUS",                   Tenant: "telus",             Region: "wd3", Site: "Telus_External_Career_Site"},
+
+	// Canadian retail / consumer.
+	{Display: "Loblaw Companies",        Tenant: "loblaw",            Region: "wd3", Site: "External"},
+	{Display: "Canadian Tire",           Tenant: "canadiantire",      Region: "wd3", Site: "External"},
+	{Display: "Lululemon",               Tenant: "lululemon",         Region: "wd5", Site: "External"},
+	{Display: "Sobeys",                  Tenant: "sobeys",            Region: "wd3", Site: "External"},
+
+	// Canadian tech / enterprise.
+	{Display: "OpenText",                Tenant: "opentext",          Region: "wd3", Site: "External"},
+	{Display: "BlackBerry",              Tenant: "blackberry",        Region: "wd3", Site: "External"},
+	{Display: "CGI",                     Tenant: "cgi",               Region: "wd3", Site: "External"},
+	{Display: "Bombardier",              Tenant: "bombardier",        Region: "wd3", Site: "External"},
+
+	// Canadian transport / aerospace.
+	{Display: "Air Canada",              Tenant: "aircanada",         Region: "wd3", Site: "External"},
+	{Display: "CN Rail",                 Tenant: "cn",                Region: "wd3", Site: "External"},
+
+	// Canadian hospital networks. The handoff has these as a TODO in the
+	// phase-2 plan; slugs unverified, the next crawler pass will surface
+	// which 404.
+	{Display: "Sunnybrook Health Sciences Centre", Tenant: "sunnybrook", Region: "wd3", Site: "External"},
+	{Display: "University Health Network",         Tenant: "uhn",        Region: "wd3", Site: "External"},
+	{Display: "Alberta Health Services",           Tenant: "ahs",        Region: "wd3", Site: "External"},
+	{Display: "Vancouver Coastal Health",          Tenant: "vch",        Region: "wd3", Site: "External"},
+	{Display: "Hamilton Health Sciences",          Tenant: "hhsc",       Region: "wd3", Site: "External"},
 }
 
 var DefaultRecruitee = []string{
