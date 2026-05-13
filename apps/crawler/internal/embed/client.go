@@ -15,7 +15,18 @@ import (
 	"unicode/utf8"
 )
 
-const maxChars = 6000 // safe upper bound for nomic-embed-text token budget
+// maxChars caps each text before we hand it to nomic-embed-text. The model
+// trains at a 2048-token context and Ollama enforces that cap with a 400
+// "input length exceeds the context length". English averages ~4 chars/token
+// but job descriptions with code blocks, bulleted lists, and CamelCase blow
+// past that ratio, so we pick a conservative ceiling. 3500 chars × ~0.55
+// tokens/char (worst case) ≈ 1900 tokens, leaving headroom for title +
+// company + location prefixed onto the description in embedText().
+// 6000 was the previous value and ran fine for greenhouse/lever/ashby
+// payloads (already plain text); it started failing in bulk once the
+// generic sitemap+JSON-LD adapter began ingesting full company career pages
+// with much denser markup, dropping the run to 38 ingests vs ~3000 prior.
+const maxChars = 3500
 
 // Retry tuning. The API rate-limit returns 429 with a Retry-After header
 // (seconds); Ollama overload typically surfaces as 503 or other 5xx. We cap
