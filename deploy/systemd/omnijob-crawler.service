@@ -10,17 +10,19 @@ Type=oneshot
 User=om
 WorkingDirectory=/home/om/omnijob/apps/crawler
 ExecStart=/usr/local/go/bin/go run ./cmd/crawler
-# Concurrent embed/ingest workers. Ollama on a 2-vCPU box can only chew
-# through ~1 embed at a time without queueing past the 30s timeout.
-# Single-flight gives a high success rate at modest wall-clock cost; the
-# timer fires every 12h so throughput per pass isn't the binding constraint.
+# Concurrent embed/ingest workers. Ollama on a 2-vCPU box can still only
+# embed one batch at a time on CPU, but the embed client timeout is now
+# 180s (commit e319418, was 60s) and the per-batch HTTP exists-checks
+# and ingest POSTs parallelize cleanly across workers - so while one
+# worker is blocked on Ollama, the others keep the exists-check and
+# ingest pipelines busy. Concurrency=3 cuts wall-clock by ~30-40% on
+# the post-fix runs.
 Environment=API_URL=http://localhost:3000
-Environment=EMBED_CONCURRENCY=1
-# A full pass across all 14 sources at concurrency=1 plus retries on
-# transient Ollama 5xx routinely exceeds 4 hours. Bump to 8h so a pass
-# completes naturally instead of getting SIGTERM'd mid-source. The
-# pre-embed exists-check (sink.Exists) makes subsequent passes much
-# faster by skipping jobs already in Qdrant.
+Environment=EMBED_CONCURRENCY=3
+# A full pass across all sources used to routinely hit the 8h cap. With
+# the concurrency bump and the 60s->180s timeout fix above, passes now
+# finish well under 8h. Cap kept at 8h as a backstop so a hung source
+# can't run indefinitely.
 TimeoutStartSec=8h
 StandardOutput=append:/var/log/omnijob-crawler.log
 StandardError=append:/var/log/omnijob-crawler.log

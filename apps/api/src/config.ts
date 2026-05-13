@@ -62,6 +62,11 @@ export const config = {
     // Append-only JSONL of contact-form submissions. Same bind-mount strategy
     // as the audit log: operator tails the file off the host filesystem.
     contactLogPath: env("CONTACT_LOG_PATH", isProd ? "/var/lib/omnijob/contact.log" : "./data/contact.log"),
+    // Shared secret protecting operator-only endpoints (/admin/*). Sent as
+    // X-Admin-Token. Endpoints return 401 when this is unset *or* when the
+    // header doesn't match - never proxy a 200 for "no token configured" in
+    // either dev or prod. Set via systemd drop-in in production.
+    adminToken: process.env["ADMIN_TOKEN"] || undefined,
   },
   contact: {
     // When set, each /contact submission is forwarded to this address via

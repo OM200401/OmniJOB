@@ -23,6 +23,7 @@ import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
 import { contact } from "./routes/contact";
+import { admin } from "./routes/admin";
 import {
   ensureCountryIndex,
   ensureIndustryIndexes,
@@ -99,6 +100,7 @@ const app = new Elysia()
   .use(users)
   .use(match)
   .use(contact)
+  .use(admin)
   .onError(({ error, code, set, path }) => {
     if (code === "VALIDATION") {
       const e = error as { all?: unknown[]; message?: string };
@@ -135,6 +137,9 @@ console.log(
       ? `resend->${config.contact.toEmail}`
       : "disabled (set RESEND_API_KEY + CONTACT_TO_EMAIL)"
   }`,
+);
+console.log(
+  `  Admin: ${config.security.adminToken ? "enabled (set ADMIN_TOKEN header)" : "disabled (set ADMIN_TOKEN env var)"}`,
 );
 
 // Best-effort background migration. The hybrid keyword pass in
