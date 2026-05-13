@@ -493,4 +493,27 @@ var DefaultSitemapFeeds = []SitemapFeed{
 		Country:     "CA",
 		MaxPages:    1500,
 	},
+	{
+		// Loblaw - Canada's largest grocery + retail employer. Sitemap
+		// returned 2126 job URLs on first probe; cap at 2500 to absorb
+		// growth without runaway.
+		SourceLabel: "loblaw",
+		SitemapURL:  "https://careers.loblaw.ca/sitemap-7706e169-en.xml",
+		URLPattern:  `^https://careers\.loblaw\.ca/.+/job/`,
+		Company:     "Loblaw Companies",
+		Country:     "CA",
+		MaxPages:    2500,
+	},
+	{
+		// OpenText - Canadian-headquartered enterprise SaaS. Sitemap
+		// returned 229 job URLs. Includes US + global postings; the per-
+		// page JSON-LD's addressCountry is the source of truth for
+		// country, with feed Country as fallback only when missing.
+		SourceLabel: "opentext",
+		SitemapURL:  "https://careers.opentext.com/sitemap.xml",
+		URLPattern:  `^https://careers\.opentext\.com/.+/job/`,
+		Company:     "OpenText",
+		Country:     "CA",
+		MaxPages:    500,
+	},
 }
