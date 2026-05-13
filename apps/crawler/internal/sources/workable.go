@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,19 +28,31 @@ func NewWorkable(companies []string) *Workable {
 
 func (w *Workable) Name() string { return "workable" }
 
+// Body for the v3 jobs search. Empty arrays = no filter, returns all
+// published jobs for the account. Verified live against revolut and
+// several other tenants 2026-05-13.
+type workableSearchRequest struct {
+	Query      string   `json:"query"`
+	Department []string `json:"department"`
+	Location   []string `json:"location"`
+	Workplace  []string `json:"workplace"`
+	Worktype   []string `json:"worktype"`
+}
+
 type workableJobsResponse struct {
+	Total   int `json:"total"`
 	Results []struct {
-		ID          string `json:"id"`
-		Shortcode   string `json:"shortcode"`
-		Title       string `json:"title"`
-		Department  string `json:"department"`
-		Description string `json:"description"`
-		URL         string `json:"url"`
+		ID             string `json:"id"`
+		Shortcode      string `json:"shortcode"`
+		Title          string `json:"title"`
+		Department     string `json:"department"`
+		Description    string `json:"description"`
+		URL            string `json:"url"`
 		ApplicationURL string `json:"application_url"`
-		Shortlink   string `json:"shortlink"`
-		Telecommuting bool `json:"telecommuting"`
-		Remote      bool   `json:"remote"`
-		Location    struct {
+		Shortlink      string `json:"shortlink"`
+		Telecommuting  bool   `json:"telecommuting"`
+		Remote         bool   `json:"remote"`
+		Location       struct {
 			Country string `json:"country"`
 			City    string `json:"city"`
 			Region  string `json:"region"`
@@ -62,12 +75,32 @@ func (w *Workable) Fetch(ctx context.Context, out chan<- pipeline.JobJSON) error
 }
 
 func (w *Workable) fetchOne(ctx context.Context, slug string, out chan<- pipeline.JobJSON) error {
-	url := fmt.Sprintf("https://apply.workable.com/api/v3/accounts/%s/jobs?state=published", slug)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	// Workable's v3 public API moved from GET ?state=published to a POST
+	// with a JSON search body. The old GET path now 404s. Verified the
+	// current shape by inspecting apply.workable.com/{slug}/ network
+	// traffic 2026-05-13. Empty arrays mean "no filter on this dimension".
+	url := fmt.Sprintf("https://apply.workable.com/api/v3/accounts/%s/jobs", slug)
+	body, err := json.Marshal(workableSearchRequest{
+		Query:      "",
+		Department: []string{},
+		Location:   []string{},
+		Workplace:  []string{},
+		Worktype:   []string{},
+	})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	// Origin matters: Workable's CDN returns 403 to bare API clients without
+	// it. Setting it to the tenant's own apply origin mimics the in-browser
+	// flow without claiming an external referrer.
+	req.Header.Set("Origin", "https://apply.workable.com")
+	req.Header.Set("Referer", fmt.Sprintf("https://apply.workable.com/%s/", slug))
 
 	resp, err := w.HTTP.Do(req)
 	if err != nil {
@@ -79,8 +112,8 @@ func (w *Workable) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 		return fmt.Errorf("404 (slug not on workable?)")
 	}
 	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("status=%d: %s", resp.StatusCode, body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("status=%d: %s", resp.StatusCode, respBody)
 	}
 
 	var data workableJobsResponse

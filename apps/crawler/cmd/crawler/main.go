@@ -47,7 +47,7 @@ func main() {
 	// the operator only needs to set the key on the droplet to turn it on.
 	// The Muse works with or without MUSE_API_KEY (key raises the rate limit).
 	// Pass `-sources` or SOURCES to opt in to other gated sources.
-	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse,jooble"), "comma-separated subset of sources to run")
+	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse,jooble,workable,rss"), "comma-separated subset of sources to run")
 	flag.Parse()
 
 	include := splitCSV(*includeStr)
@@ -409,6 +409,13 @@ func buildSources(include []string) []sources.Source {
 			envCSV("CAREERJET_LOCALES", sources.DefaultCareerjetLocales),
 			envInt("CAREERJET_PAGES", 5),
 		))
+	}
+	if want["rss"] {
+		feeds := sources.ParseRSSFeeds(env("RSS_FEEDS", ""))
+		if len(feeds) == 0 {
+			feeds = sources.DefaultRSSFeeds
+		}
+		out = append(out, sources.NewRSS(feeds))
 	}
 	return out
 }
