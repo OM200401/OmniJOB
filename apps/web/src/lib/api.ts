@@ -93,7 +93,10 @@ export type JobMetadata = {
 
 export type JobHit = {
   id: string | number;
-  score: number;
+  // Optional: the server omits this in browse mode (vectorless /jobs/search)
+  // where there's no semantic ranking signal. The UI hides the % match pill
+  // when this is absent.
+  score?: number;
   payload: JobMetadata;
 };
 
@@ -237,9 +240,13 @@ export const api = {
       encrypted_profile_blob,
     }),
 
-  searchJobs: (vector: number[], opts: SearchOpts = {}) =>
+  searchJobs: (vector: number[] | undefined, opts: SearchOpts = {}) =>
     request<{ hits: JobHit[]; total?: number }>("POST", "/jobs/search", {
-      vector,
+      // Omit the vector entirely when the caller has neither a résumé
+      // embedding nor a typed query. The server treats that as browse mode
+      // and returns recent jobs ordered by scraped_at desc with the same
+      // filter contract.
+      ...(vector && vector.length > 0 ? { vector } : {}),
       ...(opts.k ? { k: opts.k } : {}),
       ...(opts.offset ? { offset: opts.offset } : {}),
       ...(opts.query ? { query: opts.query } : {}),

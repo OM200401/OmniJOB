@@ -132,7 +132,10 @@ export async function upsertJob(
 
 export type JobHit = {
   id: string;
-  score: number;
+  // Optional: omitted when there is no semantic ranking signal (browse mode,
+  // i.e. a vectorless /jobs/search call). UI renders the % match only when
+  // present.
+  score?: number;
   payload: JobMetadata & { quality?: number; quality_breakdown?: QualityBreakdown["components"] };
 };
 
@@ -273,6 +276,23 @@ export async function ensureIndustryIndexes(): Promise<void> {
   }
 }
 
+// Idempotent migration: create an integer payload index on scraped_at so the
+// browse path (vectorless /jobs/search) can scroll points ordered by recency
+// using Qdrant's order_by. Without this index, order_by on scraped_at falls
+// back to an unordered scan.
+export async function ensureScrapedAtIndex(): Promise<void> {
+  try {
+    await qdrant.createPayloadIndex(config.qdrant.jobsCollection, {
+      field_name: "scraped_at",
+      field_schema: "integer",
+      wait: true,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/exist|already/i.test(msg)) throw e;
+  }
+}
+
 export type HybridOptions = {
   // Lowercased keyword tokens to OR-match against the title payload. When
   // present and at least one yields a Qdrant full-text hit, the keyword
@@ -286,7 +306,7 @@ export type HybridOptions = {
 };
 
 export async function searchJobs(
-  vector: number[],
+  vector: number[] | undefined,
   k = 20,
   filter?: JobSearchFilter,
   opts?: HybridOptions,
@@ -338,64 +358,86 @@ export async function searchJobs(
 
   const baseFilter = { must_not, ...(must.length ? { must } : {}) };
 
-  // Vector and keyword passes run in parallel. The keyword pass scrolls for
-  // points whose title or description matches any expanded query token via
-  // Qdrant's full-text payload index. If the index isn't ready yet (fresh
-  // install or in-flight migration) the helper returns an empty array and
-  // we fall back to pure vector search - no error surfaces to the user.
-  const [vecRes, kwRes] = await Promise.all([
-    qdrant.search(config.qdrant.jobsCollection, {
-      vector,
-      limit: fetchK,
-      with_payload: true,
-      filter: baseFilter,
-    }),
-    opts?.keywords && opts.keywords.length > 0
-      ? keywordSearch(opts.keywords, fetchK, baseFilter)
-      : Promise.resolve([] as KeywordHit[]),
-  ]);
+  // Browse mode is taken when the caller doesn't supply a query vector
+  // (no résumé and no typed query). Instead of ANN ranking we scroll the
+  // collection ordered by scraped_at descending so the user sees the most
+  // recent postings first. Filters still apply. Browse pulls a deeper batch
+  // since there's no ranking signal to truncate by.
+  const browseMode = !vector || vector.length === 0;
 
-  // RRF fusion. Each ranking contributes 1/(RRF_K + rank) to a point's
-  // fused score. Points that appear in both rankings sum the two; points
-  // that appear in only one are still represented. The fused score
-  // determines the post-filter loop order; the cosine score is preserved
-  // separately so the client UI ("78% match") keeps its meaning.
   type Fused = {
     id: string | number;
     fused: number;
     // Cosine score from the vector pass, or undefined if the point only
-    // appeared in the keyword pass. The route surfaces this to the client.
+    // appeared in the keyword pass / browse mode. The route surfaces this
+    // to the client.
     cosine: number | undefined;
     payload: StoredJobPayload;
   };
-  const fusedMap = new Map<string, Fused>();
-  vecRes.forEach((p, rank) => {
-    const key = String(p.id);
-    fusedMap.set(key, {
-      id: p.id,
-      fused: 1 / (RRF_K + rank + 1),
-      cosine: p.score,
-      payload: p.payload as StoredJobPayload,
+  let res: Fused[];
+
+  if (browseMode) {
+    const scrollK = needsPostFilter ? 600 : 400;
+    const scrollRes = await qdrant.scroll(config.qdrant.jobsCollection, {
+      limit: scrollK,
+      with_payload: true,
+      with_vector: false,
+      filter: baseFilter,
+      order_by: { key: "scraped_at", direction: "desc" },
     });
-  });
-  kwRes.forEach((p, rank) => {
-    const key = String(p.id);
-    const rrf = 1 / (RRF_K + rank + 1);
-    const existing = fusedMap.get(key);
-    if (existing) {
-      existing.fused += rrf;
-    } else {
-      // Keyword-only hit. Cosine is unknown; synthesize a reasonable score
-      // so the UI doesn't show 0%. We use a flat 0.55 (just under the
-      // "strong match" threshold at 0.6) - good enough to render as
-      // "55% match" without overclaiming relevance the vector pass didn't
-      // confirm.
-      fusedMap.set(key, { id: p.id, fused: rrf, cosine: 0.55, payload: p.payload });
-    }
-  });
-  // Sort by fused score, descending. Preserves vector-rank tiebreak in the
-  // common case where keywords didn't fire.
-  const res = Array.from(fusedMap.values()).sort((a, b) => b.fused - a.fused);
+    res = scrollRes.points.map((p) => ({
+      id: p.id,
+      fused: 0,
+      cosine: undefined,
+      payload: p.payload as StoredJobPayload,
+    }));
+  } else {
+    // Vector and keyword passes run in parallel. The keyword pass scrolls
+    // for points whose title matches any expanded query token via Qdrant's
+    // full-text payload index. If the index isn't ready yet (fresh install
+    // or in-flight migration) the helper returns an empty array and we
+    // fall back to pure vector search - no error surfaces to the user.
+    const [vecRes, kwRes] = await Promise.all([
+      qdrant.search(config.qdrant.jobsCollection, {
+        vector,
+        limit: fetchK,
+        with_payload: true,
+        filter: baseFilter,
+      }),
+      opts?.keywords && opts.keywords.length > 0
+        ? keywordSearch(opts.keywords, fetchK, baseFilter)
+        : Promise.resolve([] as KeywordHit[]),
+    ]);
+
+    // RRF fusion. Each ranking contributes 1/(RRF_K + rank) to a point's
+    // fused score. Points that appear in both rankings sum the two; points
+    // that appear in only one are still represented.
+    const fusedMap = new Map<string, Fused>();
+    vecRes.forEach((p, rank) => {
+      const key = String(p.id);
+      fusedMap.set(key, {
+        id: p.id,
+        fused: 1 / (RRF_K + rank + 1),
+        cosine: p.score,
+        payload: p.payload as StoredJobPayload,
+      });
+    });
+    kwRes.forEach((p, rank) => {
+      const key = String(p.id);
+      const rrf = 1 / (RRF_K + rank + 1);
+      const existing = fusedMap.get(key);
+      if (existing) {
+        existing.fused += rrf;
+      } else {
+        // Keyword-only hit. Cosine is unknown; synthesize a reasonable
+        // score so the UI doesn't show 0%. We use a flat 0.55 (just under
+        // the "strong match" threshold at 0.6) - good enough to render as
+        // "55% match" without overclaiming relevance.
+        fusedMap.set(key, { id: p.id, fused: rrf, cosine: 0.55, payload: p.payload });
+      }
+    });
+    res = Array.from(fusedMap.values()).sort((a, b) => b.fused - a.fused);
+  }
 
   const wantLevels = new Set<Level>(filter?.experience_level ?? []);
   const wantCountries = new Set<string>(filter?.country ?? []);
@@ -476,8 +518,9 @@ export async function searchJobs(
       id: payload.external_id ?? String(p.id),
       // Surface the cosine score, not the RRF fused score - the UI renders
       // this as a "% match" and the fused value (0.01-0.03 range) would
-      // collapse every match to 1-3%.
-      score: p.cosine ?? 0.55,
+      // collapse every match to 1-3%. In browse mode cosine is undefined
+      // (no semantic ranking signal) so we omit the field entirely.
+      ...(p.cosine !== undefined ? { score: p.cosine } : {}),
       payload: { ...enriched, quality: quality.total, quality_breakdown: quality.components },
     };
   });

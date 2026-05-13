@@ -34,7 +34,12 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
   const salary = hit.payload.salary_range;
   const posted = hit.payload.posted_at ?? hit.payload.scraped_at;
   const lastSeen = hit.payload.scraped_at ?? hit.payload.posted_at;
-  const score = Math.round(Math.max(0, Math.min(1, hit.score)) * 100);
+  // Score is omitted in browse mode (no semantic ranking signal). In that
+  // case the match-pill is hidden entirely rather than collapsed to 0%.
+  const hasScore = typeof hit.score === "number";
+  const score = hasScore
+    ? Math.round(Math.max(0, Math.min(1, hit.score!)) * 100)
+    : 0;
   const fresh = freshnessOf(lastSeen);
 
   return (
@@ -47,9 +52,11 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
         <CompanyLogo company={hit.payload.company} size={32} />
         <div className="row gap-sm" style={{ alignItems: "center", gap: 6 }}>
           {hit.payload.quality !== undefined && <QualityDot value={hit.payload.quality} />}
-          <span className="match-pill" data-strong={hit.score >= 0.6 ? "true" : "false"}>
-            {score}%
-          </span>
+          {hasScore && (
+            <span className="match-pill" data-strong={hit.score! >= 0.6 ? "true" : "false"}>
+              {score}%
+            </span>
+          )}
         </div>
       </div>
 

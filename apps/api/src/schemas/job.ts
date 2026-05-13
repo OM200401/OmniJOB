@@ -109,7 +109,10 @@ export const JobIngestSchema = t.Object({
 });
 
 export const JobSearchSchema = t.Object({
-  vector: VectorSchema,
+  // Optional: omit for "browse" mode where the server returns recent jobs
+  // ordered by scraped_at desc instead of doing ANN ranking. Used when the
+  // caller has neither a résumé embedding nor a typed query.
+  vector: t.Optional(VectorSchema),
   k: t.Optional(t.Integer({ minimum: 1, maximum: 200 })),
   // Page offset into the post-filter result pool. Default 0 (first page).
   // Bounded by max candidate pool (fetchK ceiling is 300, but the filtered

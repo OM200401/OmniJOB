@@ -1,4 +1,9 @@
-import { qdrant, ensureTitleFullTextIndex, ensureIndustryIndexes } from "../src/qdrant/client";
+import {
+  qdrant,
+  ensureIndustryIndexes,
+  ensureScrapedAtIndex,
+  ensureTitleFullTextIndex,
+} from "../src/qdrant/client";
 import { config } from "../src/config";
 
 async function ensureCollection(name: string, dim: number) {
@@ -40,4 +45,8 @@ console.log(`+ ensured full-text payload index on "${config.qdrant.jobsCollectio
 // /jobs/search use Qdrant's hash lookup instead of full-scan.
 await ensureIndustryIndexes();
 console.log(`+ ensured keyword payload indexes on "${config.qdrant.jobsCollection}.{industry,job_family}"`);
+// Integer payload index on scraped_at so the vectorless browse path can
+// scroll points ordered by recency.
+await ensureScrapedAtIndex();
+console.log(`+ ensured integer payload index on "${config.qdrant.jobsCollection}.scraped_at"`);
 console.log("Qdrant init complete.");

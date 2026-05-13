@@ -23,7 +23,11 @@ import { users } from "./routes/users";
 import { match } from "./routes/match";
 import { embed } from "./routes/embed";
 import { contact } from "./routes/contact";
-import { ensureTitleFullTextIndex, ensureIndustryIndexes } from "./qdrant/client";
+import {
+  ensureIndustryIndexes,
+  ensureScrapedAtIndex,
+  ensureTitleFullTextIndex,
+} from "./qdrant/client";
 
 // Map URL paths to rate-limit buckets. Order matters - more specific patterns
 // must come first. Match-explain is /jobs/:id/match-explain, so we test that
@@ -146,5 +150,10 @@ void ensureTitleFullTextIndex()
 void ensureIndustryIndexes()
   .then(() => console.log(`  Industry: keyword indexes on industry/job_family ready`))
   .catch((e) => console.warn(`  Industry: index ensure failed: ${e instanceof Error ? e.message : e}`));
+// Integer index on scraped_at so vectorless browse-mode /jobs/search can
+// scroll points ordered by recency via Qdrant's order_by. Idempotent.
+void ensureScrapedAtIndex()
+  .then(() => console.log(`  Browse: integer index on scraped_at ready`))
+  .catch((e) => console.warn(`  Browse: index ensure failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

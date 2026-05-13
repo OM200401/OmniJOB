@@ -239,30 +239,23 @@ export function Feed() {
   }, []);
 
   const search = useCallback(async () => {
-    // In no-vault mode the typed query is the only ranking signal. With
-    // nothing typed there's nothing to search yet - keep results empty
-    // until the user enters a query rather than calling /embed("").
-    if (noVault) {
-      if (debouncedQuery.length < 2) {
-        setHits(null);
-        setTotalMatches(null);
-        return;
-      }
-    } else if (!skill || skill.length === 0) {
-      return;
-    }
     setBusy(true);
     setErr(null);
     try {
-      let vector: number[];
-      if (noVault) {
+      // Pick the ranking signal:
+      //   - typed query (>=2 chars): embed it, use that as the vector
+      //   - else, vault user: rank by their résumé embedding
+      //   - else (no-vault, no query): browse mode - omit vector entirely
+      //     so the server returns recent jobs ordered by scraped_at desc.
+      // Filters apply in every case.
+      let vector: number[] | undefined;
+      if (debouncedQuery.length >= 2) {
         const { vector: qv } = await api.embed(debouncedQuery, { expand: true });
         vector = qv;
-      } else if (debouncedQuery.length >= 2) {
-        const { vector: qv } = await api.embed(debouncedQuery, { expand: true });
-        vector = qv;
+      } else if (!noVault && skill && skill.length > 0) {
+        vector = skill;
       } else {
-        vector = skill!;
+        vector = undefined;
       }
 
       const offset = (page - 1) * PAGE_SIZE;
@@ -590,11 +583,7 @@ export function Feed() {
             ref={inputRef}
             type="text"
             className="search-input"
-            placeholder={
-              noVault
-                ? "Search any role, technology, or company"
-                : "Search roles, technologies, companies…"
-            }
+            placeholder="Search roles, technologies, companies…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -927,8 +916,6 @@ export function Feed() {
                 totalMatches !== null && totalMatches > hits.length
                   ? `Showing ${hits.length} of ${totalMatches} matches`
                   : `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
-              ) : noVault && !debouncedQuery ? (
-                "Type a query to start"
               ) : (
                 "Loading…"
               )}
@@ -937,7 +924,7 @@ export function Feed() {
               {debouncedQuery
                 ? <>Searching for <strong style={{ color: "var(--fg-2)" }}>“{debouncedQuery}”</strong></>
                 : noVault
-                  ? "Search any role, technology, or company"
+                  ? "Browsing most recent jobs"
                   : "Ranked by your résumé embedding"}
             </span>
           </div>
@@ -956,13 +943,6 @@ export function Feed() {
               <JobCardSkeleton />
               <JobCardSkeleton />
             </div>
-          )}
-
-          {!err && !busy && noVault && !debouncedQuery && !hits && (
-            <EmptyState
-              title="Search any role, technology, or company"
-              description="Type a query above and press Enter. Results are ranked by semantic similarity to whatever you type."
-            />
           )}
 
           {!err && !(busy && totalActive > 0) && hits && hits.length === 0 && (
