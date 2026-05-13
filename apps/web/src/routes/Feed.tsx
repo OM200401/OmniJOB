@@ -9,6 +9,7 @@ import {
   type Industry,
   type JobHit,
   type RemoteStatus,
+  type SortMode,
   type SourceName,
 } from "../lib/api";
 import {
@@ -77,6 +78,15 @@ const SOURCE_VALUES = new Set<SourceName>([
   "recruitee",
 ]);
 const INDUSTRY_VALUES = new Set<Industry>(INDUSTRY_OPTIONS.map((o) => o.value));
+
+// Order is the order the dropdown renders; "posted_desc" first because
+// it's the default and what most visitors want.
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "posted_desc", label: "Newest posted" },
+  { value: "posted_asc", label: "Oldest posted" },
+  { value: "scraped_desc", label: "Recently added" },
+];
+const SORT_VALUES = new Set<SortMode>(SORT_OPTIONS.map((o) => o.value));
 
 function parseCsv<T extends string>(
   raw: string | null,
@@ -148,6 +158,10 @@ export function Feed() {
   // hide_stale defaults to ON; only `0` flips it off.
   const initialHideStale = initialParamsRef.current.get("hide_stale") !== "0";
   const initialPage = Math.max(1, parseInt0(initialParamsRef.current.get("page")) ?? 1);
+  const initialSort: SortMode = (() => {
+    const raw = initialParamsRef.current.get("sort");
+    return raw && SORT_VALUES.has(raw as SortMode) ? (raw as SortMode) : "posted_desc";
+  })();
 
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
@@ -163,6 +177,7 @@ export function Feed() {
   const [salaryMin, setSalaryMin] = useState<number | null>(initialSalaryMin); // USD-annual floor
   const [requireSalary, setRequireSalary] = useState(initialRequireSalary);
   const [hideStale, setHideStale] = useState(initialHideStale); // hide postings 45d+ old
+  const [sort, setSort] = useState<SortMode>(initialSort);
 
   const [hits, setHits] = useState<JobHit[] | null>(null);
   // Server-reported candidate pool size (post-filter survivors). Used to
@@ -273,6 +288,7 @@ export function Feed() {
         ...(salaryMin !== null ? { salary_min_usd: salaryMin } : {}),
         ...(requireSalary ? { require_salary: true } : {}),
         ...(hideStale ? { max_age_days: 45 } : {}),
+        ...(sort !== "posted_desc" ? { sort } : {}),
       });
       setHits(hits);
       setTotalMatches(total ?? hits.length);
@@ -281,7 +297,7 @@ export function Feed() {
     } finally {
       setBusy(false);
     }
-  }, [noVault, skill, debouncedQuery, remotes, levels, industries, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale, page]);
+  }, [noVault, skill, debouncedQuery, remotes, levels, industries, sources, countries, debouncedLocation, debouncedCompany, salaryMin, requireSalary, hideStale, sort, page]);
 
   useEffect(() => {
     void search();
@@ -314,6 +330,7 @@ export function Feed() {
     salaryMin,
     requireSalary,
     hideStale,
+    sort,
   ]);
 
   // Mirror local Feed state into the URL so that navigating away and back
@@ -336,6 +353,7 @@ export function Feed() {
     if (salaryMin !== null) next.set("salmin", String(salaryMin));
     if (requireSalary) next.set("reqsal", "1");
     if (!hideStale) next.set("hide_stale", "0");
+    if (sort !== "posted_desc") next.set("sort", sort);
     if (activeSavedId) next.set("saved", activeSavedId);
     setSearchParams(next, { replace: true });
   }, [
@@ -351,6 +369,7 @@ export function Feed() {
     salaryMin,
     requireSalary,
     hideStale,
+    sort,
     activeSavedId,
     setSearchParams,
   ]);
@@ -613,6 +632,31 @@ export function Feed() {
               <span className="spinner-xs" aria-hidden="true" />
               <span>Searching...</span>
             </span>
+          )}
+          {/* Sort dropdown - browse mode only. With a typed query or a
+              résumé vector the server ranks by relevance, so a user-picked
+              sort would silently lose to the ranking signal; hiding the
+              control keeps the UI honest. */}
+          {debouncedQuery.length < 2 && noVault && (
+            <label
+              className="row gap-sm"
+              style={{ gap: 6, alignItems: "center", fontSize: 13 }}
+              title="How to order browse results"
+            >
+              <span className="muted text-xs">Sort by</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortMode)}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: "4px 8px", cursor: "pointer" }}
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <button
             className="btn btn-secondary btn-sm filters-toggle"

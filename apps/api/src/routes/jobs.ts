@@ -32,7 +32,7 @@ export const jobs = new Elysia({ prefix: "/jobs" })
           ...(body.require_salary !== undefined ? { require_salary: body.require_salary } : {}),
           ...(body.max_age_days !== undefined ? { max_age_days: body.max_age_days } : {}),
         },
-        { keywords, offset },
+        { keywords, offset, ...(body.sort ? { sort: body.sort } : {}) },
       );
       return { hits: result.hits, total: result.total };
     },

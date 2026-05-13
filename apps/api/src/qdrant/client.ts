@@ -118,8 +118,18 @@ export async function upsertJob(
   const inferredLevel =
     metadata.experience_level ??
     classifyTitleOrBody(metadata.title, metadata.description, industry);
+  // Fall back posted_at to scraped_at when the source didn't carry a
+  // datePosted (typical for HN/Hacker News, generic sitemap pages without
+  // schema.org, many job-board APIs). This keeps every point eligible for
+  // posted_at-ordered browse; without the fallback, order_by:posted_at
+  // would silently exclude the bulk of the index.
+  const postedAt =
+    metadata.posted_at && metadata.posted_at > 0
+      ? metadata.posted_at
+      : metadata.scraped_at;
   const payload: StoredJobPayload = {
     ...metadata,
+    posted_at: postedAt,
     ...(inferredLevel ? { experience_level: inferredLevel } : {}),
     industry,
     ...(metadata.job_family
@@ -299,6 +309,90 @@ export async function ensureScrapedAtIndex(): Promise<void> {
   }
 }
 
+// Idempotent migration: create an integer payload index on posted_at so the
+// browse path can offer "sort by posted date" alongside "sort by recently
+// added". Without this index, order_by on posted_at silently degrades to an
+// unsorted scroll. Many crawlers leave posted_at unset (the source HTML
+// doesn't expose datePosted); backfillPostedAt() below patches those up.
+export async function ensurePostedAtIndex(): Promise<void> {
+  try {
+    await qdrant.createPayloadIndex(config.qdrant.jobsCollection, {
+      field_name: "posted_at",
+      field_schema: "integer",
+      wait: true,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/exist|already/i.test(msg)) throw e;
+  }
+}
+
+// One-shot backfill: every point with a missing or zero posted_at gets
+// posted_at = scraped_at. Without this, order_by:posted_at would silently
+// exclude the bulk of the existing index (many crawlers never set
+// posted_at because their source lacks datePosted) and the browse view
+// would shrink from ~20k jobs to a few hundred.
+//
+// Idempotent: runs to completion and then re-runs find zero candidates.
+// Logs only when it touches at least one point so a no-op startup stays
+// quiet. Scrolls in 1000-point pages with set_payload batches so we don't
+// build up arbitrarily large in-memory updates.
+export async function backfillPostedAt(): Promise<void> {
+  const BATCH = 1000;
+  let next: string | number | undefined = undefined;
+  let touched = 0;
+  // Guard against the index migration not having landed yet. We don't
+  // need order_by here - any scroll order is fine for a full sweep.
+  while (true) {
+    const res = await qdrant.scroll(config.qdrant.jobsCollection, {
+      limit: BATCH,
+      with_payload: ["scraped_at", "posted_at"],
+      with_vector: false,
+      ...(next !== undefined ? { offset: next } : {}),
+    });
+    const toPatch: Array<{ id: string | number; posted_at: number }> = [];
+    for (const p of res.points) {
+      const payload = (p.payload ?? {}) as { scraped_at?: number; posted_at?: number };
+      const posted = typeof payload.posted_at === "number" ? payload.posted_at : 0;
+      const scraped = typeof payload.scraped_at === "number" ? payload.scraped_at : 0;
+      if (posted > 0) continue;
+      if (scraped <= 0) continue;
+      toPatch.push({ id: p.id, posted_at: scraped });
+    }
+    if (toPatch.length > 0) {
+      // setPayload allows targeting specific points by id; we group by
+      // identical posted_at value so the request count scales with
+      // distinct timestamps, not point count. Most batches end up with
+      // a few hundred distinct scraped_at values.
+      const byTs = new Map<number, Array<string | number>>();
+      for (const { id, posted_at } of toPatch) {
+        if (!byTs.has(posted_at)) byTs.set(posted_at, []);
+        byTs.get(posted_at)!.push(id);
+      }
+      await Promise.all(
+        Array.from(byTs.entries()).map(([ts, ids]) =>
+          qdrant.setPayload(config.qdrant.jobsCollection, {
+            payload: { posted_at: ts },
+            points: ids,
+            wait: false,
+          }),
+        ),
+      );
+      touched += toPatch.length;
+    }
+    const np = res.next_page_offset;
+    if (np === null || np === undefined) break;
+    // The client's type for next_page_offset widens to a vector-offset
+    // object on some Qdrant versions; we only care about the scalar form
+    // here (Qdrant returns a string|number cursor for plain scroll).
+    if (typeof np !== "string" && typeof np !== "number") break;
+    next = np;
+  }
+  if (touched > 0) {
+    console.log(`[migration] backfilled posted_at on ${touched} points`);
+  }
+}
+
 // Idempotent migration: create a keyword payload index on country so the
 // country filter uses Qdrant's hash lookup instead of a full-collection
 // scroll + in-memory post-filter. Country is very low cardinality (~190 ISO
@@ -318,6 +412,14 @@ export async function ensureCountryIndex(): Promise<void> {
   }
 }
 
+// Sort option used by browse mode. Vector queries always sort by fused
+// relevance score and ignore this. The default ("posted_desc") shows the
+// most recently posted jobs first, which feels more organic than
+// "recently added to our index" - the latter tends to clump bulk-scraped
+// companies together since all 1500 of e.g. RBC's jobs land within
+// minutes of each other.
+export type SortMode = "posted_desc" | "scraped_desc" | "posted_asc";
+
 export type HybridOptions = {
   // Lowercased keyword tokens to OR-match against the title payload. When
   // present and at least one yields a Qdrant full-text hit, the keyword
@@ -328,6 +430,10 @@ export type HybridOptions = {
   // hits starting at this offset; `total` always reflects the FULL filtered
   // set so the UI can compute total pages. Defaults to 0 (first page).
   offset?: number;
+  // Browse-mode sort. Defaults to "posted_desc" so a fresh visitor sees
+  // recently-posted jobs first; "scraped_desc" preserves the legacy
+  // "newest in the index" behavior.
+  sort?: SortMode;
 };
 
 export async function searchJobs(
@@ -428,12 +534,19 @@ export async function searchJobs(
     // 400 ceiling for the no-post-filter case stays small because every
     // fetched point is already a kept hit.
     const scrollK = needsPostFilter ? 1500 : 400;
+    const sort: SortMode = opts?.sort ?? "posted_desc";
+    const orderBy =
+      sort === "scraped_desc"
+        ? { key: "scraped_at" as const, direction: "desc" as const }
+        : sort === "posted_asc"
+          ? { key: "posted_at" as const, direction: "asc" as const }
+          : { key: "posted_at" as const, direction: "desc" as const };
     const scrollRes = await qdrant.scroll(config.qdrant.jobsCollection, {
       limit: scrollK,
       with_payload: true,
       with_vector: false,
       filter: baseFilter,
-      order_by: { key: "scraped_at", direction: "desc" },
+      order_by: orderBy,
     });
     res = scrollRes.points.map((p) => ({
       id: p.id,
@@ -554,7 +667,14 @@ export async function searchJobs(
     filtered.push({ p, level, country, payload });
   }
 
-  const total = filtered.length;
+  // Company-interleave inside browse mode: even with order_by:posted_at,
+  // companies that bulk-post on the same day still clump (1500 RBC reqs
+  // all dated 2026-05-10 land contiguously). Walk same-day runs and
+  // round-robin by company so the feed reads as a mixed stream. Skipped
+  // for vector queries because there the order *is* the relevance signal.
+  const ordered = browseMode ? interleaveByCompanyWithinDay(filtered) : filtered;
+
+  const total = ordered.length;
   const offset = Math.max(0, opts?.offset ?? 0);
   // Out-of-range offset (e.g. user landed on a stale deep-link to page 10
   // after filters narrowed the pool): return an empty page but keep `total`
@@ -562,7 +682,7 @@ export async function searchJobs(
   if (offset >= total) {
     return { hits: [], total };
   }
-  const window = filtered.slice(offset, offset + k);
+  const window = ordered.slice(offset, offset + k);
   const out: JobHit[] = window.map(({ p, level, country, payload }) => {
     const enriched: JobMetadata = {
       ...payload,
@@ -581,6 +701,71 @@ export async function searchJobs(
     };
   });
   return { hits: out, total };
+}
+
+// interleaveByCompanyWithinDay walks consecutive jobs sharing the same
+// UTC posted-day (falling back to scraped-day when posted is missing) and
+// round-robins them by company so no single employer dominates the visible
+// window. The input order is preserved across day boundaries - this only
+// shuffles WITHIN a day, so a job posted yesterday always appears before
+// a job posted last week.
+//
+// Within a same-day group we round-robin: take the next pending job from
+// each distinct company in their first-seen order, then loop. Stable and
+// pagination-safe: identical input order produces identical output, so
+// page 1 and page 2 of a paginated call always concatenate cleanly.
+const DAY_MS_FOR_INTERLEAVE = 24 * 3600 * 1000;
+type FilteredRow<T> = {
+  p: T;
+  level: Level | null;
+  country: string | undefined;
+  payload: StoredJobPayload;
+};
+function interleaveByCompanyWithinDay<T>(rows: FilteredRow<T>[]): FilteredRow<T>[] {
+  if (rows.length <= 1) return rows;
+  const out: FilteredRow<T>[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const row = rows[i]!;
+    const ts =
+      (row.payload.posted_at && row.payload.posted_at > 0
+        ? row.payload.posted_at
+        : row.payload.scraped_at) ?? 0;
+    const day = Math.floor(ts / DAY_MS_FOR_INTERLEAVE);
+    let j = i;
+    const group: FilteredRow<T>[] = [];
+    while (j < rows.length) {
+      const next = rows[j]!;
+      const nextTs =
+        (next.payload.posted_at && next.payload.posted_at > 0
+          ? next.payload.posted_at
+          : next.payload.scraped_at) ?? 0;
+      if (Math.floor(nextTs / DAY_MS_FOR_INTERLEAVE) !== day) break;
+      group.push(next);
+      j++;
+    }
+    // Round-robin: bucket by company (first-seen order preserved by Map),
+    // then pull one at a time across the buckets until everything's emitted.
+    const buckets = new Map<string, FilteredRow<T>[]>();
+    for (const g of group) {
+      const c = g.payload.company || "__unknown__";
+      const existing = buckets.get(c);
+      if (existing) existing.push(g);
+      else buckets.set(c, [g]);
+    }
+    while (true) {
+      let progressed = false;
+      for (const q of buckets.values()) {
+        if (q.length > 0) {
+          out.push(q.shift()!);
+          progressed = true;
+        }
+      }
+      if (!progressed) break;
+    }
+    i = j;
+  }
+  return out;
 }
 
 // Lightweight existence check used by the crawler to skip jobs we've

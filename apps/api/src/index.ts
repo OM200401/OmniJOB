@@ -25,8 +25,10 @@ import { embed } from "./routes/embed";
 import { contact } from "./routes/contact";
 import { admin } from "./routes/admin";
 import {
+  backfillPostedAt,
   ensureCountryIndex,
   ensureIndustryIndexes,
+  ensurePostedAtIndex,
   ensureScrapedAtIndex,
   ensureTitleFullTextIndex,
 } from "./qdrant/client";
@@ -168,5 +170,16 @@ void ensureScrapedAtIndex()
 void ensureCountryIndex()
   .then(() => console.log(`  Country: keyword index on country ready`))
   .catch((e) => console.warn(`  Country: index ensure failed: ${e instanceof Error ? e.message : e}`));
+// Integer index on posted_at so browse-mode can offer "sort by posted
+// date" alongside "recently added". The follow-on backfill sets
+// posted_at = scraped_at on every point that has no datePosted (the
+// majority of the existing index pre-dates this fallback at ingest),
+// so order_by:posted_at doesn't silently exclude most of the collection.
+// Backfill runs in the background; first-of-process call may touch every
+// point, subsequent restarts find zero candidates and exit quickly.
+void ensurePostedAtIndex()
+  .then(() => console.log(`  Sort: integer index on posted_at ready`))
+  .then(() => backfillPostedAt())
+  .catch((e) => console.warn(`  Sort: posted_at setup failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

@@ -141,7 +141,13 @@ export type SearchOpts = {
   salary_max_usd?: number;
   require_salary?: boolean;
   max_age_days?: number;
+  // Browse-mode sort. Server uses this when ranking by relevance (typed
+  // query or résumé vector) isn't in play. Defaults to posted_desc
+  // server-side when omitted - most-recently-posted jobs first.
+  sort?: "posted_desc" | "scraped_desc" | "posted_asc";
 };
+
+export type SortMode = NonNullable<SearchOpts["sort"]>;
 
 async function request<T>(
   method: "GET" | "POST",
@@ -262,6 +268,7 @@ export const api = {
       ...(opts.salary_max_usd !== undefined ? { salary_max_usd: opts.salary_max_usd } : {}),
       ...(opts.require_salary !== undefined ? { require_salary: opts.require_salary } : {}),
       ...(opts.max_age_days !== undefined ? { max_age_days: opts.max_age_days } : {}),
+      ...(opts.sort ? { sort: opts.sort } : {}),
     }),
 
   getJob: (id: string) =>

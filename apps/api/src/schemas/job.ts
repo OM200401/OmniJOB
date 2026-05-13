@@ -137,4 +137,16 @@ export const JobSearchSchema = t.Object({
   salary_max_usd: t.Optional(t.Number({ minimum: 0 })),
   require_salary: t.Optional(t.Boolean()),
   max_age_days: t.Optional(t.Integer({ minimum: 1, maximum: 3650 })),
+  // Browse-mode sort order. Ignored when `vector` (or a typed query) is
+  // present - vector queries are sorted by fused relevance. Default is
+  // posted_desc so a fresh browse opens to the most recently *posted*
+  // jobs (rather than "most recently scraped", which clumps bulk-ingested
+  // companies together).
+  sort: t.Optional(
+    t.Union([
+      t.Literal("posted_desc"),
+      t.Literal("scraped_desc"),
+      t.Literal("posted_asc"),
+    ]),
+  ),
 });
