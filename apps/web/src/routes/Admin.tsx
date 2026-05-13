@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, AlertCircle, KeyRound, RefreshCw, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Activity, AlertCircle, ExternalLink, KeyRound, RefreshCw, Users } from "lucide-react";
 import { api, ApiError, type AdminStats } from "../lib/api";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
@@ -169,7 +170,16 @@ export function Admin() {
 
           {/* Index size */}
           <section style={{ marginBottom: 24 }}>
-            <h3 style={{ marginBottom: 10 }}>Index</h3>
+            <div className="row" style={{ alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <h3 style={{ margin: 0 }}>Index</h3>
+              <Link
+                to="/feed?country=CA"
+                className="btn btn-secondary btn-sm"
+                style={{ textDecoration: "none" }}
+              >
+                <ExternalLink size={13} /> View Canadian jobs
+              </Link>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
               <StatTile label="Jobs in Qdrant" value={stats.index.jobs.toLocaleString()} highlight />
               {stats.index.by_country.CA !== undefined && (
