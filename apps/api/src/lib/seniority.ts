@@ -259,3 +259,118 @@ export function levelsAtOrBelow(level: Level): Level[] {
   if (i < 0) return [level];
   return ORDER.slice(0, i + 1);
 }
+
+// Body-derived seniority. Used as a fallback when classifyTitle returns null
+// so titles like "Software Engineer" can still pick up a level from "0-2
+// years of experience" or "new grads encouraged" inside the description.
+// Bounded to the first BODY_SCAN_CHARS chars - requirements / qualifications
+// sections live near the top of every well-formed posting and scanning a
+// 100k-char body 600 times per search would dominate the post-filter loop.
+const BODY_SCAN_CHARS = 3000;
+
+// Phrase patterns must be specific enough to avoid the common false-positive:
+// passages like "Amazon has 25 years of experience" or "Our team has 5+
+// engineers". The disambiguator is requiring "experience" with a qualifier
+// ("required", "preferred", "minimum") or attaching the year-count to
+// experience/professional/relevant/industry/work modifiers. Bare "X years"
+// without those is too noisy and is deliberately not matched.
+// Keywords that anchor a year-count phrase to a YOE *requirement* (rather
+// than e.g. "Amazon has 25 years of experience serving customers", which is
+// company history). The numeric pattern fires only when one of these
+// keywords appears between the year-count and "experience".
+const YOE_KEYWORDS =
+  "(?:professional|relevant|industry|software|engineering|product|work|paid|hands-on|dev|development|technical|coding|leadership|nursing|teaching|legal|design|sales|marketing|operations|customer|clinical)";
+
+const BODY_RULES: Rule[] = [
+  {
+    level: "junior",
+    patterns: [
+      /\bnew[\s-]?grad(uate)?s?\b/i,
+      /\brecent\s+grad(uate)?s?\b/i,
+      /\bentry[\s-]?level\b/i,
+      /\bearly[\s-]?career\b/i,
+      /\bearly\s+in\s+(?:your|their)\s+career\b/i,
+      /\bjust\s+(?:starting|started)\s+(?:your|their)\s+career\b/i,
+      /\bgraduating\s+(?:in|by|with)\b/i,
+      /\bclass\s+of\s+20\d{2}\b/i,
+      // "0-2 years of <keyword[s]> experience"
+      new RegExp(
+        `\\b(?:0|1|2)\\s*[-–]\\s*[123]\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
+        "i",
+      ),
+      // "0+ years of <keyword> experience" / "1+ years professional experience"
+      new RegExp(
+        `\\b(?:0|1|2)\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
+        "i",
+      ),
+      // "minimum of 0-2 years" / "minimum 1 year"
+      /\bminimum\s+(?:of\s+)?(?:0|1|2)\+?\s*years?\b/i,
+      /\bno\s+(?:prior\s+|professional\s+|previous\s+|formal\s+)?experience\s+(?:required|necessary|needed|expected)\b/i,
+      /\bfirst[\s-]?year\s+(?:role|developer|engineer|hire|analyst|nurse|teacher)\b/i,
+    ],
+  },
+  {
+    level: "senior",
+    patterns: [
+      // "7+ years of <keyword[s]> experience" (with up to 3 intervening
+      // adjective tokens, e.g. "software engineering experience").
+      new RegExp(
+        `\\b(?:7|8|9|10|12|15|20)\\s*\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
+        "i",
+      ),
+      // "10+ years experience required"
+      /\b(?:7|8|9|10|12|15|20)\s*\+?\s*years?\s+experience\s+(?:required|preferred|in)\b/i,
+      /\bminimum\s+(?:of\s+)?(?:7|8|9|10|12|15|20)\s*\+?\s*years?\b/i,
+    ],
+  },
+  {
+    level: "mid",
+    patterns: [
+      // "3-5 / 4-6 years of <keyword[s]> experience"
+      new RegExp(
+        `\\b(?:3|4|5)\\s*[-–]\\s*[567]\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
+        "i",
+      ),
+      // "5+ years of <keyword[s]> experience"
+      new RegExp(
+        `\\b(?:3|4|5|6)\\s*\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
+        "i",
+      ),
+      /\b(?:3|4|5|6)\s*\+?\s*years?\s+experience\s+(?:required|preferred|in)\b/i,
+      /\bminimum\s+(?:of\s+)?(?:3|4|5|6)\s*\+?\s*years?\b/i,
+    ],
+  },
+];
+
+// Returns the body-derived level, or null when no pattern matches in the
+// first BODY_SCAN_CHARS of the description. Picks the earliest match across
+// all level buckets so the FIRST signal in the description wins - this
+// correctly handles a "Senior" posting whose body says "you'll mentor
+// engineers with 1-2 years of experience" by reading the "7+ years" line
+// (which appears first under Requirements) instead of the mentee mention.
+export function classifyBody(description: string | undefined): Level | null {
+  if (!description) return null;
+  const text = description.slice(0, BODY_SCAN_CHARS);
+  let bestLevel: Level | null = null;
+  let bestPos = Infinity;
+  for (const r of BODY_RULES) {
+    for (const p of r.patterns) {
+      const m = p.exec(text);
+      if (m && m.index < bestPos) {
+        bestPos = m.index;
+        bestLevel = r.level;
+      }
+    }
+  }
+  return bestLevel;
+}
+
+// Convenience: title-first, body-as-fallback. Used by both upsertJob (ingest
+// time) and searchJobs (read time) so the two paths stay in sync.
+export function classifyTitleOrBody(
+  title: string,
+  description: string | undefined,
+  industry?: Industry,
+): Level | null {
+  return classifyTitle(title, industry) ?? classifyBody(description);
+}

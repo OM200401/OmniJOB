@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { ALL_LEVELS, classifyTitle, levelsAtOrBelow } from "./seniority";
+import {
+  ALL_LEVELS,
+  classifyBody,
+  classifyTitle,
+  classifyTitleOrBody,
+  levelsAtOrBelow,
+} from "./seniority";
 
 describe("classifyTitle", () => {
   const cases: Array<[string, ReturnType<typeof classifyTitle>]> = [
@@ -202,5 +208,140 @@ describe("ALL_LEVELS", () => {
   test("contains all 9 known levels", () => {
     expect(ALL_LEVELS).toHaveLength(9);
     expect(new Set(ALL_LEVELS).size).toBe(9); // no dupes
+  });
+});
+
+describe("classifyBody - junior signals", () => {
+  const cases: Array<[string, ReturnType<typeof classifyBody>]> = [
+    ["We're hiring new grads for our summer cohort.", "junior"],
+    ["This is an entry-level role on the platform team.", "junior"],
+    ["Looking for someone early in their career.", "junior"],
+    ["Recent graduates are encouraged to apply.", "junior"],
+    ["You'll have 0-2 years of professional experience.", "junior"],
+    ["Requirements: 1-3 years of software experience.", "junior"],
+    ["Minimum 1 year of relevant experience required.", "junior"],
+    ["No prior experience required for this role.", "junior"],
+    ["Graduating in 2026? Apply now.", "junior"],
+    ["Class of 2026 cohort", "junior"],
+  ];
+  for (const [text, expected] of cases) {
+    test(`"${text.slice(0, 40)}…" → ${expected}`, () => {
+      expect(classifyBody(text)).toBe(expected);
+    });
+  }
+});
+
+describe("classifyBody - senior signals", () => {
+  const cases: Array<[string, ReturnType<typeof classifyBody>]> = [
+    ["You'll have 7+ years of software engineering experience.", "senior"],
+    ["Minimum 10 years of professional experience.", "senior"],
+    ["Requires 8+ years of relevant experience.", "senior"],
+    ["10+ years of industry experience preferred.", "senior"],
+  ];
+  for (const [text, expected] of cases) {
+    test(`"${text.slice(0, 40)}…" → ${expected}`, () => {
+      expect(classifyBody(text)).toBe(expected);
+    });
+  }
+});
+
+describe("classifyBody - mid signals", () => {
+  const cases: Array<[string, ReturnType<typeof classifyBody>]> = [
+    ["3-5 years of software engineering experience.", "mid"],
+    ["Minimum of 4 years professional experience.", "mid"],
+    ["5+ years of relevant experience required.", "mid"],
+    ["4-6 years of industry experience.", "mid"],
+  ];
+  for (const [text, expected] of cases) {
+    test(`"${text.slice(0, 40)}…" → ${expected}`, () => {
+      expect(classifyBody(text)).toBe(expected);
+    });
+  }
+});
+
+describe("classifyBody - false-positive guards", () => {
+  // Critical: these passages contain year-count phrases but they describe
+  // company history / team size / arbitrary numbers, NOT a YOE requirement.
+  // The classifier must NOT pick a level for these.
+  const negatives = [
+    "Amazon has 25 years of experience serving customers worldwide.",
+    "Our team of 10 engineers is growing.",
+    "We've been in business for 15 years.",
+    "The product was launched 3 years ago.",
+    "Headquartered in Seattle since 1994 (over 30 years).",
+    "We've shipped 5 major releases this year.",
+    "The CEO has 25 years in the industry.",
+    "Marketing budget grew 7+ years running.",
+  ];
+  for (const text of negatives) {
+    test(`"${text.slice(0, 40)}…" → null`, () => {
+      expect(classifyBody(text)).toBeNull();
+    });
+  }
+});
+
+describe("classifyBody - empty / null inputs", () => {
+  test("undefined description → null", () => {
+    expect(classifyBody(undefined)).toBeNull();
+  });
+  test("empty description → null", () => {
+    expect(classifyBody("")).toBeNull();
+  });
+});
+
+describe("classifyBody - first signal in body wins", () => {
+  // A "Senior" posting commonly mentions both the senior YOE requirement
+  // (Requirements section, near top) AND mentees / juniors (later, in the
+  // "what you'll do" section). Earliest-match wins is the correct policy.
+  test("senior YOE before mentee mention → senior", () => {
+    const body = `
+      Requirements: 8+ years of software engineering experience.
+      You'll mentor engineers with 1-2 years of experience.
+    `;
+    expect(classifyBody(body)).toBe("senior");
+  });
+  test("new-grad signal before senior buzzword → junior", () => {
+    const body = `
+      New grad role - join our 2026 cohort.
+      You'll work with senior engineers on production systems.
+    `;
+    expect(classifyBody(body)).toBe("junior");
+  });
+});
+
+describe("classifyTitleOrBody - title-first, body-fallback", () => {
+  test("explicit title beats body signal", () => {
+    // "Senior" title wins over "0-2 years" body mention (mentee section).
+    expect(
+      classifyTitleOrBody(
+        "Senior Software Engineer",
+        "You'll mentor engineers with 0-2 years of professional experience.",
+      ),
+    ).toBe("senior");
+  });
+
+  test("null title falls through to body classifier", () => {
+    expect(
+      classifyTitleOrBody(
+        "Software Engineer",
+        "Looking for new grads. 0-2 years of software experience preferred.",
+      ),
+    ).toBe("junior");
+  });
+
+  test("null title + null body → null", () => {
+    expect(classifyTitleOrBody("Software Engineer", "Build great products.")).toBeNull();
+  });
+
+  test("Amazon-style 'Software Engineer' with new-grad body → junior", () => {
+    // The user's motivating example: a generic Amazon-style "Software
+    // Engineer" title with new-grad language in the body should now
+    // classify as junior so the level filter surfaces it.
+    expect(
+      classifyTitleOrBody(
+        "Software Engineer",
+        "Software Engineer, Amazon. We're hiring recent graduates with 0-2 years of professional software experience.",
+      ),
+    ).toBe("junior");
   });
 });

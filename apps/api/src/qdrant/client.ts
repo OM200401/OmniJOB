@@ -1,6 +1,6 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { config } from "../config";
-import { classifyTitle, type Level } from "../lib/seniority";
+import { classifyTitleOrBody, type Level } from "../lib/seniority";
 import { classifyCountry } from "../lib/location";
 import { classifyIndustry, type Industry } from "../lib/industry";
 import { salaryOverlapsUSD } from "../lib/salary";
@@ -111,7 +111,13 @@ export async function upsertJob(
   // Seniority is now industry-aware and may return null when no pattern matches
   // any bank. Omit the field rather than storing null so existing filters that
   // gate on `experience_level` continue to behave as "unknown is hidden".
-  const inferredLevel = metadata.experience_level ?? classifyTitle(metadata.title, industry);
+  // Falls back to body-derived classification (YOE phrases, "new grad", etc.)
+  // when the title alone produces nothing - addresses the "Software Engineer
+  // @ Amazon (new grads encouraged)" case where seniority lives only in the
+  // description.
+  const inferredLevel =
+    metadata.experience_level ??
+    classifyTitleOrBody(metadata.title, metadata.description, industry);
   const payload: StoredJobPayload = {
     ...metadata,
     ...(inferredLevel ? { experience_level: inferredLevel } : {}),
@@ -377,7 +383,13 @@ export async function searchJobs(
   let res: Fused[];
 
   if (browseMode) {
-    const scrollK = needsPostFilter ? 600 : 400;
+    // Browse fetches the most-recently-scraped slice for post-filtering.
+    // With country/level post-filters active a recall floor matters more
+    // than tight latency - 1500 keeps the country-narrowed-junior case
+    // (rare combination) from collapsing to a handful of survivors. The
+    // 400 ceiling for the no-post-filter case stays small because every
+    // fetched point is already a kept hit.
+    const scrollK = needsPostFilter ? 1500 : 400;
     const scrollRes = await qdrant.scroll(config.qdrant.jobsCollection, {
       limit: scrollK,
       with_payload: true,
@@ -457,9 +469,15 @@ export async function searchJobs(
     // pre-dates the location/seniority audit fixes (e.g. it tagged
     // "San Francisco, CA" as country=CA / Canada). Trust the live classifier;
     // fall back to stored country only when the classifier can't resolve it.
-    // The seniority classifier is industry-aware now - pass the stored
-    // industry so e.g. "Charge Nurse" doesn't fall through tech rules.
-    const level: Level | null = classifyTitle(payload.title, payload.industry);
+    // Seniority is industry-aware with a body-derived fallback - a "Software
+    // Engineer @ Amazon" title with "0-2 years of professional experience"
+    // in the body classifies as junior rather than null, so the level filter
+    // surfaces it.
+    const level: Level | null = classifyTitleOrBody(
+      payload.title,
+      payload.description,
+      payload.industry,
+    );
     const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
 
     // Unknown level (null) is treated as "doesn't match" when a level filter
@@ -552,7 +570,7 @@ export async function getJob(externalId: string): Promise<(JobMetadata & { quali
   const payload = p.payload as StoredJobPayload;
   // Re-classify on read (see search()). Stored payload pre-dates the audit.
   const country = classifyCountry(payload.location) ?? payload.country ?? undefined;
-  const level = classifyTitle(payload.title, payload.industry);
+  const level = classifyTitleOrBody(payload.title, payload.description, payload.industry);
   const enriched: JobMetadata = {
     ...payload,
     ...(level !== null ? { experience_level: level } : {}),
