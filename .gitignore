@@ -13,7 +13,7 @@ yarn-error.log*
 
 # Go
 apps/crawler/crawler
-apps/crawler/crawler.exe
+apps/crawler/*.exe
 apps/crawler/dist/
 *.test
 *.out
