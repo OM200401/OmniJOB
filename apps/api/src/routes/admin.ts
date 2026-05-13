@@ -132,6 +132,11 @@ export const admin = new Elysia({ prefix: "/admin" })
       // Qdrant unreachable: leave at 0 rather than 500 the whole endpoint.
     }
 
+    // Per-country breakdown for the top countries. Lets the operator watch
+    // the Canada-aggregation goal advance in real time. Single scroll-count
+    // call per country using the payload index we built in e6baf4b - cheap.
+    const countryCounts = await indexByCountry(["CA", "US", "GB", "IN", "FR", "DE"]);
+
     const crawler = await crawlerProgress();
 
     return {
@@ -145,10 +150,34 @@ export const admin = new Elysia({ prefix: "/admin" })
       events_last_7d: eventCounts7d,
       index: {
         jobs: jobCount,
+        by_country: countryCounts,
       },
       crawler,
     };
   });
+
+// Per-country point counts using Qdrant's count endpoint with a payload
+// filter. Cheap because country is keyword-indexed (ensureCountryIndex).
+async function indexByCountry(codes: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  await Promise.all(
+    codes.map(async (code) => {
+      try {
+        const res = await qdrant.count(config.qdrant.jobsCollection, {
+          filter: {
+            must: [{ key: "country", match: { value: code } }],
+            must_not: [{ key: "is_active", match: { value: false } }],
+          },
+          exact: false,
+        });
+        out[code] = res.count ?? 0;
+      } catch {
+        out[code] = 0;
+      }
+    }),
+  );
+  return out;
+}
 
 // Parse the tail of /var/log/omnijob-crawler.log to surface the in-flight
 // or last-completed run's stats. We tail the last ~256KB to avoid loading

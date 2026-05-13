@@ -318,7 +318,7 @@ export type AdminStats = {
     active_30d: number;
   };
   events_last_7d: Record<string, number>;
-  index: { jobs: number };
+  index: { jobs: number; by_country: Record<string, number> };
   crawler: {
     log_path: string;
     current_run: {

@@ -172,6 +172,21 @@ export function Admin() {
             <h3 style={{ marginBottom: 10 }}>Index</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
               <StatTile label="Jobs in Qdrant" value={stats.index.jobs.toLocaleString()} highlight />
+              {stats.index.by_country.CA !== undefined && (
+                <StatTile
+                  label="Canadian jobs 🇨🇦"
+                  value={stats.index.by_country.CA.toLocaleString()}
+                  highlight
+                />
+              )}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8, marginTop: 12 }}>
+              {Object.entries(stats.index.by_country)
+                .filter(([code]) => code !== "CA")
+                .sort((a, b) => b[1] - a[1])
+                .map(([code, count]) => (
+                  <Mini key={code} label={code} value={count.toLocaleString()} />
+                ))}
             </div>
           </section>
 
