@@ -285,4 +285,52 @@ export const api = {
     website?: string;
   }) =>
     request<{ status: string }>("POST", "/contact", body),
+
+  // Operator dashboard. Sends the admin token in X-Admin-Token. Server
+  // returns 401 if the token is missing or doesn't match the server-side
+  // ADMIN_TOKEN env var; caller surfaces the 401 so the UI clears the
+  // stored token and reprompts.
+  adminStats: async (token: string): Promise<AdminStats> => {
+    const res = await fetch(`${BASE}/admin/stats`, {
+      method: "GET",
+      headers: { "X-Admin-Token": token },
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const j = (await res.json()) as { error?: string };
+        if (j.error) msg = j.error;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(res.status, msg);
+    }
+    return (await res.json()) as AdminStats;
+  },
+};
+
+export type AdminStats = {
+  generated_at: string;
+  users: {
+    total: number;
+    active_24h: number;
+    active_7d: number;
+    active_30d: number;
+  };
+  events_last_7d: Record<string, number>;
+  index: { jobs: number };
+  crawler: {
+    log_path: string;
+    current_run: {
+      started_at: string;
+      elapsed_minutes: number;
+      sources: string[];
+      concurrency: number | null;
+      ok: number;
+      skipped_or_done: number;
+      embed_failures: number;
+      latest_log_line: string;
+    } | null;
+    previous_run_summary: string | null;
+  } | null;
 };

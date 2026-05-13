@@ -14,6 +14,7 @@ import { Applications } from "./routes/Applications";
 import { Privacy } from "./routes/Privacy";
 import { Terms } from "./routes/Terms";
 import { Contact } from "./routes/Contact";
+import { Admin } from "./routes/Admin";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="admin" element={<Admin />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="onboarding" element={<Onboarding />} />
