@@ -1,0 +1,47 @@
+aircanada|https://careers.aircanada.com/sitemap.xml|^https://careers\.aircanada\.com/ca/en/job/|Air Canada|CA|500
+atb|https://careers.atb.com/careers/sitemap.xml|^https://careers\.atb\.com/careers/job/|ATB Financial|CA|500
+atco|https://careers.atco.com/sitemap.xml|^https://careers\.atco\.com/global/en/job/|ATCO|CA|500
+bat|https://careers.bat.com/sitemap.xml|^https://careers\.bat\.com/en/job/|British American Tobacco (Canada)|CA|500
+beenox|https://careers.beenox.com/sitemap.xml|^https://careers\.beenox\.com/us/en/job/|Beenox|CA|500
+bell|https://jobs.bell.ca/sitemap.xml|^https://jobs\.bell\.ca/ca/en/job/|Bell Canada|CA|500
+bestwestern|https://jobs.bestwestern.com/sitemap.xml|^https://jobs\.bestwestern\.com/|Best Western|CA|500
+blackpressmedia|https://blackpressmedia.com/sitemap.xml|^https://blackpressmedia\.com/|Black Press|CA|500
+brownsshoes|https://careers.brownsshoes.com/sitemap.xml|^https://careers\.brownsshoes\.com/jobs/|B2|CA|500
+brp|https://careers.brp.com/sitemap.xml|^https://careers\.brp\.com/global/en/job/|Bombardier Recreational Products|CA|500
+cips|https://cips.ca/sitemap.xml|^https://cips\.ca/|Canadian Information Processing Society|CA|500
+colliers|https://careers.colliers.com/sitemap.xml|^https://careers\.colliers\.com/job/|Colliers International|CA|500
+dollartree|https://careers.dollartree.com/sitemap.xml|^https://careers\.dollartree\.com/us/en/job/|Dollar Tree|CA|500
+dyedurham|https://jobs.dyedurham.com/sitemap.xml|^https://jobs\.dyedurham\.com/postings/|Dye & Durham Corporation|CA|500
+emera|https://careers.emera.com/sitemap.xml|^https://careers\.emera\.com/jobs/|Emera|CA|500
+fedex|https://careers.fedex.com/sitemap.xml|^https://careers\.fedex\.com/|FedEx|CA|500
+flyporter|https://careers.flyporter.com/sitemap.xml|^https://careers\.flyporter\.com/jobs/|Porter Airlines|CA|500
+fourseasons|https://fourseasons.com/careers/sitemap.xml|^https://careers\.fourseasons\.com/us/en/job/|Four Seasons Hotels and Resorts|CA|500
+fyidoctors|https://careers.fyidoctors.com/sitemap.xml|^https://careers\.fyidoctors\.com/global/en/job/|FYidoctors|CA|500
+gcoc|https://jobs.gcoc.ca/sitemap.xml|^https://jobs\.gcoc\.ca/|Great Canadian Oil Change|CA|500
+greatwest|https://greatwest.ca/sitemap.xml|^https://greatwest\.ca/|Great West Newspapers|CA|500
+hubinternational|https://careers.hubinternational.com/sitemap.xml|^https://careers\.hubinternational\.com/us/en/job/|Hub International|CA|500
+imax|https://careers.imax.com/sitemap.xml|^https://careers\.imax\.com/us/en/job/|IMAX Corporation|CA|500
+intactfc|https://careers.intactfc.com/sitemap.xml|^https://careers\.intactfc\.com/|Intact Financial|CA|500
+lifetime|https://careers.lifetime.life/sitemap.xml|^https://careers\.lifetime\.life/job/|Life Time|CA|500
+mars|https://careers.mars.com/sitemap.xml|^https://careers\.mars\.com/global/en/job/|Mars Canada|CA|500
+mccain|https://careers.mccain.com/sitemap.xml|^https://careers\.mccain\.com/us/en/job/|McCain Foods|CA|500
+mcdonalds|https://careers.mcdonalds.ca/sitemap.xml|^https://careers\.mcdonalds\.ca/|McDonald's Canada|CA|500
+michaels|https://careers.michaels.com/sitemap.xml|^https://careers\.michaels\.com/us/en/job/|Michaels|CA|500
+mollymaid|https://jobs.mollymaid.com/sitemap.xml|^https://jobs\.mollymaid\.com/|Molly Maid|CA|500
+nba|https://careers.nba.com/sitemap.xml|^https://careers\.nba\.com/job/|National Basketball Association|CA|500
+nexgenenergy|https://careers.nexgenenergy.ca/sitemap.xml|^https://careers\.nexgenenergy\.ca/postings/|NexGen Energy|CA|500
+nursenextdoor|https://careers.nursenextdoor.com/sitemap.xml|^https://careers\.nursenextdoor\.com/|Nurse Next Door Home Healthcare Services|CA|500
+omers|https://careers.omers.com/sitemap.xml|^https://careers\.omers\.com/ca/en/job/|OMERS|CA|500
+patersonglobalfoods|https://careers.patersonglobalfoods.com/sitemap.xml|^https://careers\.patersonglobalfoods\.com/jobs/|Paterson GlobalFoods|CA|500
+ptc|https://careers.ptc.com/careers/sitemap.xml|^https://careers\.ptc\.com/careers/job/|MKS Inc.|CA|500
+rbi|https://careers.rbi.com/sitemap.xml|^https://careers\.rbi\.com/global/en/job/|Restaurant Brands International|CA|500
+rexall|https://careers.rexall.ca/sitemap.xml|^https://careers\.rexall\.ca/|Rexall|CA|500
+shoppersdrugmart|https://careers.shoppersdrugmart.ca/sitemap.xml|^https://careers\.shoppersdrugmart\.ca/|Shoppers Drug Mart|CA|500
+sixflags|https://jobs.sixflags.com/sitemap.xml|^https://jobs\.sixflags\.com/job/|Canada's Wonderland|CA|500
+stemcell|https://jobs.stemcell.com/sitemap.xml|^https://jobs\.stemcell\.com/job/|Stemcell Technologies|CA|500
+thunderbay|https://careers.thunderbay.ca/sitemap.xml|^https://careers\.thunderbay\.ca/jobs/|Thunder Bay Transit|CA|500
+waga-energy|https://careers.waga-energy.com/sitemap.xml|^https://careers\.waga-energy\.com/jobs/|Q125558494|CA|500
+walmart|https://careers.walmart.ca/sitemap.xml|^https://careers\.walmart\.ca/job/|Walmart Canada|CA|500
+wasteconnections|https://careers.wasteconnections.com/sitemap.xml|^https://careers\.wasteconnections\.com/us/en/job/|Waste Connections|CA|500
+yellowbrickgames|https://yellowbrickgames.ca/sitemap.xml|^https://yellowbrickgames\.ca/|Yellow Brick Games|CA|500
+ym-inc|https://ym-inc.com/sitemap.xml|^https://ym-inc\.com/|Sirens|CA|500

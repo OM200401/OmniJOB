@@ -3,6 +3,7 @@ package sources
 import (
 	"bufio"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -584,12 +585,46 @@ func atoiOrZero(s string) int {
 	return n
 }
 
+// sitemap-feeds-discovered.txt is the output of cmd/sitemap-prober run
+// against cmd/seed-canadian's Wikidata seed list. It contains Canadian
+// employers whose public careers sites expose JSON-LD JobPosting schema.
+// Re-generate by running:
+//
+//	go run ./cmd/sitemap-prober \
+//	  -seeds=../../data/canadian-employers.json \
+//	  -out=internal/sources/sitemap-feeds-discovered.txt
+//
+// and re-curating false positives by hand. The file ships with the binary
+// via go:embed so a freshly-built crawler always has the latest set
+// regardless of env var configuration.
+//
+//go:embed sitemap-feeds-discovered.txt
+var discoveredSitemapFeedsCSV string
+
+// init merges the embedded discovered feeds into DefaultSitemapFeeds.
+// Hand-curated entries in DefaultSitemapFeeds win on label collision
+// (their URL patterns and MaxPages caps are tuned from real-world
+// observation); discovered entries fill in the long tail.
+func init() {
+	hand := map[string]bool{}
+	for _, f := range DefaultSitemapFeeds {
+		hand[f.SourceLabel] = true
+	}
+	raw := strings.ReplaceAll(strings.TrimSpace(discoveredSitemapFeedsCSV), "\n", ";")
+	for _, f := range ParseSitemapFeeds(raw) {
+		if !hand[f.SourceLabel] {
+			DefaultSitemapFeeds = append(DefaultSitemapFeeds, f)
+			hand[f.SourceLabel] = true
+		}
+	}
+}
+
 // DefaultSitemapFeeds - Canadian-heavy seed list of careers sites that
-// publish JSON-LD JobPosting schema on each job page. Verified by hand
-// 2026-05-13. Add more by inspecting any company's careers site: if
-// /sitemap.xml or /sitemap_index.xml exposes per-job URLs and each job
-// page's <head> contains a JobPosting JSON-LD block, the site works
-// with this adapter without writing custom code.
+// publish JSON-LD JobPosting schema on each job page. Hand-curated
+// entries here are tuned with observed MaxPages caps and tight URL
+// regexes; the embedded file above appends auto-discovered entries
+// without overriding the hand-tuned ones. Add to either: code-controlled
+// patterns belong inline, prober-output entries belong in the .txt.
 var DefaultSitemapFeeds = []SitemapFeed{
 	{
 		SourceLabel: "rbc",
