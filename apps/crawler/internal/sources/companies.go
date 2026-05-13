@@ -182,6 +182,19 @@ var DefaultGreenhouse = []string{
 	"xai",
 	"yotpo",
 	"zymergen",
+
+	// auto-discovered 2026-05-13 (11)
+	"cleo",
+	"hootsuite",
+	"mejuri",
+	"metro",
+	"ritual",
+	"rumble",
+	"skupos",
+	"touchbistro",
+	"tucows",
+	"universityoftoronto",
+	"workleap",
 }
 
 var DefaultLever = []string{
@@ -272,6 +285,13 @@ var DefaultLever = []string{
 	"whoop",
 	"workos",
 	"zoox",
+
+	// auto-discovered 2026-05-13 (5)
+	"achievers",
+	"pointclickcare",
+	"snowplow",
+	"tealbook",
+	"wattpad",
 }
 
 var DefaultAshby = []string{
@@ -431,6 +451,26 @@ var DefaultAshby = []string{
 	"whoop",
 	"wiz",
 	"writer",
+
+	// auto-discovered 2026-05-13 (18)
+	"benevity",
+	"float",
+	"hatch",
+	"hopper",
+	"jobber",
+	"kindred",
+	"klue",
+	"koho",
+	"levels",
+	"loopio",
+	"maple",
+	"procurify",
+	"rewind",
+	"snowflake",
+	"stream",
+	"thinkific",
+	"top-hat",
+	"trulioo",
 }
 
 var DefaultSmartRecruiters = []string{
@@ -488,6 +528,14 @@ var DefaultSmartRecruiters = []string{
 	"wayfair",
 	"whatfix",
 	"wise",
+
+	// auto-discovered 2026-05-13 (6)
+	"couche-tard",
+	"hootsuite",
+	"ibigroup",
+	"loophealth",
+	"torstar",
+	"universityhealthnetwork",
 }
 
 var DefaultWorkable = []string{
@@ -759,6 +807,9 @@ var DefaultRecruitee = []string{
 	// auto-discovered 2026-05-07 (2)
 	"deepl",
 	"etsy",
+
+	// auto-discovered 2026-05-13 (1)
+	"translink",
 }
 
 // DefaultPersonio - Personio tenant slugs at {slug}.jobs.personio.com/xml.
@@ -853,6 +904,37 @@ var DefaultBambooHR = []string{
 	"wealthsimple",
 	"you",
 	"zepto",
+
+	// auto-discovered 2026-05-13 (29)
+	"ada",
+	"applyboard",
+	"bellmedia",
+	"borrowell",
+	"cinchy",
+	"doordash",
+	"enbridge",
+	"float",
+	"hopper",
+	"ibigroup",
+	"kindred",
+	"klipfolio",
+	"koho",
+	"league",
+	"loopio",
+	"maple",
+	"mec",
+	"pomerleau",
+	"procurify",
+	"rangle",
+	"rb",
+	"recurly",
+	"rewind",
+	"rocketdoctor",
+	"stream",
+	"thinkific",
+	"trulioo",
+	"voiceflow",
+	"wattpad",
 }
 
 // DefaultBreezy - tenant slugs at {slug}.breezy.hr. Breezy's CDN 403s any
@@ -918,6 +1000,16 @@ var DefaultPinpoint = []string{
 	"yelp",
 	"you",
 	"zoox",
+
+	// auto-discovered 2026-05-13 (8)
+	"achievers",
+	"ada",
+	"float",
+	"rewind",
+	"touchbistro",
+	"trulioo",
+	"ttc",
+	"venasolutions",
 }
 
 // DefaultMuseCategories - placeholder; The Muse adapter currently paginates
