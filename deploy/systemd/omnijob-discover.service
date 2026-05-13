@@ -1,0 +1,23 @@
+[Unit]
+Description=OmniJob ATS slug discovery + merge into companies.go
+Documentation=https://github.com/OM200401/OmniJOB
+After=omnijob-api.service
+Requires=omnijob-api.service
+
+[Service]
+Type=oneshot
+User=om
+WorkingDirectory=/home/om/omnijob/apps/crawler
+# Run discovery, write to a stable path so the merge step finds it.
+ExecStart=/usr/local/go/bin/go run ./cmd/discover -seeds=seeds/companies.txt -out=/var/lib/omnijob/discovered.jsonl -workers=24 -timeout=10s
+# Merge results into companies.go (in the working tree). Push to main is a
+# separate operator action - we don't auto-commit because automated commits
+# to main without review are a footgun. Merge output lives at the same path
+# and the operator can `git diff` to see what got added.
+ExecStartPost=/home/om/.bun/bin/bun run /home/om/omnijob/apps/crawler/cmd/discover/merge.ts /var/lib/omnijob/discovered.jsonl /home/om/omnijob/apps/crawler/internal/sources/companies.go
+TimeoutStartSec=15min
+StandardOutput=append:/var/log/omnijob-discover.log
+StandardError=append:/var/log/omnijob-discover.log
+
+[Install]
+WantedBy=multi-user.target

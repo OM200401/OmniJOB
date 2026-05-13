@@ -1,0 +1,14 @@
+[Unit]
+Description=Run OmniJob ATS discovery weekly
+Documentation=https://github.com/OM200401/OmniJOB
+
+[Timer]
+# Weekly Sunday 03:00 UTC. The crawler timer fires at 02:00/14:00 UTC, so
+# 03:00 lands in a quiet window between crawler passes. Persistent=true
+# catches up if the VM was off when the trigger fired.
+OnCalendar=Sun *-*-* 03:00:00 UTC
+Persistent=true
+Unit=omnijob-discover.service
+
+[Install]
+WantedBy=timers.target
