@@ -158,24 +158,28 @@ export const admin = new Elysia({ prefix: "/admin" })
     };
   });
 
-// Number of daily buckets in the history series. 30 days fits comfortably
-// in a chart and exceeds our current crawler history, so the leading days
-// show as flat baseline (which itself communicates "before we started").
-const HISTORY_DAYS = 30;
+// Daily buckets returned by jobsHistory. 90 days lets the UI offer
+// 7d/30d/90d range chips backed by a single dataset; the client slices
+// without re-hitting the server. The first weeks may sit flat at zero if
+// the crawler hadn't started yet - that's fine, it visualizes "before we
+// started" honestly.
+const HISTORY_DAYS = 90;
 
-// jobsHistory returns the cumulative total + Canadian job counts at the
-// end of each of the last HISTORY_DAYS UTC days. Computed by issuing one
-// scraped_at-range count per (day, scope), using the integer payload
-// index built in ensureScrapedAtIndex (so each count is O(log N)).
-//
-// Cached in-memory keyed by the most recent UTC midnight - history only
-// changes when a new day rolls over, so a per-day cache TTL is exact: we
-// recompute the whole series at most once per day per process. Within
-// the same day, repeat fetches hit memory.
+// Countries we surface as toggleable series in the chart, paired with
+// the top-line countryCounts in /admin/stats. Order matters only for
+// the legend; the React side decides visibility default.
+const HISTORY_COUNTRIES = ["CA", "US", "GB", "IN", "FR", "DE"] as const;
+
+// jobsHistory returns the cumulative total + per-country job counts at
+// the end of each of the last HISTORY_DAYS UTC days. Each datapoint is
+// one qdrant.count() with a scraped_at-range filter, using the integer
+// payload index (so each count is O(log N)). With 7 series x 90 days =
+// 630 parallel counts, first-of-day uncached cost is ~1s on a healthy
+// box - the per-day cache absorbs everything after.
 type HistoryResult = {
   buckets: string[]; // ISO date YYYY-MM-DD, oldest first
   total: number[];
-  ca: number[];
+  by_country: Record<string, number[]>;
 };
 
 let historyCache: { dayKey: string; data: HistoryResult } | null = null;
@@ -198,12 +202,22 @@ async function jobsHistory(days: number): Promise<HistoryResult> {
     labels.push(utcDateKey(end - DAY_MS));
   }
 
-  const [total, ca] = await Promise.all([
-    Promise.all(ends.map((end) => countBefore(end))),
-    Promise.all(ends.map((end) => countBefore(end, "CA"))),
-  ]);
+  // Parallelize across both axes: every (series, day) count fires at once.
+  const totalP = Promise.all(ends.map((end) => countBefore(end)));
+  const countryPs = HISTORY_COUNTRIES.map((code) =>
+    Promise.all(ends.map((end) => countBefore(end, code))),
+  );
+  const [total, ...countryArrays] = await Promise.all([totalP, ...countryPs]);
+  const byCountry: Record<string, number[]> = {};
+  HISTORY_COUNTRIES.forEach((code, i) => {
+    byCountry[code] = countryArrays[i] ?? [];
+  });
 
-  const data: HistoryResult = { buckets: labels, total, ca };
+  const data: HistoryResult = {
+    buckets: labels,
+    total: total ?? [],
+    by_country: byCountry,
+  };
   historyCache = { dayKey: todayKey, data };
   return data;
 }

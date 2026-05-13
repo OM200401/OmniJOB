@@ -336,6 +336,6 @@ export type AdminStats = {
   history?: {
     buckets: string[]; // YYYY-MM-DD, oldest first
     total: number[];
-    ca: number[];
+    by_country: Record<string, number[]>;
   };
 };

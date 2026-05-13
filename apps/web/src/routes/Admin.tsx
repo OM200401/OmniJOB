@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Activity, AlertCircle, ExternalLink, KeyRound, RefreshCw, Users } from "lucide-react";
 import { api, ApiError, type AdminStats } from "../lib/api";
@@ -199,20 +199,7 @@ export function Admin() {
                 ))}
             </div>
             {stats.history && stats.history.buckets.length > 1 && (
-              <div className="card" style={{ padding: 14, marginTop: 14 }}>
-                <div className="row" style={{ alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div className="text-sm" style={{ fontWeight: 600 }}>Jobs over time · last {stats.history.buckets.length}d</div>
-                  <div className="row gap-sm muted-2 text-xs" style={{ gap: 12 }}>
-                    <span><LegendDot color="var(--accent)" /> total</span>
-                    <span><LegendDot color="#dc2626" /> Canadian 🇨🇦</span>
-                  </div>
-                </div>
-                <HistoryChart
-                  buckets={stats.history.buckets}
-                  total={stats.history.total}
-                  ca={stats.history.ca}
-                />
-              </div>
+              <HistoryCard history={stats.history} />
             )}
           </section>
 
@@ -340,134 +327,392 @@ function Mini({
   );
 }
 
-// HistoryChart renders two overlaid line series (total + Canadian) as
-// inline SVG. Each line is independently scaled to the chart height so
-// the much-smaller CA series doesn't collapse into the baseline next to
-// the total. The right-edge value of each line is annotated; intermediate
-// values surface via the dotted day markers + tooltip on hover.
+// HistoryCard wraps the chart with range chips + clickable legend toggles.
+// All state is local: changing range slices client-side from the server's
+// 90-day payload, and toggling legend entries hides them from the SVG
+// without re-fetching.
+type RangeDays = 7 | 30 | 90;
+
+const COUNTRY_COLORS: Record<string, string> = {
+  CA: "#dc2626", // red
+  US: "#2563eb", // blue
+  GB: "#7c3aed", // purple
+  IN: "#ea580c", // orange
+  FR: "#0891b2", // cyan
+  DE: "#65a30d", // green
+};
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  CA: "🇨🇦", US: "🇺🇸", GB: "🇬🇧", IN: "🇮🇳", FR: "🇫🇷", DE: "🇩🇪",
+};
+
+function HistoryCard({
+  history,
+}: {
+  history: NonNullable<AdminStats["history"]>;
+}) {
+  // Build the canonical series list once - order controls legend order
+  // and z-order in the chart (total drawn last/on top).
+  const allSeries = useMemo<Series[]>(() => {
+    const out: Series[] = [];
+    for (const [code, values] of Object.entries(history.by_country)) {
+      out.push({
+        key: code,
+        label: `${code} ${COUNTRY_FLAGS[code] ?? ""}`.trim(),
+        color: COUNTRY_COLORS[code] ?? "#888",
+        values,
+      });
+    }
+    out.push({
+      key: "total",
+      label: "Total",
+      color: "var(--accent, #3b82f6)",
+      values: history.total,
+    });
+    return out;
+  }, [history]);
+
+  const [range, setRange] = useState<RangeDays>(30);
+  // Default visibility: total + CA (the headline metrics). Click to add/remove.
+  const [visible, setVisible] = useState<Set<string>>(() => new Set(["total", "CA"]));
+
+  const maxRange = Math.min(history.buckets.length, 90) as RangeDays;
+  const effectiveRange = Math.min(range, maxRange) as RangeDays;
+
+  // Slice every series + buckets to the selected window.
+  const sliceStart = Math.max(0, history.buckets.length - effectiveRange);
+  const buckets = history.buckets.slice(sliceStart);
+  const series = useMemo(
+    () =>
+      allSeries.map((s) => ({ ...s, values: s.values.slice(sliceStart) })),
+    [allSeries, sliceStart],
+  );
+
+  const toggle = (key: string) => {
+    setVisible((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) next.delete(key); // keep at least one line visible
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div className="card" style={{ padding: 14, marginTop: 14 }}>
+      <div className="row" style={{ alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+        <div className="text-sm" style={{ fontWeight: 600 }}>
+          Jobs over time · last {effectiveRange}d
+        </div>
+        <div className="row" style={{ gap: 4 }}>
+          {([7, 30, 90] as RangeDays[]).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setRange(d)}
+              disabled={d > maxRange}
+              className="text-xs"
+              style={{
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: "1px solid var(--border, #ccc)",
+                background: range === d ? "var(--accent, #3b82f6)" : "transparent",
+                color: range === d ? "white" : d > maxRange ? "var(--muted-2)" : "inherit",
+                cursor: d > maxRange ? "not-allowed" : "pointer",
+                fontWeight: range === d ? 600 : 400,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <HistoryChart buckets={buckets} series={series} visible={visible} />
+
+      <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+        {series.map((s) => {
+          const isOn = visible.has(s.key);
+          const end = s.values[s.values.length - 1] ?? 0;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => toggle(s.key)}
+              className="text-xs"
+              style={{
+                padding: "4px 9px",
+                borderRadius: 999,
+                border: `1px solid ${isOn ? s.color : "var(--border, #ddd)"}`,
+                background: isOn ? `${hexToRgba(s.color, 0.08)}` : "transparent",
+                color: isOn ? s.color : "var(--muted-2)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontWeight: isOn ? 600 : 400,
+              }}
+              title={isOn ? "Hide series" : "Show series"}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: isOn ? s.color : "transparent",
+                  border: isOn ? "none" : `1.5px solid var(--muted-2)`,
+                }}
+              />
+              {s.label}
+              <span style={{ opacity: isOn ? 1 : 0.5, fontVariantNumeric: "tabular-nums" }}>
+                {end.toLocaleString()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type Series = {
+  key: string;
+  label: string;
+  color: string;
+  values: number[];
+};
+
+// HistoryChart renders the visible series with independently-scaled y axes
+// (so a 4000-job total and a 100-job FR line both read clearly), a hover
+// crosshair, and a floating tooltip showing the exact values at the
+// hovered date. Independent scaling preserves trend comparability across
+// series of different magnitudes - readers compare slopes, not absolute
+// y positions, and the right-edge labels show absolute end values.
 function HistoryChart({
   buckets,
-  total,
-  ca,
+  series,
+  visible,
 }: {
   buckets: string[];
-  total: number[];
-  ca: number[];
+  series: Series[];
+  visible: Set<string>;
 }) {
   const w = 720;
-  const h = 160;
+  const h = 180;
   const padL = 8;
-  const padR = 64; // room for end-value labels
-  const padT = 8;
-  const padB = 22;
+  const padR = 16;
+  const padT = 12;
+  const padB = 24;
   const innerW = w - padL - padR;
   const innerH = h - padT - padB;
   const n = buckets.length;
 
-  const totalMax = Math.max(1, ...total);
-  const caMax = Math.max(1, ...ca);
+  const [hover, setHover] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const pathFor = (series: number[], max: number) =>
-    series
-      .map((v, i) => {
-        const x = padL + (n === 1 ? 0 : (i * innerW) / (n - 1));
-        const y = padT + innerH - (v / max) * innerH;
-        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(" ");
+  // Compute per-series scale (independent y axes). Each line is normalized
+  // to the chart height by its own max, so even small-magnitude series
+  // (Germany, France) trace a visible curve rather than flattening into
+  // the baseline next to a 20k total.
+  const scaled = useMemo(() => {
+    return series
+      .filter((s) => visible.has(s.key))
+      .map((s) => {
+        const max = Math.max(1, ...s.values);
+        return {
+          ...s,
+          max,
+          points: s.values.map((v, i) => ({
+            x: padL + (n === 1 ? 0 : (i * innerW) / (n - 1)),
+            y: padT + innerH - (v / max) * innerH,
+          })),
+        };
+      });
+  }, [series, visible, n, innerW, innerH]);
 
   const ticks = pickTicks(buckets);
-  const lastTotal = total[n - 1] ?? 0;
-  const lastCa = ca[n - 1] ?? 0;
+
+  // Convert mouse position to nearest data index. Math fires on every
+  // mousemove; cheap because we only do one O(1) calc per event.
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * w;
+    const xClamped = Math.max(padL, Math.min(padL + innerW, px));
+    const ratio = n === 1 ? 0 : (xClamped - padL) / innerW;
+    const idx = Math.round(ratio * (n - 1));
+    if (idx >= 0 && idx < n) setHover(idx);
+  };
+
+  const handleLeave = () => setHover(null);
+
+  // Tooltip placement: pin to whichever side gives it room. The tooltip
+  // sits in HTML overlay positioned with absolute coords so text doesn't
+  // need to fit the SVG viewBox.
+  const tooltipX =
+    hover === null
+      ? 0
+      : ((padL + (n === 1 ? 0 : (hover * innerW) / (n - 1))) / w) * 100;
 
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      style={{ width: "100%", height: "auto", maxHeight: 200, display: "block" }}
-      role="img"
-      aria-label="Cumulative jobs over time"
-    >
-      {/* horizontal baseline */}
-      <line
-        x1={padL}
-        y1={padT + innerH}
-        x2={padL + innerW}
-        y2={padT + innerH}
-        stroke="currentColor"
-        strokeOpacity={0.15}
-      />
-
-      {/* day-tick markers along x axis */}
-      {ticks.map(({ i, label }) => {
-        const x = padL + (n === 1 ? 0 : (i * innerW) / (n - 1));
-        return (
-          <g key={i}>
-            <line
-              x1={x}
-              y1={padT + innerH}
-              x2={x}
-              y2={padT + innerH + 4}
-              stroke="currentColor"
-              strokeOpacity={0.3}
-            />
-            <text
-              x={x}
-              y={padT + innerH + 16}
-              fontSize="10"
-              textAnchor="middle"
-              fill="currentColor"
-              fillOpacity={0.55}
-            >
-              {label}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* total line */}
-      <path
-        d={pathFor(total, totalMax)}
-        fill="none"
-        stroke="var(--accent, #3b82f6)"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* CA line - keep visually distinct from total */}
-      <path
-        d={pathFor(ca, caMax)}
-        fill="none"
-        stroke="#dc2626"
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* end-of-line value labels */}
-      <text
-        x={padL + innerW + 6}
-        y={padT + innerH - (lastTotal / totalMax) * innerH + 4}
-        fontSize="11"
-        fill="var(--accent, #3b82f6)"
-        fontWeight={600}
+    <div style={{ position: "relative", width: "100%" }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${w} ${h}`}
+        style={{ width: "100%", height: "auto", maxHeight: 220, display: "block", cursor: "crosshair" }}
+        role="img"
+        aria-label="Cumulative jobs over time"
+        onMouseMove={handleMove}
+        onMouseLeave={handleLeave}
       >
-        {lastTotal.toLocaleString()}
-      </text>
-      <text
-        x={padL + innerW + 6}
-        y={padT + innerH - (lastCa / caMax) * innerH + 4}
-        fontSize="11"
-        fill="#dc2626"
-        fontWeight={600}
-      >
-        {lastCa.toLocaleString()}
-      </text>
-    </svg>
+        {/* baseline */}
+        <line
+          x1={padL}
+          y1={padT + innerH}
+          x2={padL + innerW}
+          y2={padT + innerH}
+          stroke="currentColor"
+          strokeOpacity={0.15}
+        />
+
+        {/* x-axis ticks */}
+        {ticks.map(({ i, label }) => {
+          const x = padL + (n === 1 ? 0 : (i * innerW) / (n - 1));
+          return (
+            <g key={i}>
+              <line
+                x1={x}
+                y1={padT + innerH}
+                x2={x}
+                y2={padT + innerH + 4}
+                stroke="currentColor"
+                strokeOpacity={0.3}
+              />
+              <text
+                x={x}
+                y={padT + innerH + 16}
+                fontSize="10"
+                textAnchor="middle"
+                fill="currentColor"
+                fillOpacity={0.55}
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* hover crosshair */}
+        {hover !== null && (
+          <line
+            x1={padL + (n === 1 ? 0 : (hover * innerW) / (n - 1))}
+            y1={padT}
+            x2={padL + (n === 1 ? 0 : (hover * innerW) / (n - 1))}
+            y2={padT + innerH}
+            stroke="currentColor"
+            strokeOpacity={0.35}
+            strokeDasharray="3 3"
+          />
+        )}
+
+        {/* lines */}
+        {scaled.map((s) => (
+          <path
+            key={s.key}
+            d={s.points
+              .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+              .join(" ")}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={s.key === "total" ? 2.2 : 1.75}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+
+        {/* hover dots */}
+        {hover !== null &&
+          scaled.map((s) => {
+            const p = s.points[hover];
+            if (!p) return null;
+            return (
+              <circle
+                key={s.key}
+                cx={p.x}
+                cy={p.y}
+                r={3.5}
+                fill={s.color}
+                stroke="var(--bg, white)"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+      </svg>
+
+      {hover !== null && (
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            left: `${tooltipX}%`,
+            transform:
+              tooltipX > 70 ? "translateX(-100%) translateX(-12px)" : "translateX(12px)",
+            background: "var(--bg, white)",
+            border: "1px solid var(--border, #ddd)",
+            borderRadius: 6,
+            padding: "8px 10px",
+            fontSize: 12,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+            pointerEvents: "none",
+            minWidth: 140,
+            zIndex: 2,
+          }}
+        >
+          <div style={{ marginBottom: 6, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+            {buckets[hover]}
+          </div>
+          {scaled
+            .slice()
+            .sort((a, b) => (b.values[hover] ?? 0) - (a.values[hover] ?? 0))
+            .map((s) => (
+              <div
+                key={s.key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "1px 0",
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: s.color,
+                      display: "inline-block",
+                    }}
+                  />
+                  {s.label}
+                </span>
+                <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                  {(s.values[hover] ?? 0).toLocaleString()}
+                </span>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-// pickTicks picks ~5 evenly-spaced day labels so x-axis text doesn't
-// overlap. Always includes the first and last bucket.
 function pickTicks(buckets: string[]): Array<{ i: number; label: string }> {
   const n = buckets.length;
   if (n === 0) return [];
@@ -477,7 +722,6 @@ function pickTicks(buckets: string[]): Array<{ i: number; label: string }> {
   for (let i = 0; i < n; i += step) {
     out.push({ i, label: monthDay(buckets[i]!) });
   }
-  // Always include the last index even if step didn't land on it.
   if (out[out.length - 1]?.i !== n - 1) {
     out.push({ i: n - 1, label: monthDay(buckets[n - 1]!) });
   }
@@ -485,24 +729,21 @@ function pickTicks(buckets: string[]): Array<{ i: number; label: string }> {
 }
 
 function monthDay(iso: string): string {
-  // Take "YYYY-MM-DD" -> "MM-DD" without timezone shifts (display only).
   return iso.slice(5);
 }
 
-function LegendDot({ color }: { color: string }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 8,
-        height: 8,
-        borderRadius: 999,
-        background: color,
-        marginRight: 4,
-        verticalAlign: "middle",
-      }}
-    />
-  );
+// hexToRgba converts a #rrggbb (or var(--...)) hint to a rgba() string at
+// the given alpha for use as a subtle background tint behind a legend
+// chip. var() hints fall back to a neutral gray since we can't introspect
+// computed CSS at render time.
+function hexToRgba(c: string, a: number): string {
+  if (c.startsWith("#") && c.length === 7) {
+    const r = parseInt(c.slice(1, 3), 16);
+    const g = parseInt(c.slice(3, 5), 16);
+    const b = parseInt(c.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  return `rgba(120, 120, 120, ${a})`;
 }
 
 function timeAgo(ms: number): string {
