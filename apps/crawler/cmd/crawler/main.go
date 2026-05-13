@@ -71,6 +71,17 @@ func main() {
 
 	jobs := make(chan pipeline.JobJSON, 64)
 
+	// Per-source soft cap. Defense-in-depth against a single hung adapter
+	// (a Workday tenant that pages forever, an aggregator returning empty
+	// responses but never EOF). Each source gets its own context that
+	// derives from the parent and cancels after this duration; the adapter
+	// observes ctx.Err() in its loops and bails cleanly. Bound chosen so
+	// the slowest healthy source (Workday with ~100 tenants) finishes well
+	// inside, but a pathological hang can't dominate. 120 min is generous;
+	// concurrency=3 + cooperative cancellation should keep total wall-clock
+	// well under the 8h unit cap.
+	sourceTimeout := envDuration("SOURCE_TIMEOUT", 120*time.Minute)
+
 	// Producers: each source streams jobs into the channel.
 	var producers sync.WaitGroup
 	for _, s := range srcs {
@@ -78,7 +89,14 @@ func main() {
 		producers.Add(1)
 		go func() {
 			defer producers.Done()
-			if err := s.Fetch(ctx, jobs); err != nil && ctx.Err() == nil {
+			srcCtx, srcCancel := context.WithTimeout(ctx, sourceTimeout)
+			defer srcCancel()
+			err := s.Fetch(srcCtx, jobs)
+			if srcCtx.Err() == context.DeadlineExceeded {
+				log.Printf("[%s] per-source timeout (%s) reached, moving on", s.Name(), sourceTimeout)
+				return
+			}
+			if err != nil && ctx.Err() == nil {
 				log.Printf("[%s] fatal: %v", s.Name(), err)
 			}
 		}()
@@ -448,4 +466,18 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// envDuration parses a Go-style duration string ("90m", "2h30m", "45s") and
+// returns the fallback when the env var is missing or unparseable.
+func envDuration(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return fallback
+	}
+	return d
 }
