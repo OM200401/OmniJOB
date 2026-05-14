@@ -175,6 +175,46 @@ const TECH: Bank = {
     embedText: "mobile engineer iOS Android Swift Kotlin React Native mobile app developer",
     keywords: ["mobile", "ios", "android"],
   },
+  embedded: {
+    embedText:
+      "embedded software engineer firmware engineer microcontroller real-time RTOS C C++ assembly low-level systems hardware-software interface",
+    keywords: ["embedded", "firmware", "microcontroller", "rtos", "low-level"],
+  },
+  "embedded software": {
+    embedText:
+      "embedded software engineer firmware engineer microcontroller RTOS real-time systems C C++ low-level hardware-software interface board support package BSP",
+    keywords: ["embedded", "firmware", "microcontroller", "rtos"],
+  },
+  "embedded systems": {
+    embedText:
+      "embedded systems engineer firmware microcontroller real-time RTOS hardware-software interface board support package BSP C C++",
+    keywords: ["embedded", "embedded systems", "firmware", "rtos"],
+  },
+  firmware: {
+    embedText:
+      "firmware engineer embedded software microcontroller bootloader low-level C C++ device driver bare-metal RTOS",
+    keywords: ["firmware", "embedded", "microcontroller", "bootloader"],
+  },
+  hardware: {
+    embedText:
+      "hardware engineer FPGA ASIC RTL Verilog VHDL digital design board PCB EE electrical engineer",
+    keywords: ["hardware", "fpga", "asic", "rtl", "verilog"],
+  },
+  kernel: {
+    embedText:
+      "kernel engineer Linux kernel systems programmer driver low-level C operating systems internals",
+    keywords: ["kernel", "linux kernel", "driver", "systems"],
+  },
+  robotics: {
+    embedText:
+      "robotics engineer ROS robot operating system controls perception SLAM motion planning autonomous mechatronics",
+    keywords: ["robotics", "ros", "controls", "slam"],
+  },
+  iot: {
+    embedText:
+      "IoT engineer internet of things embedded connected devices edge computing MQTT firmware microcontroller",
+    keywords: ["iot", "embedded", "connected devices", "mqtt"],
+  },
   ios: {
     embedText: "iOS engineer Swift Objective-C mobile apple iphone ipad developer",
     keywords: ["ios", "swift", "mobile"],

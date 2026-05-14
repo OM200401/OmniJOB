@@ -7,6 +7,44 @@ import { expandQuery } from "../lib/query-expansion";
 // exceed the crawler's 16-job batch without leaving headroom for abuse.
 const MAX_BATCH = 64;
 
+// LRU cache for single-text embeds. Query embeds are the hot path
+// (every keystroke through the search bar costs an Ollama round-trip
+// otherwise), and Ollama can take 500ms-5s+ on CPU under crawler load.
+// Caching by normalized input text means repeat queries land in <1ms
+// regardless of crawler pressure. The crawler's batch path stays
+// uncached - those texts are job descriptions, almost never repeated.
+//
+// 512 entries x ~768 floats x 4 bytes = ~1.5 MB ceiling. Trivial.
+const QUERY_CACHE_MAX = 512;
+const queryEmbedCache = new Map<string, number[]>();
+
+function cacheGet(key: string): number[] | undefined {
+  const hit = queryEmbedCache.get(key);
+  if (!hit) return undefined;
+  // Refresh recency by re-inserting at the tail of the Map's iteration
+  // order, which JS Maps preserve in insertion order.
+  queryEmbedCache.delete(key);
+  queryEmbedCache.set(key, hit);
+  return hit;
+}
+
+function cacheSet(key: string, value: number[]): void {
+  if (queryEmbedCache.has(key)) queryEmbedCache.delete(key);
+  queryEmbedCache.set(key, value);
+  if (queryEmbedCache.size > QUERY_CACHE_MAX) {
+    // Evict the oldest (first inserted / least recently used) key.
+    const oldest = queryEmbedCache.keys().next().value;
+    if (oldest !== undefined) queryEmbedCache.delete(oldest);
+  }
+}
+
+function cacheKey(text: string, expanded: boolean): string {
+  // Normalize: lowercase, collapse whitespace. expanded=true and =false
+  // produce different vectors for the same raw text, so include it.
+  const norm = text.toLowerCase().replace(/\s+/g, " ").trim();
+  return `${expanded ? "x" : "r"}:${norm}`;
+}
+
 export const embed = new Elysia({ prefix: "/embed" }).post(
   "/",
   async ({ body, status }) => {
@@ -35,7 +73,18 @@ export const embed = new Elysia({ prefix: "/embed" }).post(
           expanded = true;
         }
       }
+
+      // Cache lookup keyed by the raw user text + expansion flag (NOT the
+      // expanded gloss): two users typing "embedded software engineer"
+      // should share a hit even though the expander rewrites the input.
+      const key = cacheKey(body.text, expanded);
+      const cached = cacheGet(key);
+      if (cached) {
+        return { vector: cached, dim: cached.length, expanded, cached: true };
+      }
+
       const vector = await ollamaEmbed(inputText);
+      cacheSet(key, vector);
       return { vector, dim: vector.length, expanded };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

@@ -149,16 +149,38 @@ export type SearchOpts = {
 
 export type SortMode = NonNullable<SearchOpts["sort"]>;
 
+// Hard-stop for any API request. Without it, a slow backend (e.g. Ollama
+// embed queued behind a crawler batch) hangs the browser tab indefinitely
+// - the user sees "still loading" with no recourse. 20s comfortably
+// covers a worst-case cold embed under crawler load; anything past that
+// is the network or backend being unhealthy and we want to surface it.
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function request<T>(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: body ? { "content-type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } catch (e) {
+    // AbortError surfaces from AbortSignal.timeout - rewrite it into a
+    // user-readable message before it bubbles up to the Feed error banner.
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      throw new ApiError(
+        504,
+        `Search took too long (>${REQUEST_TIMEOUT_MS / 1000}s). The backend may be under load - try again in a moment.`,
+      );
+    }
+    throw e;
+  }
   if (!res.ok) {
     let msg = res.statusText;
     try {
