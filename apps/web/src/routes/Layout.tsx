@@ -13,6 +13,16 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { ROUTE_PREFETCH } from "../App";
+
+// prefetchPath warms the lazy chunk for a route path. Called on
+// pointerenter/focus from any nav link - subsequent navigation is
+// instant because the chunk is in browser cache. Failures are
+// swallowed (the user can still click; React.lazy will try again).
+function prefetchPath(path: string) {
+  const fn = ROUTE_PREFETCH[path];
+  if (fn) void fn().catch(() => {});
+}
 
 export function Layout() {
   const { session, signOut } = useAuth();
@@ -59,13 +69,28 @@ export function Layout() {
                 <NavLink to="/feed" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
                   <Search size={13} /> Feed
                 </NavLink>
-                <NavLink to="/applications" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+                <NavLink
+                  to="/applications"
+                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                  onPointerEnter={() => prefetchPath("/applications")}
+                  onFocus={() => prefetchPath("/applications")}
+                >
                   <ClipboardList size={13} /> Applications
                 </NavLink>
-                <NavLink to="/saved" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+                <NavLink
+                  to="/saved"
+                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                  onPointerEnter={() => prefetchPath("/saved")}
+                  onFocus={() => prefetchPath("/saved")}
+                >
                   <Bookmark size={13} /> Saved
                 </NavLink>
-                <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+                <NavLink
+                  to="/settings"
+                  className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                  onPointerEnter={() => prefetchPath("/settings")}
+                  onFocus={() => prefetchPath("/settings")}
+                >
                   <SettingsIcon size={13} /> Settings
                 </NavLink>
               </nav>
@@ -76,6 +101,8 @@ export function Layout() {
                 to="/privacy"
                 className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
                 title="What we never see"
+                onPointerEnter={() => prefetchPath("/privacy")}
+                onFocus={() => prefetchPath("/privacy")}
               >
                 <ShieldCheck size={13} /> Privacy
               </NavLink>
@@ -83,6 +110,8 @@ export function Layout() {
                 to="/terms"
                 className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
                 title="Terms of service"
+                onPointerEnter={() => prefetchPath("/terms")}
+                onFocus={() => prefetchPath("/terms")}
               >
                 <ScrollText size={13} /> Terms
               </NavLink>
@@ -90,6 +119,8 @@ export function Layout() {
                 to="/contact"
                 className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
                 title="Get in touch"
+                onPointerEnter={() => prefetchPath("/contact")}
+                onFocus={() => prefetchPath("/contact")}
               >
                 <Mail size={13} /> Contact
               </NavLink>

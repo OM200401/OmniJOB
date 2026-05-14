@@ -354,6 +354,28 @@ kbd, .kbd {
   border-color: transparent;
 }
 
+/* Horizontal scrolling for the chip rows on narrow viewports. Keeps the
+   UI compact instead of stacking onto multiple lines. The scroll
+   indicator is the chips going off the right edge - no separate scrollbar
+   styling, since the row is short. */
+@media (max-width: 720px) {
+  .quick-presets,
+  .active-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar across engines for a clean visual; tap-scrolling
+       still works. */
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .quick-presets::-webkit-scrollbar,
+  .active-filters::-webkit-scrollbar { display: none; }
+  /* "Clear all" stays at the row end on narrow viewports, no float. */
+  .active-filters .clear-all { margin-left: 0; flex-shrink: 0; }
+}
+
 /* Keyboard focus ring for JobCard. Activated by the keyboard-nav state
    in Feed; mouse interaction never sets this, so it's a true keyboard
    affordance rather than a permanent visual. */

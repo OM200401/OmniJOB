@@ -22,16 +22,54 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 // React Router v6 + React.lazy plays cleanly; the Suspense fallback
 // below is what users see for the ~50-300ms a chunk takes to fetch
 // over a warm connection.
-const Onboarding = lazy(() => import("./routes/Onboarding").then((m) => ({ default: m.Onboarding })));
-const JobDetail = lazy(() => import("./routes/JobDetail").then((m) => ({ default: m.JobDetail })));
-const Saved = lazy(() => import("./routes/Saved").then((m) => ({ default: m.Saved })));
-const Settings = lazy(() => import("./routes/Settings").then((m) => ({ default: m.Settings })));
-const Applications = lazy(() => import("./routes/Applications").then((m) => ({ default: m.Applications })));
-const Privacy = lazy(() => import("./routes/Privacy").then((m) => ({ default: m.Privacy })));
-const Terms = lazy(() => import("./routes/Terms").then((m) => ({ default: m.Terms })));
-const Contact = lazy(() => import("./routes/Contact").then((m) => ({ default: m.Contact })));
-const Recover = lazy(() => import("./routes/Recover").then((m) => ({ default: m.Recover })));
-const Admin = lazy(() => import("./routes/Admin").then((m) => ({ default: m.Admin })));
+// Each lazy entry pairs the React.lazy component with a `prefetch()`
+// function exposing the same import promise. Hover/touch handlers in
+// the Layout call prefetch() so the chunk is already in cache by the
+// time the user clicks - shaves the ~50-300ms chunk-fetch from the
+// perceived navigation latency. Calling prefetch() repeatedly is free
+// because the dynamic import() is itself cached.
+const lazyRoute = <T,>(loader: () => Promise<T>) => {
+  return { component: lazy(loader as any), prefetch: loader };
+};
+
+const OnboardingRoute = lazyRoute(() => import("./routes/Onboarding").then((m) => ({ default: m.Onboarding })));
+const JobDetailRoute = lazyRoute(() => import("./routes/JobDetail").then((m) => ({ default: m.JobDetail })));
+const SavedRoute = lazyRoute(() => import("./routes/Saved").then((m) => ({ default: m.Saved })));
+const SettingsRoute = lazyRoute(() => import("./routes/Settings").then((m) => ({ default: m.Settings })));
+const ApplicationsRoute = lazyRoute(() => import("./routes/Applications").then((m) => ({ default: m.Applications })));
+const PrivacyRoute = lazyRoute(() => import("./routes/Privacy").then((m) => ({ default: m.Privacy })));
+const TermsRoute = lazyRoute(() => import("./routes/Terms").then((m) => ({ default: m.Terms })));
+const ContactRoute = lazyRoute(() => import("./routes/Contact").then((m) => ({ default: m.Contact })));
+const RecoverRoute = lazyRoute(() => import("./routes/Recover").then((m) => ({ default: m.Recover })));
+const AdminRoute = lazyRoute(() => import("./routes/Admin").then((m) => ({ default: m.Admin })));
+
+const Onboarding = OnboardingRoute.component;
+const JobDetail = JobDetailRoute.component;
+const Saved = SavedRoute.component;
+const Settings = SettingsRoute.component;
+const Applications = ApplicationsRoute.component;
+const Privacy = PrivacyRoute.component;
+const Terms = TermsRoute.component;
+const Contact = ContactRoute.component;
+const Recover = RecoverRoute.component;
+const Admin = AdminRoute.component;
+
+// Exported map of (path -> prefetch fn) used by Layout to warm chunks
+// on link hover. Paths match the React Router definitions below.
+export const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {
+  "/onboarding": OnboardingRoute.prefetch,
+  "/saved": SavedRoute.prefetch,
+  "/settings": SettingsRoute.prefetch,
+  "/applications": ApplicationsRoute.prefetch,
+  "/privacy": PrivacyRoute.prefetch,
+  "/terms": TermsRoute.prefetch,
+  "/contact": ContactRoute.prefetch,
+  "/recover": RecoverRoute.prefetch,
+  "/admin": AdminRoute.prefetch,
+  // /jobs/:id is highest-value to prefetch; the JobCard fires it on
+  // pointer-enter so the detail page is instant on click.
+  "/jobs": JobDetailRoute.prefetch,
+};
 
 // Minimal Suspense fallback. Renders inside <main> so it doesn't push
 // the header around. Keeps the same vertical rhythm as a real page so

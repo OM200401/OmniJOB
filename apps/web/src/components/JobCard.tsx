@@ -4,6 +4,15 @@ import type { JobHit, RemoteStatus } from "../lib/api";
 import { flagEmoji } from "../lib/countries";
 import { sourceDisplayName } from "../lib/sources";
 import { CompanyLogo } from "./CompanyLogo";
+import { ROUTE_PREFETCH } from "../App";
+
+// Lazy-imported JobDetail's chunk fetcher. Triggered on pointerenter
+// so the chunk is already cached when the user clicks. Idempotent and
+// free to call repeatedly; the dynamic import() cache dedupes.
+function prefetchJobDetail() {
+  const fn = ROUTE_PREFETCH["/jobs"];
+  if (fn) void fn().catch(() => {});
+}
 
 type Props = {
   hit: JobHit;
@@ -52,6 +61,8 @@ export function JobCard({ hit, saved, onToggleSave, kbdFocused }: Props) {
       style={{ textDecoration: "none", color: "inherit" }}
       data-kbd-focus={kbdFocused ? "true" : undefined}
       data-job-id={id}
+      onPointerEnter={prefetchJobDetail}
+      onFocus={prefetchJobDetail}
     >
       <div className="job-card-header">
         <CompanyLogo company={hit.payload.company} size={32} />
