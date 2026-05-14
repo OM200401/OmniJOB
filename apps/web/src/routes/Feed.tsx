@@ -253,6 +253,14 @@ export function Feed() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Index of the keyboard-focused job card. -1 = no card focused. Mouse
+  // hover does not set this; only j/k navigation does, so the outline
+  // ring stays a true keyboard affordance.
+  const [kbdFocusedIdx, setKbdFocusedIdx] = useState(-1);
+  useEffect(() => {
+    setKbdFocusedIdx(-1);
+  }, [hits]);
+
   const search = useCallback(async () => {
     setBusy(true);
     setErr(null);
@@ -540,6 +548,54 @@ export function Feed() {
     [session, patchProfile],
   );
 
+  // Keyboard navigation across the job grid. j/k (vim) and ArrowDown/Up
+  // walk through cards; Enter opens the focused one; "s" toggles save;
+  // Escape clears focus. Skipped while the user is typing in any input
+  // so the keys don't collide with normal text entry.
+  useEffect(() => {
+    const inField = (el: EventTarget | null) =>
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement ||
+      (el instanceof HTMLElement && el.isContentEditable);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (inField(e.target)) return;
+      if (!hits || hits.length === 0) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setKbdFocusedIdx((i) => Math.min(hits.length - 1, i + 1));
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setKbdFocusedIdx((i) => (i <= 0 ? 0 : i - 1));
+      } else if (e.key === "Enter" && kbdFocusedIdx >= 0) {
+        e.preventDefault();
+        const node = document.querySelector('[data-kbd-focus="true"]') as HTMLAnchorElement | null;
+        node?.click();
+      } else if (e.key === "s" && kbdFocusedIdx >= 0) {
+        e.preventDefault();
+        const hit = hits[kbdFocusedIdx];
+        if (hit) {
+          const hid = String(hit.id);
+          onToggleSave(hid, !savedSet.has(hid));
+        }
+      } else if (e.key === "Escape") {
+        setKbdFocusedIdx(-1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hits, kbdFocusedIdx, savedSet, onToggleSave]);
+
+  // Keep the keyboard-focused card visible as the user navigates.
+  useEffect(() => {
+    if (kbdFocusedIdx < 0) return;
+    const node = document.querySelector('[data-kbd-focus="true"]') as HTMLElement | null;
+    node?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [kbdFocusedIdx]);
+
   // Pagination math. `totalMatches` is the FULL post-filter pool size from
   // the API; we slice it into PAGE_SIZE pages and use the result to gate the
   // Prev/Next buttons and decide whether to render the control row at all.
@@ -698,6 +754,52 @@ export function Feed() {
             for personalized matching.
           </span>
         </div>
+      )}
+
+      {/* Quick-preset chips - one-tap shortcuts for the most common filter
+          combos. Toggle on/off; clicking a preset that's already active
+          removes its filters. Keeps the filter drawer in reserve for
+          finer-grained refinement. */}
+      <QuickPresets
+        remotes={remotes}
+        setRemotes={setRemotes}
+        levels={levels}
+        setLevels={setLevels}
+        industries={industries}
+        setIndustries={setIndustries}
+        countries={countries}
+        setCountries={setCountries}
+        salaryMin={salaryMin}
+        setSalaryMin={setSalaryMin}
+      />
+
+      {/* Active-filter pills - shows every applied filter as a removable
+          chip. Eliminates the "click 'Filters' to find out what's on"
+          UX hole. Hidden when nothing is active. */}
+      {totalActive > 0 && (
+        <ActiveFilters
+          query={debouncedQuery}
+          clearQuery={() => setQuery("")}
+          company={debouncedCompany}
+          clearCompany={() => setCompanyFilter("")}
+          location={debouncedLocation}
+          clearLocation={() => setLocationFilter("")}
+          levels={levels}
+          removeLevel={(v) => setLevels((cur) => cur.filter((x) => x !== v))}
+          remotes={remotes}
+          removeRemote={(v) => setRemotes((cur) => cur.filter((x) => x !== v))}
+          industries={industries}
+          removeIndustry={(v) => setIndustries((cur) => cur.filter((x) => x !== v))}
+          sources={sources}
+          removeSource={(v) => setSources((cur) => cur.filter((x) => x !== v))}
+          countries={countries}
+          removeCountry={(v) => setCountries((cur) => cur.filter((x) => x !== v))}
+          salaryMin={salaryMin}
+          clearSalary={() => setSalaryMin(null)}
+          requireSalary={requireSalary}
+          clearRequireSalary={() => setRequireSalary(false)}
+          clearAll={reset}
+        />
       )}
 
       {showSaveDialog && (
@@ -1056,12 +1158,13 @@ export function Feed() {
 
           {hits && hits.length > 0 && !(busy && totalActive > 0) && (
             <div className="job-grid">
-              {hits.map((h) => (
+              {hits.map((h, i) => (
                 <JobCard
                   key={String(h.id)}
                   hit={h}
                   saved={savedSet.has(String(h.id))}
                   onToggleSave={onToggleSave}
+                  kbdFocused={i === kbdFocusedIdx}
                 />
               ))}
             </div>
@@ -1180,5 +1283,198 @@ function FilterCheck({
       <input type="checkbox" checked={checked} onChange={onChange} />
       <span>{label}</span>
     </label>
+  );
+}
+
+// Active-filters bar - one removable pill per applied filter, plus a
+// trailing "Clear all" link. Hidden by the caller when nothing is on.
+// Each pill's × button stops propagation so it can sit inside other
+// click targets without conflict.
+function ActiveFilters(props: {
+  query: string;
+  clearQuery: () => void;
+  company: string;
+  clearCompany: () => void;
+  location: string;
+  clearLocation: () => void;
+  levels: ExperienceLevel[];
+  removeLevel: (v: ExperienceLevel) => void;
+  remotes: RemoteStatus[];
+  removeRemote: (v: RemoteStatus) => void;
+  industries: Industry[];
+  removeIndustry: (v: Industry) => void;
+  sources: SourceName[];
+  removeSource: (v: SourceName) => void;
+  countries: string[];
+  removeCountry: (v: string) => void;
+  salaryMin: number | null;
+  clearSalary: () => void;
+  requireSalary: boolean;
+  clearRequireSalary: () => void;
+  clearAll: () => void;
+}) {
+  const levelLabel: Record<string, string> = {
+    intern: "Intern", junior: "Junior", mid: "Mid", senior: "Senior",
+    staff: "Staff", principal: "Principal", manager: "Manager",
+    director: "Director", executive: "Executive",
+  };
+  const remoteLabel: Record<string, string> = { remote: "Remote", hybrid: "Hybrid", onsite: "Onsite" };
+  const industryLabelMap = Object.fromEntries(INDUSTRY_OPTIONS.map((o) => [o.value, o.label]));
+  return (
+    <div className="active-filters" role="region" aria-label="Active filters">
+      <span className="label">Filtered by:</span>
+      {props.query && (
+        <FilterPill label={`"${props.query}"`} onClear={props.clearQuery} />
+      )}
+      {props.company && (
+        <FilterPill label={`Company: ${props.company}`} onClear={props.clearCompany} />
+      )}
+      {props.location && (
+        <FilterPill label={`Location: ${props.location}`} onClear={props.clearLocation} />
+      )}
+      {props.levels.map((v) => (
+        <FilterPill key={`lvl-${v}`} label={levelLabel[v] ?? v} onClear={() => props.removeLevel(v)} />
+      ))}
+      {props.remotes.map((v) => (
+        <FilterPill key={`rem-${v}`} label={remoteLabel[v] ?? v} onClear={() => props.removeRemote(v)} />
+      ))}
+      {props.industries.map((v) => (
+        <FilterPill key={`ind-${v}`} label={industryLabelMap[v] ?? v} onClear={() => props.removeIndustry(v)} />
+      ))}
+      {props.sources.map((v) => (
+        <FilterPill key={`src-${v}`} label={v} onClear={() => props.removeSource(v)} />
+      ))}
+      {props.countries.map((v) => (
+        <FilterPill key={`co-${v}`} label={`${flagEmoji(v)} ${v}`} onClear={() => props.removeCountry(v)} />
+      ))}
+      {props.salaryMin !== null && (
+        <FilterPill label={`≥ $${(props.salaryMin / 1000).toFixed(0)}k`} onClear={props.clearSalary} />
+      )}
+      {props.requireSalary && (
+        <FilterPill label="Has salary" onClear={props.clearRequireSalary} />
+      )}
+      <button className="clear-all" onClick={props.clearAll} type="button">
+        Clear all
+      </button>
+    </div>
+  );
+}
+
+function FilterPill({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="filter-pill">
+      {label}
+      <button
+        type="button"
+        className="filter-pill-x"
+        onClick={onClear}
+        aria-label={`Remove ${label}`}
+      >
+        <X size={11} />
+      </button>
+    </span>
+  );
+}
+
+// Quick-preset shortcuts. Each toggles a curated filter combo. We define
+// "active" as "the union of filters this preset would apply is currently
+// a subset of state" - the simplest check that handles the partial-match
+// case (e.g. user applied Junior via the drawer, then clicked "New grad"
+// preset which adds Intern too).
+function QuickPresets(props: {
+  remotes: RemoteStatus[];
+  setRemotes: (v: RemoteStatus[]) => void;
+  levels: ExperienceLevel[];
+  setLevels: (v: ExperienceLevel[]) => void;
+  industries: Industry[];
+  setIndustries: (v: Industry[]) => void;
+  countries: string[];
+  setCountries: (v: string[]) => void;
+  salaryMin: number | null;
+  setSalaryMin: (v: number | null) => void;
+}) {
+  type Preset = {
+    key: string;
+    label: string;
+    active: boolean;
+    toggle: () => void;
+  };
+  const has = <T,>(arr: T[], v: T) => arr.includes(v);
+  const toggleArr = <T,>(arr: T[], v: T, setter: (next: T[]) => void) => {
+    setter(has(arr, v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  };
+
+  const presets: Preset[] = [
+    {
+      key: "remote",
+      label: "🌎 Remote",
+      active: has(props.remotes, "remote"),
+      toggle: () => toggleArr(props.remotes, "remote" as RemoteStatus, props.setRemotes),
+    },
+    {
+      key: "new-grad",
+      label: "🎓 New grad",
+      active: has(props.levels, "junior") && has(props.levels, "intern"),
+      toggle: () => {
+        const want: ExperienceLevel[] = ["intern", "junior"];
+        const allOn = want.every((v) => has(props.levels, v));
+        props.setLevels(
+          allOn ? props.levels.filter((v) => !want.includes(v)) : Array.from(new Set([...props.levels, ...want])),
+        );
+      },
+    },
+    {
+      key: "senior",
+      label: "🚀 Senior+",
+      active: ["senior", "staff", "principal"].every((v) => has(props.levels, v as ExperienceLevel)),
+      toggle: () => {
+        const want: ExperienceLevel[] = ["senior", "staff", "principal"];
+        const allOn = want.every((v) => has(props.levels, v));
+        props.setLevels(
+          allOn ? props.levels.filter((v) => !want.includes(v)) : Array.from(new Set([...props.levels, ...want])),
+        );
+      },
+    },
+    {
+      key: "tech",
+      label: "💻 Tech",
+      active: has(props.industries, "tech" as Industry),
+      toggle: () => toggleArr(props.industries, "tech" as Industry, props.setIndustries),
+    },
+    {
+      key: "ca",
+      label: "🇨🇦 Canada",
+      active: has(props.countries, "CA"),
+      toggle: () => toggleArr(props.countries, "CA", props.setCountries),
+    },
+    {
+      key: "us",
+      label: "🇺🇸 USA",
+      active: has(props.countries, "US"),
+      toggle: () => toggleArr(props.countries, "US", props.setCountries),
+    },
+    {
+      key: "100k",
+      label: "💰 $100k+",
+      active: props.salaryMin !== null && props.salaryMin >= 100000,
+      toggle: () => props.setSalaryMin(props.salaryMin === 100000 ? null : 100000),
+    },
+  ];
+
+  return (
+    <div className="quick-presets" role="group" aria-label="Quick filter presets">
+      <span className="quick-label">Quick filters</span>
+      {presets.map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          data-active={p.active}
+          onClick={p.toggle}
+          title={p.active ? "Remove this preset" : "Add this preset"}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
   );
 }

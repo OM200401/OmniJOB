@@ -256,6 +256,112 @@ kbd, .kbd {
 .chip-danger  { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
 .chip-muted   { background: var(--surface-2); color: var(--fg-4); border-color: var(--border-soft); font-style: italic; }
 
+/* Removable filter pill (used in the active-filters bar). Larger tap
+   target than a regular chip, with an inline × that the user can click
+   to clear that single filter without opening the filter drawer. */
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  cursor: default;
+}
+.filter-pill .filter-pill-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 80ms var(--ease), background 80ms var(--ease);
+}
+.filter-pill .filter-pill-x:hover { opacity: 1; background: rgba(0,0,0,0.06); }
+
+/* Active-filters bar - the horizontal strip above the results showing
+   every applied filter as a removable pill. Wraps to multiple lines on
+   long filter combinations; the "Clear all" link is anchored at the end
+   of the same flex container so it stays at the line's tail. */
+.active-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 14px;
+  font-size: 12px;
+}
+.active-filters .label { color: var(--fg-3); margin-right: 2px; }
+.active-filters .clear-all {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--fg-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 80ms var(--ease), color 80ms var(--ease);
+}
+.active-filters .clear-all:hover { background: var(--surface-2); color: var(--fg); }
+
+/* Quick preset chips - row of one-tap shortcuts that toggle a curated
+   filter combo (Remote, Junior, Tech, Canada, etc). Active state mirrors
+   the filter-pill look so users can see at a glance which presets are
+   currently engaged. */
+.quick-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 4px;
+  font-size: 12px;
+}
+.quick-presets .quick-label { color: var(--fg-3); margin-right: 4px; font-size: 11.5px; }
+.quick-presets button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface-2);
+  color: var(--fg-2);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background 100ms var(--ease), color 100ms var(--ease), border-color 100ms var(--ease);
+  white-space: nowrap;
+}
+.quick-presets button:hover { background: var(--surface-3); color: var(--fg); }
+.quick-presets button[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-color: transparent;
+}
+
+/* Keyboard focus ring for JobCard. Activated by the keyboard-nav state
+   in Feed; mouse interaction never sets this, so it's a true keyboard
+   affordance rather than a permanent visual. */
+.job-card[data-kbd-focus="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ------------------------------------------------------------- shell */
 
 .shell { display: flex; flex-direction: column; min-height: 100vh; }

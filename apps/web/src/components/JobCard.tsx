@@ -9,6 +9,9 @@ type Props = {
   hit: JobHit;
   saved: boolean;
   onToggleSave: (id: string, save: boolean) => void;
+  // True when this card is the current keyboard-navigation target. Renders
+  // an outline ring without changing the click/hover affordance.
+  kbdFocused?: boolean;
 };
 
 const levelLabel: Record<string, string> = {
@@ -27,7 +30,7 @@ const levelLabel: Record<string, string> = {
 // company, level chip, salary chip, location, remote, freshness, quality
 // dot, match score - but never the description preview (that lives only on
 // the detail page).
-export function JobCard({ hit, saved, onToggleSave }: Props) {
+export function JobCard({ hit, saved, onToggleSave, kbdFocused }: Props) {
   const id = String(hit.id);
   const remote = hit.payload.remote_status;
   const level = hit.payload.experience_level;
@@ -47,6 +50,8 @@ export function JobCard({ hit, saved, onToggleSave }: Props) {
       to={`/jobs/${encodeURIComponent(id)}`}
       className="job-card"
       style={{ textDecoration: "none", color: "inherit" }}
+      data-kbd-focus={kbdFocused ? "true" : undefined}
+      data-job-id={id}
     >
       <div className="job-card-header">
         <CompanyLogo company={hit.payload.company} size={32} />
