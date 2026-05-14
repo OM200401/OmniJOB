@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Bookmark,
@@ -24,6 +24,19 @@ type ExplainPair = { resume: string; job: string; score: number };
 export function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { session, patchProfile } = useAuth();
+  const navigate = useNavigate();
+
+  // goBack prefers the browser history (so Feed restores its scroll
+  // position + applied filters) when the user came from /feed. When the
+  // detail page was opened from a fresh tab / shared link, the history
+  // entry doesn't exist, so we fall back to navigating to /feed.
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/feed");
+    }
+  };
   const [meta, setMeta] = useState<JobMetadata | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,6 +160,33 @@ export function JobDetail() {
     window.open(meta?.source_url, "_blank", "noopener,noreferrer");
   };
 
+  // Keyboard shortcuts on the detail page. Same skip-while-typing
+  // pattern as Feed. Bindings: Esc/b = back, s = save toggle, a = apply.
+  useEffect(() => {
+    const inField = (el: EventTarget | null) =>
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLSelectElement ||
+      (el instanceof HTMLElement && el.isContentEditable);
+    const onKey = (e: KeyboardEvent) => {
+      if (inField(e.target)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape" || e.key === "b") {
+        e.preventDefault();
+        goBack();
+      } else if (e.key === "s") {
+        e.preventDefault();
+        toggleSave();
+      } else if (e.key === "a") {
+        e.preventDefault();
+        onApplyClick();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, saved, application]);
+
   const [resumeCopied, setResumeCopied] = useState(false);
   const copyResume = async () => {
     if (!session?.profile.resumeText) return;
@@ -161,9 +201,15 @@ export function JobDetail() {
 
   return (
     <div className="container">
-      <Link to="/feed" className="nav-link" style={{ marginBottom: 14, paddingLeft: 0 }}>
+      <button
+        type="button"
+        onClick={goBack}
+        className="nav-link"
+        style={{ marginBottom: 14, paddingLeft: 0, background: "none", border: "none", cursor: "pointer" }}
+        title="Back (Esc)"
+      >
         <ArrowLeft size={14} /> Back to feed
-      </Link>
+      </button>
 
       {err && <Alert variant="error">{err}</Alert>}
       {loading && (
