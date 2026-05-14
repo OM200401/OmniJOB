@@ -67,3 +67,31 @@ pepsico|https://careers.pepsico.com/sitemap.xml|^https://www\.pepsicojobs\.com/j
 qualcomm|https://careers.qualcomm.com/careers/sitemap.xml|^https://careers\.qualcomm\.com/careers/job/|Qualcomm||500
 roku|https://roku.com/jobs/sitemap.xml|^https://www\.weareroku\.com/jobs/|Roku||500
 t-mobile|https://careers.t-mobile.com/sitemap.xml|^https://careers\.t-mobile\.com/|T-Mobile||500
+
+# Wider enterprise probes 2026-05-14 (devtools, insurance, retail, gaming)
+activision|https://careers.activision.com/sitemap.xml|^https://careers\.activision\.com/job/|Activision||500
+carmax|https://careers.carmax.com/sitemap.xml|^https://careers\.carmax\.com/|CarMax||500
+docusign|https://careers.docusign.com/sitemap.xml|^https://careers\.docusign\.com/jobs/|DocuSign||500
+elcompanies|https://careers.elcompanies.com/careers/sitemap.xml|^https://careers\.elcompanies\.com/careers/job/|Estée Lauder||500
+godaddy|https://careers.godaddy.com/sitemap.xml|^https://careers\.godaddy/jobs/|GoDaddy||500
+pvh|https://careers.pvh.com/sitemap.xml|^https://careers\.pvh\.com/jobs/|PVH||500
+statefarm|https://jobs.statefarm.com/sitemap.xml|^https://jobs\.statefarm\.com/jobs/|State Farm||500
+twilio|https://jobs.twilio.com/careers/sitemap.xml|^https://jobs\.twilio\.com/careers/job/|Twilio||500
+usbank|https://careers.usbank.com/sitemap.xml|^https://careers\.usbank\.com/global/en/job/|US Bank||500
+
+# Defense + IT services probes 2026-05-14
+baesystems|https://jobs.baesystems.com/sitemap.xml|^https://jobs\.baesystems\.com/global/en/job/|BAE Systems||500
+boeing|https://jobs.boeing.com/sitemap.xml|^https://jobs\.boeing\.com/job/|Boeing||500
+geaerospace|https://careers.geaerospace.com/sitemap.xml|^https://careers\.geaerospace\.com/global/en/job/|GE Aerospace||500
+l3harris|https://careers.l3harris.com/sitemap.xml|^https://careers\.l3harris\.com/en/job/|L3Harris||500
+northropgrumman|https://jobs.northropgrumman.com/careers/sitemap.xml|^https://jobs\.northropgrumman\.com/careers/job/|Northrop Grumman||500
+rtx|https://careers.rtx.com/sitemap.xml|^https://careers\.rtx\.com/global/en/job/|RTX||500
+se|https://careers.se.com/sitemap.xml|^https://careers\.se\.com/jobs/|Schneider Electric||500
+soprasteria|https://careers.soprasteria.com/sitemap.xml|^https://careers\.soprasteria\.com/job/|Sopra Steria||500
+spiritaero|https://careers.spiritaero.com/sitemap.xml|^https://careers\.spiritaero\.com/jobs/|Spirit AeroSystems||500
+
+# Consumer + gaming + fintech probes 2026-05-14
+chewy|https://careers.chewy.com/sitemap.xml|^https://careers\.chewy\.com/us/en/job/|Chewy||500
+etsy|https://etsy.com/careers/sitemap.xml|^https://careers\.etsy\.com/jobs/|Etsy||500
+toasttab|https://careers.toasttab.com/sitemap.xml|^https://careers\.toasttab\.com/jobs/|Toast||500
+wayfair|https://wayfair.com/careers/sitemap.xml|^https://www\.wayfair\.com/careers/job/|Wayfair||500
