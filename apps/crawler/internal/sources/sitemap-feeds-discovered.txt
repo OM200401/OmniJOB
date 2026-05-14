@@ -49,3 +49,21 @@ ym-inc|https://ym-inc.com/sitemap.xml|^https://ym-inc\.com/|Sirens|CA|500
 # Big-tech sitemap probes 2026-05-14
 nvidia|https://jobs.nvidia.com/careers/sitemap.xml|^https://jobs\.nvidia\.com/careers/job/|NVIDIA||500
 snowflake|https://careers.snowflake.com/sitemap.xml|^https://careers\.snowflake\.com/us/en/job/|Snowflake||500
+
+# Big enterprise sitemap probes 2026-05-14 (semis, finance, consumer, hospitality)
+adobe|https://careers.adobe.com/sitemap.xml|^https://careers\.adobe\.com/us/en/job/|Adobe||500
+amd|https://careers.amd.com/sitemap.xml|^https://careers\.amd\.com/jobs/|AMD||500
+appliedmaterials|https://careers.appliedmaterials.com/careers/sitemap.xml|^https://careers\.appliedmaterials\.com/careers/job/|Applied Materials||500
+blackrock|https://careers.blackrock.com/sitemap.xml|^https://careers\.blackrock\.com/job/|BlackRock||500
+cisco|https://careers.cisco.com/sitemap.xml|^https://careers\.cisco\.com/global/en/job/|Cisco||500
+comcast|https://jobs.comcast.com/sitemap.xml|^https://jobs\.comcast\.com/job/|Comcast||500
+hilton|https://jobs.hilton.com/sitemap.xml|^https://jobs\.hilton\.com/us/en/job/|Hilton||500
+lamresearch|https://careers.lamresearch.com/careers/sitemap.xml|^https://careers\.lamresearch\.com/careers/job/|Lam Research||500
+marriott|https://careers.marriott.com/sitemap.xml|^https://careers\.marriott\.com/|Marriott||500
+mastercard|https://careers.mastercard.com/sitemap.xml|^https://careers\.mastercard\.com/us/en/job/|Mastercard||500
+moodys|https://careers.moodys.com/sitemap.xml|^https://careers\.moodys\.com/en/job/|Moody's||500
+nike|https://careers.nike.com/sitemap.xml|^https://careers\.nike\.com/|Nike||500
+pepsico|https://careers.pepsico.com/sitemap.xml|^https://www\.pepsicojobs\.com/jobs/|PepsiCo||500
+qualcomm|https://careers.qualcomm.com/careers/sitemap.xml|^https://careers\.qualcomm\.com/careers/job/|Qualcomm||500
+roku|https://roku.com/jobs/sitemap.xml|^https://www\.weareroku\.com/jobs/|Roku||500
+t-mobile|https://careers.t-mobile.com/sitemap.xml|^https://careers\.t-mobile\.com/|T-Mobile||500
