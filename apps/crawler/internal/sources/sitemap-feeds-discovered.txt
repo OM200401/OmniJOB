@@ -45,3 +45,7 @@ walmart|https://careers.walmart.ca/sitemap.xml|^https://careers\.walmart\.ca/job
 wasteconnections|https://careers.wasteconnections.com/sitemap.xml|^https://careers\.wasteconnections\.com/us/en/job/|Waste Connections|CA|500
 yellowbrickgames|https://yellowbrickgames.ca/sitemap.xml|^https://yellowbrickgames\.ca/|Yellow Brick Games|CA|500
 ym-inc|https://ym-inc.com/sitemap.xml|^https://ym-inc\.com/|Sirens|CA|500
+
+# Big-tech sitemap probes 2026-05-14
+nvidia|https://jobs.nvidia.com/careers/sitemap.xml|^https://jobs\.nvidia\.com/careers/job/|NVIDIA||500
+snowflake|https://careers.snowflake.com/sitemap.xml|^https://careers\.snowflake\.com/us/en/job/|Snowflake||500
