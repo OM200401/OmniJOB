@@ -195,6 +195,52 @@ var DefaultGreenhouse = []string{
 	"tucows",
 	"universityoftoronto",
 	"workleap",
+
+	// Big-tech + known-startup expansion 2026-05-14. Companies known or
+	// strongly suspected to host a Greenhouse board, biased toward names
+	// hiring at scale right now. 30-50% of speculative slugs 404 and
+	// shake out cleanly in the next run; that's the documented trade-off.
+	// AI infra / model labs
+	"weightsandbiases", "wandb", "sambanovasystems", "sambanova",
+	"cerebrassystems", "cerebras", "tenstorrent", "etched", "dmatrix",
+	"crusoeenergy", "crusoe", "coreweave", "paperspace",
+	"snorkelai", "dataiku", "dominodatalab",
+	"arizeai", "arize", "fiddlerai", "robustintelligence",
+	"modularinc", "modular", "tecton", "feastfeatures",
+	// AI applications
+	"sierraai", "hippocraticai", "fixieai", "vapiai",
+	"dusttt", "dust", "langchainai", "langchain", "langfuse",
+	"braintrustdata", "braintrust", "observableinc", "observable",
+	"glean", "harveyai", "abridgeai",
+	// Vector / data infra
+	"qdrantcloud", "zillizinc", "zilliz", "chromacore", "chroma",
+	"motherduckinc", "motherduck", "tinybird", "tinybirdco",
+	"redpandadata", "redpanda", "materializeinc",
+	// Dev tools / cloud
+	"turso", "fly", "supabaseinc", "vercelinc",
+	"sentryio", "datadoghq", "snyk", "lokalise",
+	"github-jobs", "gitlab-jobs", "gitea", "codecovinc", "codecov",
+	"planetscaledatabase", "planetscaledb",
+	// Robotics / autonomous
+	"cruise", "plusai", "plus", "embarktrucks", "kodiakrobotics",
+	"nuro", "appliedintuition", "wayve", "wayveai", "skyryse",
+	// Defense / aerospace
+	"shieldai", "saronicofficial", "saronic", "anduril-industries",
+	"hadrianautomation", "hadrian",
+	// Fintech / consumer
+	"nubank", "mercadolibre", "rappicareers", "airwallex",
+	"klarnacareers", "wisecareers", "novocredit",
+	"bilttechnologies", "bilt", "klover", "bridgeio",
+	// Consumer / media
+	"bytedance", "tiktok", "tiktokcareers", "discord-careers",
+	"epicgamesinc", "rokuinc",
+	// Productivity / B2B SaaS
+	"airtableinc", "asana-careers", "miroinc", "lokalisehq",
+	"clickup", "monday", "mondaycom",
+	// Enterprise / observability
+	"observe", "cribl", "honeycombio", "lightstephq", "signoz",
+	// Healthcare
+	"includedhealth", "transcarent", "memora-health", "memorahealth",
 }
 
 var DefaultLever = []string{
@@ -292,6 +338,31 @@ var DefaultLever = []string{
 	"snowplow",
 	"tealbook",
 	"wattpad",
+
+	// Big-tech + known-startup expansion 2026-05-14. Lever is heavy with
+	// modern early-/mid-stage tech; this batch leans into model labs,
+	// devtools, and AI-product startups currently hiring.
+	"characterai", "character", "characterdotai",
+	"flyio", "supabasecareers",
+	"typeform-co", "typeform",
+	"pocketworlds", "pocketworldsinc",
+	"groqcareers", "groqinc",
+	"rivosinc", "rivos",
+	"tenstorrent-jobs",
+	"snowflakecareers",
+	"hexdotcom", "hex-tech",
+	"ai21labs",
+	"poolside-ai", "poolside",
+	"sierraai-careers",
+	"distyl", "distylai",
+	"figureai", "figure",
+	"midjourney",
+	"sakanaai", "blackforestlabs-careers",
+	"suno", "sunoai",
+	"perplexity-careers",
+	"vapi-ai", "vapi",
+	"e2bdev", "e2b",
+	"replicate-careers",
 }
 
 var DefaultAshby = []string{
@@ -471,6 +542,56 @@ var DefaultAshby = []string{
 	"thinkific",
 	"top-hat",
 	"trulioo",
+
+	// Big-tech + known-startup expansion 2026-05-14. Ashby skews modern
+	// AI/dev-tool startups; this batch fills gaps in that segment.
+	"e2b", "e2b-dev", "e2bdev",
+	"crewai", "crew-ai",
+	"autogen", "autogenai",
+	"mem", "mem-ai",
+	"speak", "speak-ai", "speakai",
+	"numeric", "numericinc",
+	"distyl-ai", "distyl",
+	"granolaai-careers",
+	"perplexity-ai",
+	"figure-ai", "figureai",
+	"midjourney-careers",
+	"sakana-ai", "sakana",
+	"black-forest-labs",
+	"suno-ai", "suno",
+	"poolside-careers",
+	"pikaai", "pika",
+	"hyperliquid-careers",
+	"convex-dev",
+	"trigger-dev",
+	"resend-com",
+	"vercel-careers",
+	"replicate-ai",
+	"modal-careers",
+	"baseten-careers",
+	"runwayml-careers",
+	"adept-careers",
+	"fireworks-careers",
+	"together-ai", "togetheraicareers",
+	"lumen-orbit", "lumenorbit",
+	"physical-intelligence", "physicalintelligence-careers",
+	"writeralpha", "writerinc",
+	"cresta-careers",
+	"sierra-ai",
+	"abridge-careers",
+	"hippocratic-ai",
+	"tessl",
+	"superhuman-careers",
+	"linear-careers",
+	"raycast-app", "raycast-careers",
+	"warp-terminal",
+	"zed-industries",
+	"motherduck-careers",
+	"liveblocks-careers",
+	"livekit-careers",
+	"posthog-careers",
+	"vanta-careers",
+	"granolaai",
 }
 
 var DefaultSmartRecruiters = []string{
@@ -536,6 +657,32 @@ var DefaultSmartRecruiters = []string{
 	"loophealth",
 	"torstar",
 	"universityhealthnetwork",
+
+	// Big-tech + known-startup expansion 2026-05-14. SmartRecruiters
+	// hosts a wide enterprise tail; this batch adds known major hirers.
+	"shopify", "shopifycareers",
+	"square-careers",
+	"stripe-careers",
+	"ubercareers",
+	"airbnb-careers",
+	"twitch-careers",
+	"netflix-careers",
+	"pinterest-careers",
+	"snap-careers",
+	"redditcareers",
+	"linkedinjobs", "linkedincareers",
+	"deutschetelekom",
+	"telefonica",
+	"vodafone",
+	"orangejobs",
+	"axa", "axainsurance",
+	"michelin",
+	"renault",
+	"airbusjobs", "airbus",
+	"daimler", "mercedesbenz",
+	"bmwgroup",
+	"vw", "volkswagen",
+	"siemens-energy",
 }
 
 var DefaultWorkable = []string{
@@ -582,6 +729,22 @@ var DefaultWorkable = []string{
 	"signaturit",
 	"finn",
 	"finn-auto",
+
+	// Big-tech + known-startup expansion 2026-05-14. Workable skews
+	// European mid-market and SMB; this batch covers known hirers.
+	"backbase",
+	"infermedica",
+	"ataccama",
+	"datadiver",
+	"qonto-careers",
+	"swilecareers",
+	"alan-careers",
+	"frichti-jobs",
+	"glovoapp",
+	"trade-republic-jobs",
+	"deliveroo-careers",
+	"klarna-jobs",
+	"revolut-careers",
 }
 
 // Workday tenants. Each entry is a (display, tenant, region, site) tuple
@@ -756,6 +919,61 @@ var DefaultWorkday = []WorkdayCompany{
 	{Display: "Alberta Health Services",           Tenant: "ahs",        Region: "wd3", Site: "External"},
 	{Display: "Vancouver Coastal Health",          Tenant: "vch",        Region: "wd3", Site: "External"},
 	{Display: "Hamilton Health Sciences",          Tenant: "hhsc",       Region: "wd3", Site: "External"},
+
+	// Big-tech + known-startup expansion 2026-05-14. Workday tenants for
+	// major US enterprise hirers not already covered. Region guesses are
+	// pattern-matched to nearby companies in the same vertical; 404s on
+	// wrong region/site logs+skips, the crawler self-heals.
+
+	// Semiconductor / chips
+	{Display: "Marvell",                 Tenant: "marvell",           Region: "wd1", Site: "Marvell"},
+	{Display: "Microchip Technology",    Tenant: "microchip",         Region: "wd1", Site: "Microchip"},
+	{Display: "Analog Devices",          Tenant: "analogdevices",     Region: "wd1", Site: "External"},
+	{Display: "Skyworks Solutions",      Tenant: "skyworks",          Region: "wd5", Site: "Skyworks"},
+	{Display: "ON Semiconductor",        Tenant: "onsemiconductor",   Region: "wd5", Site: "External"},
+	{Display: "Lattice Semiconductor",   Tenant: "lscc",              Region: "wd5", Site: "External"},
+	{Display: "GlobalFoundries",         Tenant: "globalfoundries",   Region: "wd1", Site: "External"},
+
+	// Industrial / aerospace / energy
+	{Display: "Honeywell",               Tenant: "honeywell",         Region: "wd1", Site: "External_Careers"},
+	{Display: "Caterpillar",             Tenant: "caterpillar",       Region: "wd5", Site: "CAT_Careers"},
+	{Display: "Deere",                   Tenant: "deere",             Region: "wd5", Site: "JohnDeere"},
+	{Display: "Emerson",                 Tenant: "emerson",           Region: "wd5", Site: "Emerson_Careers"},
+	{Display: "Eaton",                   Tenant: "eaton",             Region: "wd5", Site: "Eaton_External_Career"},
+	{Display: "3M",                      Tenant: "3m",                Region: "wd1", Site: "Search"},
+	{Display: "Northrop Grumman",        Tenant: "ngc",               Region: "wd1", Site: "NGC_External"},
+	{Display: "General Dynamics",        Tenant: "gd",                Region: "wd1", Site: "External"},
+
+	// Automotive
+	{Display: "Honda",                   Tenant: "honda",             Region: "wd5", Site: "HCNACAREERS"},
+	{Display: "Toyota North America",    Tenant: "toyota",            Region: "wd1", Site: "External"},
+	{Display: "Stellantis",              Tenant: "stellantis",        Region: "wd1", Site: "External"},
+
+	// Pharma / biotech
+	{Display: "Johnson & Johnson",       Tenant: "jnj",               Region: "wd1", Site: "jnjcareers"},
+	{Display: "Merck",                   Tenant: "merck",             Region: "wd5", Site: "External"},
+	{Display: "Bristol Myers Squibb",    Tenant: "bms",               Region: "wd1", Site: "BMS"},
+	{Display: "AbbVie",                  Tenant: "abbvie",            Region: "wd1", Site: "External"},
+	{Display: "Regeneron",               Tenant: "regeneron",         Region: "wd5", Site: "Regeneron_Careers"},
+
+	// Consulting / staffing
+	{Display: "Accenture",               Tenant: "accenture",         Region: "wd3", Site: "External"},
+	{Display: "Capgemini",               Tenant: "capgemini",         Region: "wd3", Site: "External"},
+	{Display: "Deloitte",                Tenant: "deloitte",          Region: "wd1", Site: "External"},
+	{Display: "EY",                      Tenant: "ey",                Region: "wd1", Site: "EY_Careers"},
+	{Display: "KPMG",                    Tenant: "kpmg",              Region: "wd1", Site: "External"},
+
+	// Tech mid-cap (Workday)
+	{Display: "DocuSign",                Tenant: "docusign",          Region: "wd1", Site: "Docusign_Career_Site"},
+	{Display: "Twilio",                  Tenant: "twilio",            Region: "wd1", Site: "External"},
+	{Display: "Box",                     Tenant: "box",               Region: "wd1", Site: "External_Career_Site"},
+	{Display: "Coupa",                   Tenant: "coupa",             Region: "wd1", Site: "Coupa_Careers"},
+	{Display: "Veeva Systems",           Tenant: "veeva",             Region: "wd5", Site: "Veeva"},
+	{Display: "Anaplan",                 Tenant: "anaplan",           Region: "wd5", Site: "Anaplan_External"},
+	{Display: "Procore",                 Tenant: "procore",           Region: "wd5", Site: "Procore_External"},
+	{Display: "Cloudflare",              Tenant: "cloudflare",        Region: "wd5", Site: "Cloudflare"},
+	{Display: "Dropbox",                 Tenant: "dropbox",           Region: "wd5", Site: "External"},
+	{Display: "Yelp",                    Tenant: "yelp",              Region: "wd5", Site: "External"},
 }
 
 var DefaultRecruitee = []string{
