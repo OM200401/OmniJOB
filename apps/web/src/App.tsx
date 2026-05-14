@@ -7,6 +7,7 @@ import { SignIn } from "./routes/SignIn";
 import { SignUp } from "./routes/SignUp";
 import { Feed } from "./routes/Feed";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { ShortcutsOverlay } from "./components/ShortcutsOverlay";
 
 // Route-level code splitting. The eagerly-imported set above covers the
 // landing surface and the most-used signed-in screen (Feed). Everything
@@ -85,6 +86,7 @@ function RouteFallback() {
 export function App() {
   return (
     <AuthProvider>
+      <ShortcutsOverlay />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route element={<Layout />}>

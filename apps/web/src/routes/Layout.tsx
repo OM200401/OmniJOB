@@ -126,6 +126,14 @@ export function Layout() {
               </NavLink>
               {session ? (
                 <>
+                  <button
+                    className="icon-btn"
+                    onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))}
+                    title="Keyboard shortcuts (?)"
+                    aria-label="Show keyboard shortcuts"
+                  >
+                    <kbd className="kbd" style={{ minWidth: 18, justifyContent: "center" }}>?</kbd>
+                  </button>
                   <span className="user-pill">
                     <span className="avatar">{initial}</span>
                     <span>{session.email}</span>
