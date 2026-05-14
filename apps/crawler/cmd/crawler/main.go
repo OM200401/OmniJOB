@@ -47,7 +47,7 @@ func main() {
 	// the operator only needs to set the key on the droplet to turn it on.
 	// The Muse works with or without MUSE_API_KEY (key raises the rate limit).
 	// Pass `-sources` or SOURCES to opt in to other gated sources.
-	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse,jooble,workable,rss,sitemap"), "comma-separated subset of sources to run")
+	includeStr := flag.String("sources", env("SOURCES", "greenhouse,lever,ashby,smartrecruiters,recruitee,workday,hackernews,remoteok,weworkremotely,bamboohr,breezy,pinpoint,workatastartup,themuse,jooble,workable,rss,sitemap,amazon"), "comma-separated subset of sources to run")
 	flag.Parse()
 
 	include := splitCSV(*includeStr)
@@ -433,6 +433,13 @@ func buildSources(include []string) []sources.Source {
 			envInt("SITEMAP_FETCH_CONCURRENCY", 4),
 			env("SITEMAP_CACHE_DIR", ".cache/sitemap"),
 		))
+	}
+	if want["amazon"] {
+		// amazon.jobs exposes a public JSON search API. No key needed.
+		// AMAZON_MAX_JOBS bounds per-run pull to avoid dominating the
+		// budget; 5000 default fits comfortably under one source-timeout
+		// at the 800ms/page politeness budget.
+		out = append(out, sources.NewAmazon(envInt("AMAZON_MAX_JOBS", 5000)))
 	}
 	return out
 }
