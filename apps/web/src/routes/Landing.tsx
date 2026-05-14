@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Bookmark, Building2, MapPin, Search } from "lucide-react";
+import { SourceMarquee } from "../components/SourceMarquee";
 
 export function Landing() {
   return (
@@ -23,6 +24,18 @@ export function Landing() {
             Start searching <ArrowRight size={15} />
           </Link>
         </div>
+      </section>
+
+      {/* Source marquee - the "you don't need to visit these anymore" pitch
+          rendered as a brand-accented infinite scroll strip. Sits between
+          the hero and the product preview so the visual flow is:
+          promise -> proof (sources) -> demo (preview). */}
+      <section className="landing-sources">
+        <div className="landing-sources-caption">
+          <span>We check these so you don't have to</span>
+          <span className="muted-2 text-xs">Live · ATS feeds, public boards, company career pages</span>
+        </div>
+        <SourceMarquee />
       </section>
 
       {/* Live-ish product preview - non-interactive but the same components

@@ -1107,6 +1107,105 @@ kbd, .kbd {
   .landing-hero p.lede { font-size: 15px; }
 }
 
+/* ------------------------------------------------------------- landing source marquee */
+
+.landing-sources {
+  margin-top: 28px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--border-soft);
+}
+.landing-sources-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.landing-sources-caption .text-xs {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+@media (max-width: 640px) {
+  .landing-sources-caption { flex-direction: column; gap: 4px; }
+}
+
+.src-marquee {
+  position: relative;
+  overflow: hidden;
+  /* Soft fade on the left/right edges so chips appear to enter/exit the
+     viewport rather than being clipped by a hard border. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 64px,
+    #000 calc(100% - 64px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 64px,
+    #000 calc(100% - 64px),
+    transparent 100%
+  );
+}
+.src-marquee-inner {
+  display: flex;
+  width: max-content;
+  /* The animation translates by -50% so the second (duplicate) track
+     ends up where the first track started, creating a seamless loop.
+     60s gives a calm, readable pace - increase for slower, decrease
+     for faster. */
+  animation: src-scroll 60s linear infinite;
+}
+.src-marquee:hover .src-marquee-inner { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .src-marquee-inner { animation: none; }
+}
+.src-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  flex-shrink: 0;
+}
+/* A bit of spacing between the two duplicate tracks so the join doesn't
+   look visually crammed. */
+.src-track + .src-track { padding-left: 0; }
+
+.src-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px 7px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fg-2);
+  white-space: nowrap;
+  box-shadow: var(--shadow-xs);
+}
+.src-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6) inset;
+}
+
+@keyframes src-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 .preview-card {
   margin-top: 32px;
   border: 1px solid var(--border);
