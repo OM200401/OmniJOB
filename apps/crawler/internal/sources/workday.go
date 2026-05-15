@@ -40,6 +40,13 @@ type Workday struct {
 	// How many job-detail pages to fetch in parallel per company. The detail
 	// fetch contains the actual job description, which is what we embed.
 	DetailConcurrency int
+	// How many tenants to process in parallel. The list-and-detail calls
+	// for one tenant are sequential within fetchCompany, but multiple
+	// tenants can run side-by-side because each hits a different *.tenant.
+	// myworkdayjobs.com host. Without this, processing 160 tenants serially
+	// at ~2min each takes >5h - well beyond the per-source timeout - and
+	// late-list slugs (incl. every Canadian Workday tenant) never run.
+	TenantConcurrency int
 }
 
 func NewWorkday(companies []WorkdayCompany) *Workday {
@@ -48,6 +55,7 @@ func NewWorkday(companies []WorkdayCompany) *Workday {
 		Companies:         companies,
 		MaxPerCompany:     400,
 		DetailConcurrency: 4,
+		TenantConcurrency: 3,
 	}
 }
 
@@ -91,14 +99,37 @@ type wdDetailResponse struct {
 }
 
 func (w *Workday) Fetch(ctx context.Context, out chan<- pipeline.JobJSON) error {
+	tenantConcurrency := w.TenantConcurrency
+	if tenantConcurrency < 1 {
+		tenantConcurrency = 1
+	}
+	tenants := make(chan WorkdayCompany)
+	var wg sync.WaitGroup
+	for i := 0; i < tenantConcurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for c := range tenants {
+				if ctx.Err() != nil {
+					return
+				}
+				if err := w.fetchCompany(ctx, c, out); err != nil {
+					log.Printf("[workday:%s] %v", c.Tenant, err)
+				}
+			}
+		}()
+	}
 	for _, c := range w.Companies {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := w.fetchCompany(ctx, c, out); err != nil {
-			log.Printf("[workday:%s] %v", c.Tenant, err)
+		select {
+		case <-ctx.Done():
+			close(tenants)
+			wg.Wait()
+			return ctx.Err()
+		case tenants <- c:
 		}
 	}
+	close(tenants)
+	wg.Wait()
 	return nil
 }
 
