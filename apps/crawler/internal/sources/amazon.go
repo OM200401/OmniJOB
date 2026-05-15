@@ -182,8 +182,17 @@ func (a *Amazon) normalize(j amazonJob) pipeline.JobJSON {
 	if loc == "" {
 		loc = strings.TrimSpace(j.Location)
 	}
-	country := strings.ToUpper(strings.TrimSpace(j.CountryCode))
-	if country == "" {
+	// amazon.jobs returns ISO-3 country codes ("USA", "CAN", "BRA") in
+	// country_code, but the API ingest schema requires ISO-2 ("US", "CA",
+	// "BR") and rejects anything else with 422. Only accept the raw value
+	// when it's already 2 chars; otherwise classify from the location
+	// string ("San Francisco, California, USA" -> "US"). Without this every
+	// Amazon job was silently dropped at ingest.
+	rawCC := strings.ToUpper(strings.TrimSpace(j.CountryCode))
+	country := ""
+	if len(rawCC) == 2 {
+		country = rawCC
+	} else {
 		country = classifyCountry(loc)
 	}
 
