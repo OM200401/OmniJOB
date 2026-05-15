@@ -76,11 +76,14 @@ func main() {
 	// responses but never EOF). Each source gets its own context that
 	// derives from the parent and cancels after this duration; the adapter
 	// observes ctx.Err() in its loops and bails cleanly. Bound chosen so
-	// the slowest healthy source (Workday with ~100 tenants) finishes well
-	// inside, but a pathological hang can't dominate. 120 min is generous;
-	// concurrency=3 + cooperative cancellation should keep total wall-clock
-	// well under the 8h unit cap.
-	sourceTimeout := envDuration("SOURCE_TIMEOUT", 120*time.Minute)
+	// the slowest healthy source (Workday with ~160 tenants and downstream
+	// embed-pipeline backpressure) finishes well inside. 240 min - bumped
+	// from 120 min after the 2026-05-15 audit showed Workday consistently
+	// hitting the 120-min wall before reaching the back of the tenant
+	// list (every Canadian slug was past that cutoff). The 8h unit cap
+	// (TimeoutStartSec in the systemd unit) stays as the ultimate backstop
+	// in case any single source genuinely hangs.
+	sourceTimeout := envDuration("SOURCE_TIMEOUT", 240*time.Minute)
 
 	// Producers: each source streams jobs into the channel.
 	var producers sync.WaitGroup
