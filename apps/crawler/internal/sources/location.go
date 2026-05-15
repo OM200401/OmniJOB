@@ -80,6 +80,27 @@ var countryNames = map[string]string{
 	"nigeria":        "NG",
 	"egypt":          "EG",
 	"kenya":          "KE",
+	// Eastern Europe + adjacent regions. Added 2026-05-14 after Ukraine and
+	// other CIS jobs were leaking into the Canada bucket: when the classifier
+	// returns "" the read-path falls back to a possibly-bad stored country.
+	// Covering these names short-circuits that fallback.
+	"ukraine":            "UA",
+	"belarus":            "BY",
+	"russia":             "RU",
+	"russian federation": "RU",
+	"hungary":            "HU",
+	"bulgaria":           "BG",
+	"slovakia":           "SK",
+	"slovenia":           "SI",
+	"croatia":            "HR",
+	"serbia":             "RS",
+	"iceland":            "IS",
+	"estonia":            "EE",
+	"latvia":             "LV",
+	"lithuania":          "LT",
+	"luxembourg":         "LU",
+	"malta":              "MT",
+	"cyprus":             "CY",
 }
 
 // City → country fallback for major hubs. Lowercased.
@@ -131,6 +152,16 @@ var cityCountry = map[string]string{
 	"buenos aires": "AR", "santiago": "CL",
 	"tel aviv": "IL", "dubai": "AE",
 	"cape town": "ZA", "johannesburg": "ZA",
+	// Eastern Europe hub cities (paired with the country-name additions above).
+	"kyiv": "UA", "kiev": "UA", "lviv": "UA", "kharkiv": "UA",
+	"minsk": "BY",
+	"budapest":  "HU",
+	"moscow":    "RU",
+	"saint petersburg": "RU",
+	"reykjavik": "IS",
+	"tallinn":   "EE",
+	"riga":      "LV",
+	"vilnius":   "LT",
 }
 
 // Comma-separated trailing tokens we recognize as US state codes.
@@ -162,6 +193,10 @@ var iso2Trail = map[string]bool{
 	"hk": true, "cn": true, "id": true, "my": true, "ph": true, "th": true,
 	"vn": true, "au": true, "nz": true, "br": true, "mx": true, "ar": true,
 	"cl": true, "co": true, "il": true, "ae": true, "za": true, "ng": true,
+	// Added 2026-05-14 alongside the country-name additions.
+	"ua": true, "by": true, "ru": true, "hu": true, "bg": true, "sk": true,
+	"si": true, "hr": true, "rs": true, "is": true, "ee": true, "lv": true,
+	"lt": true, "lu": true, "mt": true, "cy": true,
 }
 
 // 2-letter codes that are simultaneously US state postal codes AND ISO-2
@@ -181,7 +216,9 @@ func classifyCountry(loc string) string {
 	l := strings.ToLower(loc)
 
 	// 1. Direct country-name word-boundary match (longest-first). Handle the
-	// few overlaps explicitly because Go map iteration is unordered.
+	// few overlaps explicitly because Go map iteration is unordered. The
+	// "russian federation" check sits ahead of the loop so it beats the
+	// shorter "russia" substring on inputs like "Moscow, Russian Federation".
 	if containsWord(l, "united states of america") {
 		return "US"
 	}
@@ -190,6 +227,9 @@ func classifyCountry(loc string) string {
 	}
 	if containsWord(l, "northern ireland") {
 		return "GB"
+	}
+	if containsWord(l, "russian federation") {
+		return "RU"
 	}
 	for name, code := range countryNames {
 		if containsWord(l, name) {

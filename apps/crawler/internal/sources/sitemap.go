@@ -398,11 +398,19 @@ func (s *Sitemap) scrapeJobPage(ctx context.Context, feed SitemapFeed, url strin
 		return nil, nil
 	}
 	locStr, country := extractLocation(jp.JobLocation)
-	if country == "" {
-		country = feed.Country
-	}
+	// Classifier on the actual location string beats feed.Country. feed.Country
+	// is the "this employer is based in X" hint; locStr is the actual posting
+	// location, which for multinational employers tagged CA in
+	// sitemap-feeds-discovered.txt (Dollar Tree, FedEx, Marriott, Walmart
+	// Canada, Waste Connections, ...) regularly disagrees. The previous order
+	// (feed.Country before classifier) was stamping CA on every US-state job
+	// from those 47 feeds and inflating the Canada bucket on /admin + the
+	// country=CA filter on /feed.
 	if country == "" && locStr != "" {
 		country = classifyCountry(locStr)
+	}
+	if country == "" {
+		country = feed.Country // last-resort default when no location signal at all
 	}
 
 	posted := parseGenericRSSDate(jp.DatePosted)

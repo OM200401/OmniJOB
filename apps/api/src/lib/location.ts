@@ -74,6 +74,28 @@ const COUNTRY_NAMES: Record<string, string> = {
   "nigeria": "NG",
   "egypt": "EG",
   "kenya": "KE",
+  // Eastern Europe + adjacent. Added 2026-05-14 alongside the Go mirror -
+  // without these, "Kyiv, Ukraine" returned null, the read-path fallback
+  // returned a possibly-bad stored country, and Ukraine jobs leaked into
+  // the Canada bucket on /feed. Keep in sync with
+  // apps/crawler/internal/sources/location.go countryNames.
+  "ukraine": "UA",
+  "belarus": "BY",
+  "russia": "RU",
+  "russian federation": "RU",
+  "hungary": "HU",
+  "bulgaria": "BG",
+  "slovakia": "SK",
+  "slovenia": "SI",
+  "croatia": "HR",
+  "serbia": "RS",
+  "iceland": "IS",
+  "estonia": "EE",
+  "latvia": "LV",
+  "lithuania": "LT",
+  "luxembourg": "LU",
+  "malta": "MT",
+  "cyprus": "CY",
 };
 
 const CITY_COUNTRY: Record<string, string> = {
@@ -118,6 +140,13 @@ const CITY_COUNTRY: Record<string, string> = {
   "buenos aires": "AR", "santiago": "CL",
   "tel aviv": "IL", "dubai": "AE",
   "cape town": "ZA", "johannesburg": "ZA",
+  // Eastern Europe hub cities (paired with the country-name additions above).
+  "kyiv": "UA", "kiev": "UA", "lviv": "UA", "kharkiv": "UA",
+  "minsk": "BY",
+  "budapest": "HU",
+  "moscow": "RU", "saint petersburg": "RU",
+  "reykjavik": "IS",
+  "tallinn": "EE", "riga": "LV", "vilnius": "LT",
 };
 
 const US_STATES = new Set([
@@ -135,6 +164,9 @@ const ISO2_TRAIL = new Set([
   "se","fi","dk","no","ch","at","be","in","sg","jp","kr","tw",
   "hk","cn","id","my","ph","th","vn","au","nz","br","mx","ar",
   "cl","co","il","ae","za","ng",
+  // Added 2026-05-14 alongside the country-name additions.
+  "ua","by","ru","hu","bg","sk","si","hr","rs","is","ee","lv",
+  "lt","lu","mt","cy",
 ]);
 
 // Country names sorted by length desc, so multi-word names match before
