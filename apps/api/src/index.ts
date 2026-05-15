@@ -21,14 +21,16 @@ import { health } from "./routes/health";
 import { jobs } from "./routes/jobs";
 import { users } from "./routes/users";
 import { match } from "./routes/match";
-import { embed } from "./routes/embed";
+import { embed, prewarmEmbed } from "./routes/embed";
 import { contact } from "./routes/contact";
 import { admin } from "./routes/admin";
 import {
   backfillPostedAt,
   ensureCountryIndex,
+  ensureFilterKeywordIndexes,
   ensureIndustryIndexes,
   ensurePostedAtIndex,
+  ensureQuantization,
   ensureScrapedAtIndex,
   ensureTitleFullTextIndex,
 } from "./qdrant/client";
@@ -181,5 +183,27 @@ void ensurePostedAtIndex()
   .then(() => console.log(`  Sort: integer index on posted_at ready`))
   .then(() => backfillPostedAt())
   .catch((e) => console.warn(`  Sort: posted_at setup failed: ${e instanceof Error ? e.message : e}`));
+
+// Keyword indexes on remote_status + source so server-side equality
+// filters (must clauses in searchJobs) become hash lookups instead of full
+// scans. ~10-50x speedup on filtered queries per Qdrant's ACORN docs.
+void ensureFilterKeywordIndexes()
+  .then(() => console.log(`  Filter: keyword indexes on remote_status/source ready`))
+  .catch((e) => console.warn(`  Filter: index ensure failed: ${e instanceof Error ? e.message : e}`));
+// Scalar int8 quantization. ~2x search speed, ~4x RAM cut, <1pp recall hit
+// when paired with rescore at query time (HYBRID_SEARCH_PARAMS in qdrant
+// client). Idempotent; a no-op on the second boot.
+void ensureQuantization()
+  .then(() => console.log(`  Vectors: int8 quantization enabled`))
+  .catch((e) => console.warn(`  Vectors: quantization setup failed: ${e instanceof Error ? e.message : e}`));
+
+// Ollama pre-warm. Issue one throwaway embed so the model file is mmapped
+// before the first real user query. Without this, the first /embed call
+// after process start pays a 2-10s model-load tax that hits the client's
+// 20s timeout and gets reported as a generic rate-limit / slow-search
+// failure even though nothing is actually overloaded.
+void prewarmEmbed()
+  .then(() => console.log(`  Embed: Ollama prewarm ok`))
+  .catch((e) => console.warn(`  Embed: prewarm failed: ${e instanceof Error ? e.message : e}`));
 
 export type App = typeof app;

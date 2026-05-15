@@ -7,6 +7,52 @@ import { expandQuery } from "../lib/query-expansion";
 // exceed the crawler's 16-job batch without leaving headroom for abuse.
 const MAX_BATCH = 64;
 
+// In-process concurrency cap for Ollama single-text embeds. Without this,
+// a burst of concurrent /embed requests (e.g. five saved-search evaluations
+// firing on Feed mount) all hit Ollama in parallel; Ollama then 503s some
+// of them, which the API surfaces to the client as a generic failure. With
+// the semaphore, the third+ caller waits its turn instead - latency goes
+// up by tens of ms, but the success rate goes to ~100%. 2 in-flight matches
+// the crawler's EMBED_CONCURRENCY=2 systemd setting, so the API and crawler
+// together never exceed Ollama's tolerated parallelism.
+const EMBED_INFLIGHT_MAX = 2;
+let embedInflight = 0;
+const embedWaitQueue: Array<() => void> = [];
+
+async function acquireEmbedSlot(): Promise<void> {
+  if (embedInflight < EMBED_INFLIGHT_MAX) {
+    embedInflight += 1;
+    return;
+  }
+  await new Promise<void>((resolve) => embedWaitQueue.push(resolve));
+  embedInflight += 1;
+}
+
+function releaseEmbedSlot(): void {
+  embedInflight -= 1;
+  const next = embedWaitQueue.shift();
+  if (next) next();
+}
+
+async function gatedEmbed(text: string): Promise<number[]> {
+  await acquireEmbedSlot();
+  try {
+    return await ollamaEmbed(text);
+  } finally {
+    releaseEmbedSlot();
+  }
+}
+
+// Boot-time pre-warm: issue one dummy embed so Ollama mmaps the model file
+// before the first real user query. Without this, the first /embed after
+// process start pays a 2-10s model-load tax that times out for the user
+// and looks identical to a rate-limit failure. Fire-and-forget; if Ollama
+// is down at boot the API still serves cached results and the next real
+// embed will surface the error.
+export async function prewarmEmbed(): Promise<void> {
+  await gatedEmbed("warmup");
+}
+
 // LRU cache for single-text embeds. Query embeds are the hot path
 // (every keystroke through the search bar costs an Ollama round-trip
 // otherwise), and Ollama can take 500ms-5s+ on CPU under crawler load.
@@ -39,9 +85,26 @@ function cacheSet(key: string, value: number[]): void {
 }
 
 function cacheKey(text: string, expanded: boolean): string {
-  // Normalize: lowercase, collapse whitespace. expanded=true and =false
-  // produce different vectors for the same raw text, so include it.
-  const norm = text.toLowerCase().replace(/\s+/g, " ").trim();
+  // Normalize aggressively so functionally-identical queries share a cache
+  // slot. Lowercase, strip punctuation that doesn't change meaning, then
+  // sort tokens alphabetically - "Software Engineer", "software engineer",
+  // and "engineer, software" all collapse to "engineer software". The
+  // expander runs on the same raw text upstream, so two callers asking
+  // for the same expansion get the same expanded gloss; we cache the
+  // resulting vector under the normalized key for both.
+  //
+  // We preserve a small set of non-alphanumeric chars that DO carry meaning
+  // in tech titles: +, #, ., /, - (so "c++", "c#", ".net", "front-end",
+  // "node.js" survive normalization rather than collapsing to "c", "net",
+  // "front end"). expanded=true and =false produce different vectors for
+  // the same raw text, so the flag still gates the key.
+  const norm = text
+    .toLowerCase()
+    .replace(/[^\w\s+#./-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(" ");
   return `${expanded ? "x" : "r"}:${norm}`;
 }
 
@@ -83,7 +146,7 @@ export const embed = new Elysia({ prefix: "/embed" }).post(
         return { vector: cached, dim: cached.length, expanded, cached: true };
       }
 
-      const vector = await ollamaEmbed(inputText);
+      const vector = await gatedEmbed(inputText);
       cacheSet(key, vector);
       return { vector, dim: vector.length, expanded };
     } catch (e) {

@@ -93,7 +93,13 @@ export function shouldBypassRateLimit(headers: Headers, peerAddress: string | nu
 // to defang signup-flood attacks.
 export const RULES = {
   search: { name: "search", limit: 60, windowMs: 60_000 },
-  embed: { name: "embed", limit: 10, windowMs: 60_000 },
+  // 30/min/IP. The previous 10/min was too tight: a Feed mount with 5+
+  // saved searches sequentially evaluates each saved search and ate the
+  // whole bucket before the user typed anything. The in-process semaphore
+  // in routes/embed.ts (max 2 concurrent to Ollama) now front-pressures
+  // expensive bursts, and the LRU cache absorbs repeated queries; this
+  // bucket exists to defang malicious bursts, not to throttle real users.
+  embed: { name: "embed", limit: 30, windowMs: 60_000 },
   matchExplain: { name: "match-explain", limit: 10, windowMs: 60_000 },
   authRead: { name: "auth-read", limit: 30, windowMs: 60_000 },
   authWrite: { name: "auth-write", limit: 5, windowMs: 60 * 60_000 },

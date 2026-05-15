@@ -1,7 +1,9 @@
 import {
   qdrant,
   ensureCountryIndex,
+  ensureFilterKeywordIndexes,
   ensureIndustryIndexes,
+  ensureQuantization,
   ensureScrapedAtIndex,
   ensureTitleFullTextIndex,
 } from "../src/qdrant/client";
@@ -54,4 +56,14 @@ console.log(`+ ensured integer payload index on "${config.qdrant.jobsCollection}
 // lookup rather than a full-collection scroll + in-memory match.
 await ensureCountryIndex();
 console.log(`+ ensured keyword payload index on "${config.qdrant.jobsCollection}.country"`);
+// Keyword payload indexes on remote_status / source. Same hash-lookup
+// shape; covers the two remaining server-side equality filters in
+// /jobs/search.
+await ensureFilterKeywordIndexes();
+console.log(`+ ensured keyword payload indexes on "${config.qdrant.jobsCollection}.{remote_status,source}"`);
+// Scalar int8 quantization. Reduces RAM footprint ~4x, speeds search ~2x.
+// Search-time rescoring (params.quantization.rescore=true) keeps the recall
+// hit bounded to <1pp.
+await ensureQuantization();
+console.log(`+ enabled int8 quantization on "${config.qdrant.jobsCollection}"`);
 console.log("Qdrant init complete.");

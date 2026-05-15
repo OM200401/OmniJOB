@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import {
   api,
   INDUSTRY_OPTIONS,
+  RateLimitedError,
   type ExperienceLevel,
   type Industry,
   type JobHit,
@@ -301,7 +302,17 @@ export function Feed() {
       setHits(hits);
       setTotalMatches(total ?? hits.length);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      // RateLimitedError already carries a user-friendly message ("Too many
+      // searches at once - try again in about Ns") built by the api layer.
+      // Anything else gets a generic surface; the raw server token
+      // ("rate_limited") should never reach the user.
+      if (e instanceof RateLimitedError) {
+        setErr(e.message);
+      } else if (e instanceof Error) {
+        setErr(e.message);
+      } else {
+        setErr(String(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -383,23 +394,51 @@ export function Feed() {
   ]);
 
   // Background-evaluate saved searches once skill is loaded, so the sidebar
-  // can show "+N new" badges. Bails on cancellation; failures per-search are
-  // swallowed so a single broken filter doesn't blank the panel.
+  // can show "+N new" badges. Three rules:
+  //   1. Skip the loop entirely when the tab is hidden. Mobile browsers
+  //      throttle background JS but still let fetch() through; without the
+  //      gate, switching back to OmniJob from another tab burns through the
+  //      embed limiter on hidden-tab evals nobody will see.
+  //   2. Dedupe embeds by query within this evaluation pass. Two saved
+  //      searches for the same query share one embed round-trip (the API
+  //      LRU also dedupes, but skipping the HTTP call entirely is cheaper).
+  //   3. Run embeds 2-at-a-time. With 5 saved searches the old serial loop
+  //      fired 5 embeds one-by-one; concurrency 2 finishes in 3 ticks and
+  //      stays within the API's in-process embed semaphore so we never
+  //      generate a 429 against ourselves.
+  // Failures per-search are still swallowed so a single broken filter
+  // doesn't blank the panel.
   useEffect(() => {
     let cancelled = false;
     if (!skill || skill.length === 0 || savedSearches.length === 0) {
       setSavedNewCounts({});
       return;
     }
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
     (async () => {
       const counts: Record<string, number> = {};
-      for (const ss of savedSearches) {
+      // Memoize embed responses within this pass so saved searches sharing
+      // the same query string fan out into one HTTP call.
+      const embedMemo = new Map<string, Promise<number[]>>();
+      const embedFor = (query: string): Promise<number[]> => {
+        const key = query.trim().toLowerCase();
+        const existing = embedMemo.get(key);
+        if (existing) return existing;
+        const p = api
+          .embed(query, { expand: true })
+          .then((r) => r.vector)
+          .catch(() => skill);
+        embedMemo.set(key, p);
+        return p;
+      };
+
+      // Map each saved search to a closure that produces its `{id, count}`.
+      const tasks = savedSearches.map((ss) => async () => {
         try {
-          let vector = skill;
-          if (ss.query.length >= 2) {
-            const { vector: qv } = await api.embed(ss.query, { expand: true });
-            vector = qv;
-          }
+          const vector = ss.query.length >= 2 ? await embedFor(ss.query) : skill;
+          if (cancelled) return { id: ss.id, count: 0 };
           const { hits: ssHits } = await api.searchJobs(vector, {
             k: 60,
             ...(ss.query ? { query: ss.query } : {}),
@@ -415,12 +454,28 @@ export function Feed() {
             max_age_days: 45,
           });
           const lastIds = new Set(ss.lastResultIds);
-          counts[ss.id] = ssHits.filter((h) => !lastIds.has(String(h.id))).length;
+          return {
+            id: ss.id,
+            count: ssHits.filter((h) => !lastIds.has(String(h.id))).length,
+          };
         } catch {
-          counts[ss.id] = 0;
+          return { id: ss.id, count: 0 };
         }
-        if (cancelled) return;
-      }
+      });
+
+      // Concurrency-limited fan-out: workers pull tasks off a shared cursor.
+      const CONCURRENCY = 2;
+      let cursor = 0;
+      const worker = async () => {
+        while (!cancelled) {
+          const idx = cursor++;
+          if (idx >= tasks.length) return;
+          const { id, count } = await tasks[idx]!();
+          counts[id] = count;
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, worker));
+
       if (!cancelled) setSavedNewCounts(counts);
     })();
     return () => {

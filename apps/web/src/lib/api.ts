@@ -156,7 +156,7 @@ export type SortMode = NonNullable<SearchOpts["sort"]>;
 // is the network or backend being unhealthy and we want to surface it.
 const REQUEST_TIMEOUT_MS = 20_000;
 
-async function request<T>(
+async function rawRequest<T>(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
@@ -182,16 +182,64 @@ async function request<T>(
     throw e;
   }
   if (!res.ok) {
+    // Pull retry hint off the response BEFORE consuming the body so we
+    // can build a typed RateLimitedError carrying the wait. The server
+    // ships both X-Retry-After header and retry_after_sec body field;
+    // header is preferred (cheaper, always present).
+    let retryAfterSec = 0;
+    const retryHeader = res.headers.get("retry-after") ?? res.headers.get("x-retry-after");
+    if (retryHeader) {
+      const n = Number(retryHeader);
+      if (Number.isFinite(n) && n > 0) retryAfterSec = n;
+    }
     let msg = res.statusText;
     try {
-      const j = (await res.json()) as { error?: string };
+      const j = (await res.json()) as { error?: string; retry_after_sec?: number };
       if (j.error) msg = j.error;
+      if (!retryAfterSec && typeof j.retry_after_sec === "number") {
+        retryAfterSec = j.retry_after_sec;
+      }
     } catch {
       /* ignore */
+    }
+    if (res.status === 429) {
+      throw new RateLimitedError(retryAfterSec || 1, msg);
     }
     throw new ApiError(res.status, msg);
   }
   return res.json() as Promise<T>;
+}
+
+// Wraps rawRequest with one retry on 429. We only retry idempotent reads
+// (search, embed, profile fetch) - state-changing writes never auto-retry
+// because the client can't tell whether the first attempt was processed
+// before being rate-limited. The wait is bounded by RETRY_MAX_WAIT_SEC
+// so a server returning a 60s Retry-After doesn't pin the UI for a full
+// minute - we surface the typed error and let the caller decide.
+const RETRY_MAX_WAIT_SEC = 3;
+const RETRYABLE_PATHS = new Set<string>(["/embed", "/jobs/search"]);
+
+async function request<T>(
+  method: "GET" | "POST",
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  try {
+    return await rawRequest<T>(method, path, body);
+  } catch (e) {
+    if (
+      e instanceof RateLimitedError &&
+      RETRYABLE_PATHS.has(path) &&
+      e.retryAfterSec <= RETRY_MAX_WAIT_SEC
+    ) {
+      // Sleep retryAfterSec + small jitter so two clients getting 429
+      // at the same moment don't unbunch into a synchronized retry storm.
+      const jitterMs = Math.floor(Math.random() * 250);
+      await new Promise((r) => setTimeout(r, e.retryAfterSec * 1000 + jitterMs));
+      return rawRequest<T>(method, path, body);
+    }
+    throw e;
+  }
 }
 
 export class ApiError extends Error {
@@ -200,6 +248,23 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
     this.name = "ApiError";
+  }
+}
+
+// Typed 429 so callers can render a friendlier message than the raw
+// "rate_limited" token from the server.
+export class RateLimitedError extends ApiError {
+  retryAfterSec: number;
+  constructor(retryAfterSec: number, serverMessage: string) {
+    const wait = Math.max(1, Math.ceil(retryAfterSec));
+    super(
+      429,
+      `Too many searches at once — try again in about ${wait}s.${
+        serverMessage && serverMessage !== "rate_limited" ? ` (${serverMessage})` : ""
+      }`,
+    );
+    this.retryAfterSec = wait;
+    this.name = "RateLimitedError";
   }
 }
 
