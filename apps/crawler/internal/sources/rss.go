@@ -72,6 +72,27 @@ var DefaultRSSFeeds = []RSSFeed{
 	{SourceLabel: "healthmatchbc", URL: "https://www.healthmatchbc.org/rss/jobs", Company: "Health Match BC", Country: "CA"},
 	// City of Ottawa.
 	{SourceLabel: "ottawa", URL: "https://ottawa.ca/en/city-hall/jobs-city/career-opportunities/rss.xml", Company: "City of Ottawa", Country: "CA"},
+
+	// Canada expansion 2026-05-15 (round 3). Additional municipal +
+	// regional feeds. Speculative URLs based on the established municipal
+	// RSS pattern; 404s log+skip cleanly per the rss.go contract. Worth
+	// the risk because every working city feed adds 50-500 jobs that none
+	// of our ATS adapters catch (municipal HR runs in-house or on PeopleSoft
+	// rather than Workday).
+	{SourceLabel: "edmonton", URL: "https://www.edmonton.ca/programs_services/employment_with_the_city/rss.aspx", Company: "City of Edmonton", Country: "CA"},
+	{SourceLabel: "winnipeg", URL: "https://winnipeg.ca/cao/employ/rss.aspx", Company: "City of Winnipeg", Country: "CA"},
+	{SourceLabel: "halifax", URL: "https://www.halifax.ca/about-halifax/careers/rss.xml", Company: "Halifax Regional Municipality", Country: "CA"},
+	{SourceLabel: "mississauga", URL: "https://www.mississauga.ca/jobs/rss.xml", Company: "City of Mississauga", Country: "CA"},
+	{SourceLabel: "hamilton_city", URL: "https://www.hamilton.ca/jobs/rss.xml", Company: "City of Hamilton", Country: "CA"},
+	{SourceLabel: "montreal", URL: "https://montreal.ca/en/jobs/rss", Company: "Ville de Montréal", Country: "CA"},
+	// Canadian healthcare beyond Health Match BC.
+	{SourceLabel: "ontario_health", URL: "https://www.healthforceontario.ca/UserFiles/file/rss/jobs.xml", Company: "HealthForce Ontario", Country: "CA"},
+	// Federal news RSS sometimes carries hiring announcements distinct
+	// from the canada.ca/en/news/web-feeds/jobs.xml feed we already have.
+	// Including the Public Service Commission's news feed as a thin
+	// secondary source - many GC competitions get announced there before
+	// they hit Job Bank's monthly dump.
+	{SourceLabel: "psc_news", URL: "https://www.canada.ca/en/news/web-feeds/public-service-commission.xml", Company: "Public Service Commission of Canada", Country: "CA"},
 }
 
 func (r *RSS) Name() string { return "rss" }

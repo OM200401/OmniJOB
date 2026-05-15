@@ -441,6 +441,15 @@ func buildSources(include []string) []sources.Source {
 		// at the 800ms/page politeness budget.
 		out = append(out, sources.NewAmazon(envInt("AMAZON_MAX_JOBS", 5000)))
 	}
+	// 2026-05-15: tried wiring a Job Bank Canada adapter via the Open Gov
+	// CSV (dataset id ea639e28-c0fc-48bf-b5dd-b8899bd43072). Empirical
+	// inspection of the live CSV shows it's a labor-market aggregate
+	// dataset (NOC/NAICS/Province/Vacancy_Count/Salary) - it carries NO
+	// employer name and NO source URL, so we can't build searchable user-
+	// facing job cards from it. If we want Job Bank coverage we need a
+	// live HTML scraper of /jobsearch/jobposting/<id> with a 5s Crawl-delay
+	// (per robots.txt). Deferred until volume from the expanded Workday/
+	// Greenhouse Canadian slugs (commit on 2026-05-15) is benchmarked.
 	return out
 }
 

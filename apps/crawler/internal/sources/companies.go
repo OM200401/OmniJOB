@@ -83,6 +83,43 @@ var DefaultGreenhouse = []string{
 	"hopper",          // Montreal - travel (note: also already listed above)
 	"ritualco",        // Toronto - food ordering
 
+	// Canada expansion 2026-05-15 (round 2). More Canadian tech believed
+	// to host a Greenhouse board. Speculative; 404s log+skip per the file-
+	// header contract.
+	"plooto",          // Toronto - B2B payments
+	"borrowell",       // Toronto - consumer credit / loans
+	"drop",            // Toronto - rewards
+	"vendasta",        // Saskatoon - SaaS for SMB resellers
+	"north",           // Waterloo - smart-glass startup (alt slug)
+	"wave",            // Toronto - small-business accounting
+	"waveapps",        // alt slug
+	"sonderinc",       // Montreal - hospitality
+	"properly",        // Toronto - prop-tech
+	"goeasy",          // Toronto - consumer finance
+	"finn-ai",         // Vancouver - banking conversational AI
+	"trulioo",         // Vancouver - identity verification
+	"snaplii",         // Toronto - prepaid card / loyalty
+	"flipp",           // Toronto - retail tech
+	"viafouracrowdriff", // Toronto - UGC discovery
+	"crowdriff",       // Toronto - alt slug
+	"axonify",         // Waterloo - employee training
+	"clutch-card",     // alt for Clutch
+	"magnetforensics", // Waterloo - digital forensics
+	"vena",            // Toronto - financial planning
+	"copperleaf",      // Vancouver - asset planning
+	"dapperlabs",      // Vancouver - NFTs / Flow blockchain
+	"alidagroup",      // Toronto - CX management (was Vision Critical)
+	"flinks",          // Montreal - open banking
+	"rewindio",        // Ottawa - SaaS backup
+	"acuityads",       // Toronto - programmatic advertising
+	"ssense",          // Montreal - fashion ecommerce
+	"unbounce",        // Vancouver - landing page builder
+	"sliceapp",        // alt slug
+	"slice",           // Toronto - mobile commerce
+	"appsmith",        // Vancouver - low-code (Canadian HQ?)
+	"benchaccounting", // Vancouver - SMB bookkeeping
+	"clutchcanada",    // alt slug
+
 	// auto-discovered 2026-05-07 (98)
 	"10xgenomics",
 	"adaptivebiotechnologies",
@@ -286,6 +323,28 @@ var DefaultLever = []string{
 	"d2l-jobs",        // alt slug for D2L
 	"waveapps",        // Toronto - accounting (acquired by H&R Block)
 	"snapcommerce",    // Toronto - commerce
+
+	// Canada expansion 2026-05-15 (round 2). More CA companies that likely
+	// run a Lever board; speculative slugs, 404s log+skip.
+	"lightspeed",      // Montreal - retail POS (now lightspeedhq?)
+	"lightspeedhq",    // alt slug
+	"nuvei",           // Montreal - payments
+	"unbounce",        // Vancouver - landing pages
+	"freshbooks",      // Toronto - SMB accounting
+	"loopio",          // Toronto - RFP response automation
+	"jobillico",       // Quebec - job board (yes really)
+	"workleap",        // Montreal - HR / engagement
+	"chatdesk",        // Toronto - customer service
+	"dialpadinc",      // Vancouver office is huge
+	"figment",         // Toronto - blockchain staking
+	"axiom-zen",       // Vancouver - Dapper Labs parent
+	"perimeter81",     // Vancouver office
+	"buildersbox",     // alt slug
+	"clearbanc",       // Toronto - ecommerce financing
+	"clearco",         // alt slug for Clearbanc
+	"finto",           // Vancouver
+	"propelhr",        // Vancouver
+	"unhaggle",        // Toronto - auto retail tech
 
 	// auto-discovered 2026-05-07 (43)
 	"acceldata",
@@ -919,6 +978,113 @@ var DefaultWorkday = []WorkdayCompany{
 	{Display: "Alberta Health Services",           Tenant: "ahs",        Region: "wd3", Site: "External"},
 	{Display: "Vancouver Coastal Health",          Tenant: "vch",        Region: "wd3", Site: "External"},
 	{Display: "Hamilton Health Sciences",          Tenant: "hhsc",       Region: "wd3", Site: "External"},
+
+	// Canada expansion 2026-05-15 (round 2). Round 1 (2026-05-12) targeted
+	// banks/telecom/retail; this batch fills in the rest of the TSX top-100
+	// where the company likely runs Workday. Energy + mining + insurance
+	// are the biggest gaps (40+ of the largest Canadian employers by
+	// headcount). 30-50% of slugs will 404 - that's the documented trade-off
+	// for breadth over precision; the crawler logs+skips, no breakage.
+
+	// Energy / oil & gas - Calgary-centric, mostly Workday-on-wd3.
+	{Display: "Suncor Energy",           Tenant: "suncor",            Region: "wd3", Site: "External"},
+	{Display: "Enbridge",                Tenant: "enbridge",          Region: "wd3", Site: "External_Career_Site"},
+	{Display: "TC Energy",               Tenant: "tcenergy",          Region: "wd3", Site: "External"},
+	{Display: "Cenovus Energy",          Tenant: "cenovus",           Region: "wd3", Site: "External"},
+	{Display: "Imperial Oil",            Tenant: "imperialoil",       Region: "wd3", Site: "External"},
+	{Display: "Canadian Natural Resources", Tenant: "cnrl",           Region: "wd3", Site: "External"},
+	{Display: "Pembina Pipeline",        Tenant: "pembina",           Region: "wd3", Site: "External"},
+
+	// Mining / minerals.
+	{Display: "Teck Resources",          Tenant: "teckresources",     Region: "wd3", Site: "External"},
+	{Display: "Barrick Gold",            Tenant: "barrick",           Region: "wd3", Site: "External"},
+	{Display: "Nutrien",                 Tenant: "nutrien",           Region: "wd3", Site: "External_Career_Site"},
+	{Display: "Agnico Eagle Mines",      Tenant: "agnicoeagle",       Region: "wd3", Site: "External"},
+	{Display: "First Quantum Minerals",  Tenant: "firstquantum",      Region: "wd3", Site: "External"},
+	{Display: "Cameco",                  Tenant: "cameco",            Region: "wd3", Site: "External"},
+
+	// Auto parts / manufacturing - Ontario-centric.
+	{Display: "Magna International",     Tenant: "magna",             Region: "wd3", Site: "External"},
+	{Display: "Linamar",                 Tenant: "linamar",           Region: "wd3", Site: "External"},
+	{Display: "Martinrea International", Tenant: "martinrea",         Region: "wd3", Site: "External"},
+	{Display: "Celestica",               Tenant: "celestica",         Region: "wd3", Site: "External"},
+
+	// Insurance + diversified financial.
+	{Display: "Intact Financial",        Tenant: "intactfc",          Region: "wd3", Site: "External"},
+	{Display: "iA Financial",            Tenant: "iafinancial",       Region: "wd3", Site: "External"},
+	{Display: "Power Corporation",       Tenant: "powercorp",         Region: "wd3", Site: "External"},
+	{Display: "Great-West Lifeco",       Tenant: "greatwest",         Region: "wd3", Site: "External"},
+	{Display: "Fairfax Financial",       Tenant: "fairfax",           Region: "wd3", Site: "External"},
+	{Display: "National Bank of Canada", Tenant: "nbc",               Region: "wd3", Site: "External"},
+	{Display: "Desjardins",              Tenant: "desjardins",        Region: "wd3", Site: "External_Career_Site"},
+	{Display: "Equitable Bank",          Tenant: "equitablebank",     Region: "wd3", Site: "External"},
+
+	// Retail / consumer (rest of the top tier).
+	{Display: "Alimentation Couche-Tard", Tenant: "couchetard",       Region: "wd3", Site: "External"},
+	{Display: "Empire Company",          Tenant: "empireco",          Region: "wd3", Site: "External"},
+	{Display: "Metro Inc",               Tenant: "metroinc",          Region: "wd3", Site: "External"},
+	{Display: "Hudson's Bay",            Tenant: "hbc",               Region: "wd3", Site: "External"},
+	{Display: "Indigo Books",            Tenant: "indigo",            Region: "wd3", Site: "External"},
+	{Display: "Aritzia",                 Tenant: "aritzia",           Region: "wd3", Site: "External"},
+	{Display: "Saputo",                  Tenant: "saputo",            Region: "wd3", Site: "External"},
+	{Display: "Restaurant Brands International", Tenant: "rbi",       Region: "wd3", Site: "External"},
+	{Display: "George Weston",           Tenant: "weston",            Region: "wd3", Site: "External"},
+	{Display: "Tim Hortons",             Tenant: "timhortons",        Region: "wd3", Site: "External"},
+
+	// Crown corporations + utilities.
+	{Display: "Canada Post",             Tenant: "canadapost",        Region: "wd3", Site: "External"},
+	{Display: "VIA Rail",                Tenant: "viarail",           Region: "wd3", Site: "External"},
+	{Display: "Hydro One",               Tenant: "hydroone",          Region: "wd3", Site: "External"},
+	{Display: "BC Hydro",                Tenant: "bchydro",           Region: "wd3", Site: "External"},
+	{Display: "Hydro-Québec",            Tenant: "hydroquebec",       Region: "wd3", Site: "External"},
+	{Display: "Ontario Power Generation", Tenant: "opg",              Region: "wd3", Site: "External"},
+	{Display: "Atomic Energy Canada",    Tenant: "cnl",               Region: "wd3", Site: "External"},
+
+	// Transport / logistics.
+	{Display: "CP Rail",                 Tenant: "cpkc",              Region: "wd3", Site: "External"},
+	{Display: "WestJet",                 Tenant: "westjet",           Region: "wd3", Site: "External"},
+	{Display: "Air Transat",             Tenant: "transat",           Region: "wd3", Site: "External"},
+
+	// Tech / SaaS (Workday-running Canadian tech that isn't already
+	// captured via Greenhouse/Lever lists below).
+	{Display: "Constellation Software", Tenant: "csi",                Region: "wd3", Site: "External"},
+	{Display: "Open Text",               Tenant: "opentext",          Region: "wd3", Site: "External_Career_Site"},
+	{Display: "Mitel",                   Tenant: "mitel",             Region: "wd3", Site: "External"},
+	{Display: "Cogeco",                  Tenant: "cogeco",            Region: "wd3", Site: "External"},
+
+	// Telecom (round 2).
+	{Display: "Quebecor",                Tenant: "quebecor",          Region: "wd3", Site: "External"},
+	{Display: "Vidéotron",               Tenant: "videotron",         Region: "wd3", Site: "External"},
+	{Display: "SaskTel",                 Tenant: "sasktel",           Region: "wd3", Site: "External"},
+
+	// Healthcare networks (round 2).
+	{Display: "SickKids",                Tenant: "sickkids",          Region: "wd3", Site: "External"},
+	{Display: "Centre for Addiction and Mental Health", Tenant: "camh", Region: "wd3", Site: "External"},
+	{Display: "Mount Sinai Hospital Toronto", Tenant: "mountsinai-toronto", Region: "wd3", Site: "External"},
+	{Display: "Trillium Health Partners", Tenant: "trillium",         Region: "wd3", Site: "External"},
+	{Display: "Fraser Health Authority", Tenant: "fraserhealth",      Region: "wd3", Site: "External"},
+	{Display: "Island Health",           Tenant: "islandhealth",      Region: "wd3", Site: "External"},
+	{Display: "Saskatchewan Health Authority", Tenant: "saskhealth",  Region: "wd3", Site: "External"},
+	{Display: "Shared Health Manitoba",  Tenant: "sharedhealth",      Region: "wd3", Site: "External"},
+	{Display: "Nova Scotia Health",      Tenant: "nshealth",          Region: "wd3", Site: "External"},
+
+	// Universities (Workday-running; many CA universities also use PageUp
+	// which we don't have an adapter for - those go via sitemap+JSON-LD).
+	{Display: "University of Toronto",   Tenant: "uoft",              Region: "wd3", Site: "External"},
+	{Display: "University of British Columbia", Tenant: "ubc",        Region: "wd3", Site: "External"},
+	{Display: "McGill University",       Tenant: "mcgill",            Region: "wd3", Site: "External"},
+	{Display: "University of Waterloo",  Tenant: "uwaterloo",         Region: "wd3", Site: "External"},
+	{Display: "McMaster University",     Tenant: "mcmaster",          Region: "wd3", Site: "External"},
+	{Display: "Western University",      Tenant: "uwo",               Region: "wd3", Site: "External"},
+	{Display: "Queen's University",      Tenant: "queensu",           Region: "wd3", Site: "External"},
+	{Display: "University of Alberta",   Tenant: "ualberta",          Region: "wd3", Site: "External"},
+	{Display: "University of Calgary",   Tenant: "ucalgary",          Region: "wd3", Site: "External"},
+	{Display: "Simon Fraser University", Tenant: "sfu",               Region: "wd3", Site: "External"},
+	{Display: "York University",         Tenant: "yorku",             Region: "wd3", Site: "External"},
+	{Display: "Concordia University",    Tenant: "concordia",         Region: "wd3", Site: "External"},
+	{Display: "Université de Montréal",  Tenant: "umontreal",         Region: "wd3", Site: "External"},
+	{Display: "University of Ottawa",    Tenant: "uottawa",           Region: "wd3", Site: "External"},
+	{Display: "Dalhousie University",    Tenant: "dal",               Region: "wd3", Site: "External"},
 
 	// Big-tech + known-startup expansion 2026-05-14. Workday tenants for
 	// major US enterprise hirers not already covered. Region guesses are
