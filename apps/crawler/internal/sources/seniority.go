@@ -1,6 +1,10 @@
 package sources
 
-import "regexp"
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 // Heuristic title → seniority classifier. Mirrors the logic in
 // apps/api/src/lib/seniority.ts so the level lands on the Qdrant payload at
@@ -88,6 +92,11 @@ func compileAll(patterns ...string) []*regexp.Regexp {
 	return out
 }
 
+// classifyLevel returns the seniority signal derived purely from the title.
+// Empty string when no rule matches (was "mid" pre-2026-05-15, but defaulting
+// to mid polluted the index with bogus seniorities for non-tech industries).
+// Adapters should call classifyLevelFromBody instead so the body's
+// experience/qualifications section is consulted first.
 func classifyLevel(title string) string {
 	for _, r := range levelRules {
 		for _, p := range r.matches {
@@ -96,5 +105,204 @@ func classifyLevel(title string) string {
 			}
 		}
 	}
-	return "mid"
+	return ""
+}
+
+// Section anchors and YOE patterns used by classifyBody. Mirrors the TS
+// implementation at apps/api/src/lib/seniority.ts - keep in sync.
+var (
+	sectionAnchors = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\bminimum\s+(?:qualifications?|requirements?)\b`),
+		regexp.MustCompile(`(?i)\bbasic\s+(?:qualifications?|requirements?)\b`),
+		regexp.MustCompile(`(?i)\bpreferred\s+(?:qualifications?|requirements?)\b`),
+		regexp.MustCompile(`(?i)\brequired\s+(?:experience|qualifications?|requirements?)\b`),
+		regexp.MustCompile(`(?i)\b(?:must|should)\s+have\b`),
+		// Apostrophe variants (typographic + ASCII + bare).
+		regexp.MustCompile("(?i)\\bwhat\\s+you(?:’|')?ll?\\s+(?:bring|need|have)\\b"),
+		regexp.MustCompile(`(?i)\bwhat\s+you\s+(?:bring|need|have)\b`),
+		regexp.MustCompile("(?i)\\bwhat\\s+we(?:’|')?re\\s+looking\\s+for\\b"),
+		regexp.MustCompile(`(?i)\babout\s+you\b`),
+		regexp.MustCompile(`(?i)\byour\s+experience\b`),
+		regexp.MustCompile("(?i)\\bqualifications?\\s*[:—–\\-\\n]"),
+		regexp.MustCompile("(?i)\\brequirements?\\s*[:—–\\-\\n]"),
+		regexp.MustCompile("(?i)\\bexperience\\s*[:—–\\-\\n]"),
+	}
+
+	inSectionYoePatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\b(\d{1,2})\s*\+?\s*years?\b[^.]{0,80}?\bexperience\b`),
+		regexp.MustCompile(`(?i)\bexperience\b[^.]{0,40}?\b(\d{1,2})\s*\+?\s*years?\b`),
+		regexp.MustCompile(`(?i)\b(?:minimum|at\s+least|over)\s+(?:of\s+)?(\d{1,2})\s*\+?\s*years?\b`),
+		regexp.MustCompile(`(?i)\b(\d{1,2})\s*\+?\s*years?\s+(?:minimum|or\s+more|or\s+greater)\b`),
+	}
+
+	inSectionRangePattern = regexp.MustCompile("(?i)\\b(\\d{1,2})\\s*(?:-|–|to)\\s*(\\d{1,2})\\s+years?\\b[^.]{0,80}?\\bexperience\\b")
+
+	yoeKeywords = "(?:professional|relevant|industry|software|engineering|product|work|paid|hands-on|dev|development|technical|coding|leadership|nursing|teaching|legal|design|sales|marketing|operations|customer|clinical|business|enterprise|outbound)"
+
+	keywordJunior = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\bnew[\s-]?grad(uate)?s?\b`),
+		regexp.MustCompile(`(?i)\brecent\s+grad(uate)?s?\b`),
+		regexp.MustCompile(`(?i)\bentry[\s-]?level\b`),
+		regexp.MustCompile(`(?i)\bearly[\s-]?career\b`),
+		regexp.MustCompile(`(?i)\bclass\s+of\s+20\d{2}\b`),
+		regexp.MustCompile(`(?i)\bminimum\s+(?:of\s+)?(?:0|1|2)\+?\s*years?\b`),
+		regexp.MustCompile(`(?i)\bno\s+(?:prior\s+|professional\s+|previous\s+|formal\s+)?experience\s+(?:required|necessary|needed|expected)\b`),
+		regexp.MustCompile(`(?i)\b(?:0|1|2)\+?\s*years?\s+(?:of\s+)?` + yoeKeywords + `(?:\s+[a-z-]+){0,3}\s+experience\b`),
+		regexp.MustCompile(`(?i)\b(?:0|1|2)\s*[-` + "–" + `]\s*[123]\s*years?\s+(?:of\s+)?` + yoeKeywords + `(?:\s+[a-z-]+){0,3}\s+experience\b`),
+	}
+	keywordSenior = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\b(?:7|8|9|10|12|15|20)\s*\+?\s*years?\s+(?:of\s+)?` + yoeKeywords + `(?:\s+[a-z-]+){0,3}\s+experience\b`),
+		regexp.MustCompile(`(?i)\b(?:7|8|9|10|12|15|20)\s*\+?\s*years?\s+experience\s+(?:required|preferred|in)\b`),
+		regexp.MustCompile(`(?i)\bminimum\s+(?:of\s+)?(?:7|8|9|10|12|15|20)\s*\+?\s*years?\b`),
+	}
+	keywordMid = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\b(?:3|4|5|6)\s*\+?\s*years?\s+(?:of\s+)?` + yoeKeywords + `(?:\s+[a-z-]+){0,3}\s+experience\b`),
+		regexp.MustCompile(`(?i)\b(?:3|4|5)\s*[-` + "–" + `]\s*[567]\s*years?\s+(?:of\s+)?` + yoeKeywords + `(?:\s+[a-z-]+){0,3}\s+experience\b`),
+		regexp.MustCompile(`(?i)\b(?:3|4|5|6)\s*\+?\s*years?\s+experience\s+(?:required|preferred|in)\b`),
+		regexp.MustCompile(`(?i)\bminimum\s+(?:of\s+)?(?:3|4|5|6)\s*\+?\s*years?\b`),
+	}
+	htmlTag = regexp.MustCompile(`<[^>]+>`)
+)
+
+const (
+	bodyScanChars = 5000
+	anchorWindow  = 600
+)
+
+func yoeBucket(years int) string {
+	if years < 0 {
+		return ""
+	}
+	if years <= 2 {
+		return "junior"
+	}
+	if years <= 6 {
+		return "mid"
+	}
+	return "senior"
+}
+
+func stripHtmlForScan(text string) string {
+	return strings.ReplaceAll(htmlTag.ReplaceAllString(text, " "), "&nbsp;", " ")
+}
+
+// classifyBody mirrors the TS classifier: section-aware first, keyword-
+// anchored fallback. Returns "" when no signal is found. Mirrors logic at
+// apps/api/src/lib/seniority.ts.
+func classifyBody(description string) string {
+	if description == "" {
+		return ""
+	}
+	stripped := stripHtmlForScan(description)
+	if len(stripped) > bodyScanChars {
+		stripped = stripped[:bodyScanChars]
+	}
+	level, pos := classifyBodyBySection(stripped)
+	keywordLevel, keywordPos := classifyBodyByKeyword(stripped)
+	if level != "" && keywordLevel != "" {
+		if pos <= keywordPos {
+			return level
+		}
+		return keywordLevel
+	}
+	if level != "" {
+		return level
+	}
+	return keywordLevel
+}
+
+func classifyBodyBySection(text string) (string, int) {
+	anchors := []int{}
+	for _, re := range sectionAnchors {
+		if loc := re.FindStringIndex(text); loc != nil {
+			anchors = append(anchors, loc[0])
+		}
+	}
+	if len(anchors) == 0 {
+		return "", -1
+	}
+	// Sort ascending so earliest anchor wins ties.
+	for i := 1; i < len(anchors); i++ {
+		for j := i; j > 0 && anchors[j] < anchors[j-1]; j-- {
+			anchors[j], anchors[j-1] = anchors[j-1], anchors[j]
+		}
+	}
+	bestLevel := ""
+	bestPos := -1
+	for _, pos := range anchors {
+		end := pos + anchorWindow
+		if end > len(text) {
+			end = len(text)
+		}
+		window := text[pos:end]
+		var bestInWindow int = -1
+		var bestInWindowRel int = -1
+		// Range first; "5-7 years" returns the lower bound (conservative).
+		if m := inSectionRangePattern.FindStringSubmatchIndex(window); m != nil {
+			lo, err := strconv.Atoi(window[m[2]:m[3]])
+			if err == nil {
+				bestInWindow = lo
+				bestInWindowRel = m[0]
+			}
+		}
+		for _, re := range inSectionYoePatterns {
+			m := re.FindStringSubmatchIndex(window)
+			if m == nil {
+				continue
+			}
+			years, err := strconv.Atoi(window[m[2]:m[3]])
+			if err != nil {
+				continue
+			}
+			if bestInWindowRel == -1 || m[0] < bestInWindowRel {
+				bestInWindow = years
+				bestInWindowRel = m[0]
+			}
+		}
+		if bestInWindow >= 0 {
+			lvl := yoeBucket(bestInWindow)
+			if lvl != "" && (bestPos == -1 || pos < bestPos) {
+				bestLevel = lvl
+				bestPos = pos
+			}
+		}
+	}
+	return bestLevel, bestPos
+}
+
+func classifyBodyByKeyword(text string) (string, int) {
+	bestLevel := ""
+	bestPos := -1
+	check := func(level string, patterns []*regexp.Regexp) {
+		for _, re := range patterns {
+			if loc := re.FindStringIndex(text); loc != nil {
+				if bestPos == -1 || loc[0] < bestPos {
+					bestPos = loc[0]
+					bestLevel = level
+				}
+			}
+		}
+	}
+	check("junior", keywordJunior)
+	check("senior", keywordSenior)
+	check("mid", keywordMid)
+	return bestLevel, bestPos
+}
+
+// classifyLevelFromBody is the canonical entry point for adapters. Body-first
+// (the experience/qualifications section of the description is more
+// authoritative than the title regex). Title classifier runs as fallback.
+// Off-IC titles (manager / director / executive) override the body so
+// "Director of Engineering" with "5+ years" body stays director (the YOE is
+// the prerequisite for the director role, not the role's own level).
+func classifyLevelFromBody(title, description string) string {
+	titleLevel := classifyLevel(title)
+	if titleLevel == "manager" || titleLevel == "director" || titleLevel == "executive" {
+		return titleLevel
+	}
+	body := classifyBody(description)
+	if body != "" {
+		return body
+	}
+	return titleLevel
 }

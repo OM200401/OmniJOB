@@ -181,7 +181,7 @@ func (t *Teamtailor) toJob(slug string, j ttResource, inc map[string]ttResource)
 		Location:        loc,
 		Country:         classifyCountry(loc),
 		RemoteStatus:    remote,
-		ExperienceLevel: classifyLevel(title),
+		ExperienceLevel: classifyLevelFromBody(title, desc),
 		Source:          "teamtailor",
 		SourceURL:       url,
 		ScrapedAt:       time.Now().UnixMilli(),

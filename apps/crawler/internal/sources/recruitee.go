@@ -148,7 +148,7 @@ func (r *Recruitee) fetchOne(ctx context.Context, slug string, out chan<- pipeli
 			Location:        loc,
 			Country:         country,
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "recruitee",
 			SourceURL:       jobURL,
 			ScrapedAt:       time.Now().UnixMilli(),

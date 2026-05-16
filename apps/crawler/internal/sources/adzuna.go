@@ -156,7 +156,7 @@ func (a *Adzuna) fetchPage(ctx context.Context, country string, page int, out ch
 			Location:        loc,
 			Country:         country2,
 			RemoteStatus:    classifyRemote(loc, desc),
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "adzuna",
 			SourceURL:       j.RedirectURL,
 			ScrapedAt:       time.Now().UnixMilli(),

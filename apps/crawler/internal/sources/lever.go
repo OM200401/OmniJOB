@@ -102,7 +102,7 @@ func (l *Lever) fetchOne(ctx context.Context, slug string, out chan<- pipeline.J
 			Location:        j.Categories.Location,
 			Country:         classifyCountry(j.Categories.Location),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "lever",
 			SourceURL:       j.HostedURL,
 			ScrapedAt:       time.Now().UnixMilli(),

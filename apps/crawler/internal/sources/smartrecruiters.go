@@ -189,7 +189,7 @@ func (s *SmartRecruiters) emit(
 			Location:        loc,
 			Country:         classifyCountry(loc),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "smartrecruiters",
 			SourceURL:       applyURL,
 			ScrapedAt:       time.Now().UnixMilli(),

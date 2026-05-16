@@ -165,7 +165,7 @@ func (j *Jooble) fetchPage(ctx context.Context, q JoobleQuery, page int, out cha
 			Location:        jb.Location,
 			Country:         classifyCountry(jb.Location),
 			RemoteStatus:    classifyRemote(jb.Location, desc),
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "jooble",
 			SourceURL:       jb.Link,
 			ScrapedAt:       time.Now().UnixMilli(),

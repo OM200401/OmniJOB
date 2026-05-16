@@ -120,7 +120,7 @@ func (w *WeWorkRemotely) fetchCategory(ctx context.Context, cat string, out chan
 			Location:        region,
 			Country:         classifyCountry(region),
 			RemoteStatus:    "remote",
-			ExperienceLevel: classifyLevel(role),
+			ExperienceLevel: classifyLevelFromBody(role, desc),
 			Source:          "weworkremotely",
 			SourceURL:       strings.TrimSpace(it.Link),
 			ScrapedAt:       time.Now().UnixMilli(),

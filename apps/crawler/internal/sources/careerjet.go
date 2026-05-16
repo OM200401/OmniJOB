@@ -150,7 +150,7 @@ func (c *Careerjet) fetchPage(ctx context.Context, locale string, page int, out 
 			Location:        j.Locations,
 			Country:         classifyCountryFromLocale(locale, j.Locations),
 			RemoteStatus:    classifyRemote(j.Locations, desc),
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "careerjet",
 			SourceURL:       j.URL,
 			ScrapedAt:       time.Now().UnixMilli(),

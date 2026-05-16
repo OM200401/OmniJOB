@@ -132,7 +132,7 @@ func (m *TheMuse) fetchPage(ctx context.Context, page int, out chan<- pipeline.J
 		if len(j.Levels) > 0 {
 			level = strings.ToLower(j.Levels[0].Name)
 		}
-		expLevel := classifyMuseLevel(level, title)
+		expLevel := classifyMuseLevel(level, title, desc)
 
 		jobURL := museRefURL(j.Refs, j.ShortName, j.ID)
 
@@ -179,8 +179,8 @@ func museRefURL(refs map[string]any, shortName string, id int64) string {
 }
 
 // The Muse uses level labels like "Senior Level", "Mid Level", "Internship".
-// Fall back to the title-based classifier when the label is empty.
-func classifyMuseLevel(label, title string) string {
+// Fall back to the body-aware classifier when the label is empty.
+func classifyMuseLevel(label, title, description string) string {
 	switch {
 	case strings.Contains(label, "intern"):
 		return "intern"
@@ -195,5 +195,5 @@ func classifyMuseLevel(label, title string) string {
 	case strings.Contains(label, "executive"):
 		return "executive"
 	}
-	return classifyLevel(title)
+	return classifyLevelFromBody(title, description)
 }

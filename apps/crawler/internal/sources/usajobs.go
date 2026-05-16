@@ -177,7 +177,7 @@ func (u *USAJobs) fetchPage(ctx context.Context, page int, out chan<- pipeline.J
 			Location:        loc,
 			Country:         country,
 			RemoteStatus:    classifyRemote(loc, desc),
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			// USAJobs is the federal job board - every posting is by
 			// definition government. Pre-fill the industry tag so the
 			// server-side classifier doesn't have to re-derive it.

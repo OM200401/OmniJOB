@@ -309,39 +309,120 @@ describe("classifyBody - first signal in body wins", () => {
   });
 });
 
-describe("classifyTitleOrBody - title-first, body-fallback", () => {
-  test("explicit title beats body signal", () => {
-    // "Senior" title wins over "0-2 years" body mention (mentee section).
+describe("classifyTitleOrBody - body-first (2026-05-15), off-IC title overrides", () => {
+  // Body-first: the experience/qualifications section of the description is
+  // more authoritative than the title regex. A "Software Engineer" with
+  // "7+ years of experience" required is a senior role, not an unranked one.
+  test("body YOE section beats generic title", () => {
     expect(
       classifyTitleOrBody(
-        "Senior Software Engineer",
-        "You'll mentor engineers with 0-2 years of professional experience.",
+        "Software Engineer",
+        "Minimum Qualifications: 7+ years of experience in distributed systems.",
       ),
     ).toBe("senior");
   });
 
-  test("null title falls through to body classifier", () => {
+  test("body senior signal overrides title 'Senior' (same answer, sanity check)", () => {
     expect(
       classifyTitleOrBody(
-        "Software Engineer",
-        "Looking for new grads. 0-2 years of software experience preferred.",
+        "Senior Software Engineer",
+        "Requirements: 8+ years of software engineering experience.",
       ),
-    ).toBe("junior");
+    ).toBe("senior");
   });
 
-  test("null title + null body → null", () => {
+  test("title falls through when body has no signal", () => {
+    expect(classifyTitleOrBody("Senior Software Engineer", "Build great products.")).toBe("senior");
+  });
+
+  test("body wins when title is generic and body has YOE under header", () => {
+    // The most common motivating case: a non-specific title with explicit
+    // YOE under a Qualifications section. Pre-2026-05-15 the title returned
+    // null and the body's keyword-mode pattern often missed (no anchor
+    // keyword in "5+ years of experience in business analysis"). Body-first
+    // section-aware catches it.
+    expect(
+      classifyTitleOrBody(
+        "Manager, Underwriting & Valuations Strategy Analyst",
+        "Basic Qualifications: At least 5 years of experience in business analysis.",
+      ),
+    ).toBe("manager");
+    // Note: the test above also exercises the off-IC override - title
+    // returns "manager" which beats body even with a YOE phrase.
+  });
+
+  test("off-IC title overrides body YOE - manager", () => {
+    expect(
+      classifyTitleOrBody(
+        "Engineering Manager",
+        "Requirements: 5+ years of experience leading engineering teams.",
+      ),
+    ).toBe("manager");
+  });
+
+  test("off-IC title overrides body YOE - director", () => {
+    expect(
+      classifyTitleOrBody(
+        "Director of Engineering",
+        "You'll bring 10+ years of engineering experience.",
+      ),
+    ).toBe("director");
+  });
+
+  test("off-IC title overrides body YOE - executive", () => {
+    expect(
+      classifyTitleOrBody(
+        "VP of Engineering",
+        "Required: 15+ years of experience leading platform teams.",
+      ),
+    ).toBe("executive");
+  });
+
+  test("body YOE on generic title with no body signal falls back to null", () => {
     expect(classifyTitleOrBody("Software Engineer", "Build great products.")).toBeNull();
   });
 
   test("Amazon-style 'Software Engineer' with new-grad body → junior", () => {
-    // The user's motivating example: a generic Amazon-style "Software
-    // Engineer" title with new-grad language in the body should now
-    // classify as junior so the level filter surfaces it.
+    // The user's motivating example: a generic Amazon-style title with
+    // new-grad language in the body classifies as junior so the level
+    // filter surfaces it.
     expect(
       classifyTitleOrBody(
         "Software Engineer",
-        "Software Engineer, Amazon. We're hiring recent graduates with 0-2 years of professional software experience.",
+        "We're hiring recent graduates with 0-2 years of professional software experience.",
       ),
     ).toBe("junior");
+  });
+});
+
+describe("classifyBody - section-aware (2026-05-15)", () => {
+  // Real production miss cases captured during the 100-job audit. These
+  // all have an explicit section header followed by a YOE phrase that the
+  // pre-2026-05-15 keyword-anchored classifier silently dropped because
+  // the structure didn't match its regex.
+  const cases: Array<[string, ReturnType<typeof classifyBody>]> = [
+    ["Basic Qualifications: At least 5 years of experience in business analysis.", "mid"],
+    // "3 years minimum" = at least 3, which falls in the mid bucket (3-6).
+    ["WHAT YOU NEED — 3 years minimum experience in Partner Sales", "mid"],
+    ["Requirements: 7+ years of enterprise sales experience in the federal civilian space.", "senior"],
+    ["Required Experience: 10+ years of experience working within the out-of-order CPU domain.", "senior"],
+    ["Minimum requirements: 10+ years of relevant B2B marketing experience.", "senior"],
+    ["REQUIRED EXPERIENCE: 7+ years of experience in a technical, hands-on customer role.", "senior"],
+    ["Qualifications: 3+ years of outbound experience in software or technology sales.", "mid"],
+    ["What you'll bring: 5+ years of experience of Software Engineering.", "mid"],
+    // Range: lower bound rules ("5-7 years" = 5 = mid)
+    ["Requirements: 5-7 years of engineering experience.", "mid"],
+    ["Minimum Qualifications: 1-3 years of relevant experience.", "junior"],
+  ];
+  for (const [text, expected] of cases) {
+    test(`"${text.slice(0, 50)}…" → ${expected}`, () => {
+      expect(classifyBody(text)).toBe(expected);
+    });
+  }
+
+  test("HTML-wrapped requirement parses cleanly", () => {
+    const body =
+      "<h4>Minimum requirements</h4><ul><li>10+ years of relevant B2B marketing experience</li></ul>";
+    expect(classifyBody(body)).toBe("senior");
   });
 });

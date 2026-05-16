@@ -111,7 +111,7 @@ func (a *Ashby) fetchOne(ctx context.Context, slug string, out chan<- pipeline.J
 			Location:        j.LocationName,
 			Country:         classifyCountry(j.LocationName),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "ashby",
 			SourceURL:       j.JobURL,
 			ScrapedAt:       time.Now().UnixMilli(),

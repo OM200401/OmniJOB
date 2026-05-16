@@ -182,7 +182,7 @@ func (w *Workable) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 				Location:        loc,
 				Country:         classifyCountry(loc),
 				RemoteStatus:    remote,
-				ExperienceLevel: classifyLevel(title),
+				ExperienceLevel: classifyLevelFromBody(title, desc),
 				Source:          "workable",
 				SourceURL:       jobURL,
 				ScrapedAt:       time.Now().UnixMilli(),

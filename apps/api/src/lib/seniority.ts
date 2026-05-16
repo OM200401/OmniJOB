@@ -260,28 +260,162 @@ export function levelsAtOrBelow(level: Level): Level[] {
   return ORDER.slice(0, i + 1);
 }
 
-// Body-derived seniority. Used as a fallback when classifyTitle returns null
-// so titles like "Software Engineer" can still pick up a level from "0-2
-// years of experience" or "new grads encouraged" inside the description.
-// Bounded to the first BODY_SCAN_CHARS chars - requirements / qualifications
-// sections live near the top of every well-formed posting and scanning a
-// 100k-char body 600 times per search would dominate the post-filter loop.
-const BODY_SCAN_CHARS = 3000;
+// Body-derived seniority. Two-stage classifier:
+//
+//   1. SECTION-AWARE mode. Scan the description for explicit section headers
+//      ("Experience", "Requirements", "Qualifications", "Minimum Qualifications",
+//      "Basic Qualifications", "Preferred Qualifications", "What you bring",
+//      "Required Experience", etc.) and apply a permissive YOE pattern inside
+//      a 500-char window after each header. This captures the 75% of real job
+//      postings that put YOE under a labelled section (audit 2026-05-15:
+//      75% of sampled descriptions had an Experience header, 41% Requirements,
+//      20% Qualifications).
+//
+//   2. KEYWORD-ANCHORED fallback. When no section header is found, scan the
+//      first 3000 chars with the tighter YOE_KEYWORDS-anchored pattern that
+//      shipped pre-2026-05-15. This keeps the false-positive guards in place
+//      for free-form prose ("Amazon has 25 years of experience serving
+//      customers worldwide" must NOT classify as senior).
+//
+// Bounded to BODY_SCAN_CHARS - requirements/qualifications sections live near
+// the top of every well-formed posting and scanning a 100k-char body 600
+// times per search would dominate the post-filter loop.
+const BODY_SCAN_CHARS = 5000;
 
-// Phrase patterns must be specific enough to avoid the common false-positive:
-// passages like "Amazon has 25 years of experience" or "Our team has 5+
-// engineers". The disambiguator is requiring "experience" with a qualifier
-// ("required", "preferred", "minimum") or attaching the year-count to
-// experience/professional/relevant/industry/work modifiers. Bare "X years"
-// without those is too noisy and is deliberately not matched.
-// Keywords that anchor a year-count phrase to a YOE *requirement* (rather
-// than e.g. "Amazon has 25 years of experience serving customers", which is
-// company history). The numeric pattern fires only when one of these
-// keywords appears between the year-count and "experience".
+// Window we scan AFTER finding a section header. 500 chars covers a typical
+// bullet list of 5-10 requirement lines; tight enough that a YOE phrase 800
+// chars deep into the description (likely in a different section) doesn't
+// pollute the result.
+const ANCHOR_WINDOW = 600;
+
+// Strip HTML so the regex doesn't have to thread tags. Real descriptions
+// arrive as a mix of plain text and HTML depending on adapter - stripping
+// uniformly is safer than per-adapter normalization.
+function stripHtmlForScan(text: string): string {
+  return text.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+}
+
+// Section header anchors. Each matches the START of a qualifications/
+// experience section in a real posting. Order doesn't matter; we find ALL
+// positions and scan windows after each. Includes both the punctuated form
+// ("Qualifications:") and the bare form ("Qualifications") for cases where
+// HTML stripping has collapsed away `<h4>Qualifications</h4>` to just the
+// word "Qualifications" followed by the list contents.
+const SECTION_ANCHORS: RegExp[] = [
+  // Compound headers (most specific, least likely to false-positive on
+  // narrative prose).
+  /\bminimum\s+(?:qualifications?|requirements?)\b/i,
+  /\bbasic\s+(?:qualifications?|requirements?)\b/i,
+  /\bpreferred\s+(?:qualifications?|requirements?)\b/i,
+  /\brequired\s+(?:experience|qualifications?|requirements?)\b/i,
+  /\b(?:must|should)\s+have\b/i,
+  // "What you'll bring/need/have" and "What you bring/need/have" - both
+  // apostrophe-elided and bare forms.
+  /\bwhat\s+you(?:’|')?ll?\s+(?:bring|need|have)\b/i,
+  /\bwhat\s+you\s+(?:bring|need|have)\b/i,
+  /\bwhat\s+we(?:’|')?re\s+looking\s+for\b/i,
+  /\babout\s+you\b/i,
+  /\byour\s+experience\b/i,
+  // Bare headers - works post-HTML-strip when `<h4>Requirements</h4>`
+  // becomes "Requirements" followed by the bullet contents. Slightly
+  // risks false-positives in narrative prose, but real prose rarely uses
+  // these words AND then includes a YOE phrase within the 600-char window.
+  /\bqualifications?\s*[:—–\-\n]/i,
+  /\brequirements?\s*[:—–\-\n]/i,
+  /\bexperience\s*[:—–\-\n]/i,
+];
+
+// In-section YOE patterns. Permissive because the section anchor + 600-char
+// window already provides false-positive defense - a YOE phrase inside a
+// qualifications section is almost certainly a requirement. Captures the
+// LOWER bound when a range is given ("5-7 years" -> 5 = mid).
+//
+// The patterns return the integer years for downstream bucketing. We use a
+// single combined extractor rather than separate junior/mid/senior regexes
+// because the section-aware mode collapses the rules: any N near "experience"
+// inside the window is a YOE statement, regardless of which bucket N falls in.
+const IN_SECTION_YOE_PATTERNS: RegExp[] = [
+  // "5+ years of experience", "10 years of experience", "5 years experience"
+  /\b(\d{1,2})\s*\+?\s*years?\b[^.]{0,80}?\bexperience\b/i,
+  // "experience: 5+ years", "Experience - 10 years"
+  /\bexperience\b[^.]{0,40}?\b(\d{1,2})\s*\+?\s*years?\b/i,
+  // "minimum 5 years", "at least 5 years", "5+ years minimum"
+  /\b(?:minimum|at\s+least|over)\s+(?:of\s+)?(\d{1,2})\s*\+?\s*years?\b/i,
+  /\b(\d{1,2})\s*\+?\s*years?\s+(?:minimum|or\s+more|or\s+greater)\b/i,
+];
+
+// Range pattern, captured separately so we use the LOWER bound (conservative;
+// matches industry convention that the floor is the actual requirement).
+const IN_SECTION_RANGE_PATTERN =
+  /\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s+years?\b[^.]{0,80}?\bexperience\b/i;
+
+// Bucket an integer-YOE value into a Level.
+function yoeBucket(years: number): Level | null {
+  if (years < 0) return null;
+  if (years <= 2) return "junior";
+  if (years <= 6) return "mid";
+  return "senior";
+}
+
+// SECTION-AWARE pass. Returns the FIRST level signal found inside any
+// section window. Null if no section anchor is present OR no YOE phrase
+// appears inside any window.
+function classifyBodyBySection(text: string): { level: Level; pos: number } | null {
+  let best: { level: Level; pos: number } | null = null;
+  // Collect all anchor positions first; we walk in order so the EARLIEST
+  // hit wins (which lines up with "Minimum Qualifications" landing before
+  // "Preferred Qualifications" in real postings).
+  const anchors: number[] = [];
+  for (const re of SECTION_ANCHORS) {
+    const m = re.exec(text);
+    if (m) anchors.push(m.index);
+  }
+  if (anchors.length === 0) return null;
+  anchors.sort((a, b) => a - b);
+
+  for (const pos of anchors) {
+    const window = text.slice(pos, pos + ANCHOR_WINDOW);
+    // Try range pattern first - "5-7 years" should be recognized as a range,
+    // not as two separate hits where "5 years" wins via earliest-match.
+    let rangeYoe: number | null = null;
+    const rm = IN_SECTION_RANGE_PATTERN.exec(window);
+    if (rm) {
+      const lo = parseInt(rm[1]!, 10);
+      if (Number.isFinite(lo)) rangeYoe = lo;
+    }
+    let bestInWindow: { years: number; relPos: number } | null = null;
+    if (rangeYoe !== null && rm) {
+      bestInWindow = { years: rangeYoe, relPos: rm.index };
+    }
+    for (const re of IN_SECTION_YOE_PATTERNS) {
+      const m = re.exec(window);
+      if (!m) continue;
+      const years = parseInt(m[1]!, 10);
+      if (!Number.isFinite(years)) continue;
+      if (!bestInWindow || m.index < bestInWindow.relPos) {
+        bestInWindow = { years, relPos: m.index };
+      }
+    }
+    if (bestInWindow) {
+      const lvl = yoeBucket(bestInWindow.years);
+      if (lvl && (!best || pos < best.pos)) {
+        best = { level: lvl, pos };
+      }
+    }
+  }
+  return best;
+}
+
+// Keyword-anchored false-positive defense for prose passages that lack a
+// section header. These patterns require either an explicit early-career
+// phrase ("new grad", "entry-level", "class of 20XX") OR a year-count tied
+// to a YOE keyword ("X years of <keyword> experience"), which together
+// reject company-history phrasing like "25 years of experience serving
+// customers" while still catching free-form YOE requirements.
 const YOE_KEYWORDS =
-  "(?:professional|relevant|industry|software|engineering|product|work|paid|hands-on|dev|development|technical|coding|leadership|nursing|teaching|legal|design|sales|marketing|operations|customer|clinical)";
+  "(?:professional|relevant|industry|software|engineering|product|work|paid|hands-on|dev|development|technical|coding|leadership|nursing|teaching|legal|design|sales|marketing|operations|customer|clinical|business|enterprise|outbound)";
 
-const BODY_RULES: Rule[] = [
+const KEYWORD_RULES: Rule[] = [
   {
     level: "junior",
     patterns: [
@@ -293,17 +427,14 @@ const BODY_RULES: Rule[] = [
       /\bjust\s+(?:starting|started)\s+(?:your|their)\s+career\b/i,
       /\bgraduating\s+(?:in|by|with)\b/i,
       /\bclass\s+of\s+20\d{2}\b/i,
-      // "0-2 years of <keyword[s]> experience"
       new RegExp(
         `\\b(?:0|1|2)\\s*[-–]\\s*[123]\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
         "i",
       ),
-      // "0+ years of <keyword> experience" / "1+ years professional experience"
       new RegExp(
         `\\b(?:0|1|2)\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
         "i",
       ),
-      // "minimum of 0-2 years" / "minimum 1 year"
       /\bminimum\s+(?:of\s+)?(?:0|1|2)\+?\s*years?\b/i,
       /\bno\s+(?:prior\s+|professional\s+|previous\s+|formal\s+)?experience\s+(?:required|necessary|needed|expected)\b/i,
       /\bfirst[\s-]?year\s+(?:role|developer|engineer|hire|analyst|nurse|teacher)\b/i,
@@ -312,13 +443,10 @@ const BODY_RULES: Rule[] = [
   {
     level: "senior",
     patterns: [
-      // "7+ years of <keyword[s]> experience" (with up to 3 intervening
-      // adjective tokens, e.g. "software engineering experience").
       new RegExp(
         `\\b(?:7|8|9|10|12|15|20)\\s*\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
         "i",
       ),
-      // "10+ years experience required"
       /\b(?:7|8|9|10|12|15|20)\s*\+?\s*years?\s+experience\s+(?:required|preferred|in)\b/i,
       /\bminimum\s+(?:of\s+)?(?:7|8|9|10|12|15|20)\s*\+?\s*years?\b/i,
     ],
@@ -326,12 +454,10 @@ const BODY_RULES: Rule[] = [
   {
     level: "mid",
     patterns: [
-      // "3-5 / 4-6 years of <keyword[s]> experience"
       new RegExp(
         `\\b(?:3|4|5)\\s*[-–]\\s*[567]\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
         "i",
       ),
-      // "5+ years of <keyword[s]> experience"
       new RegExp(
         `\\b(?:3|4|5|6)\\s*\\+?\\s*years?\\s+(?:of\\s+)?${YOE_KEYWORDS}(?:\\s+[a-z-]+){0,3}\\s+experience\\b`,
         "i",
@@ -342,35 +468,57 @@ const BODY_RULES: Rule[] = [
   },
 ];
 
-// Returns the body-derived level, or null when no pattern matches in the
-// first BODY_SCAN_CHARS of the description. Picks the earliest match across
-// all level buckets so the FIRST signal in the description wins - this
-// correctly handles a "Senior" posting whose body says "you'll mentor
-// engineers with 1-2 years of experience" by reading the "7+ years" line
-// (which appears first under Requirements) instead of the mentee mention.
-export function classifyBody(description: string | undefined): Level | null {
-  if (!description) return null;
-  const text = description.slice(0, BODY_SCAN_CHARS);
-  let bestLevel: Level | null = null;
-  let bestPos = Infinity;
-  for (const r of BODY_RULES) {
+function classifyBodyByKeyword(text: string): { level: Level; pos: number } | null {
+  let best: { level: Level; pos: number } | null = null;
+  for (const r of KEYWORD_RULES) {
     for (const p of r.patterns) {
       const m = p.exec(text);
-      if (m && m.index < bestPos) {
-        bestPos = m.index;
-        bestLevel = r.level;
+      if (m && (!best || m.index < best.pos)) {
+        best = { level: r.level, pos: m.index };
       }
     }
   }
-  return bestLevel;
+  return best;
 }
 
-// Convenience: title-first, body-as-fallback. Used by both upsertJob (ingest
-// time) and searchJobs (read time) so the two paths stay in sync.
+// Returns the body-derived level, or null when no signal is found. Two-stage:
+// (1) section-aware scan finds explicit YOE under labelled requirement
+// sections (catches the 75% of postings that use them); (2) keyword-anchored
+// fallback handles anchorless prose and the early-career bucket.
+export function classifyBody(description: string | undefined): Level | null {
+  if (!description) return null;
+  const stripped = stripHtmlForScan(description).slice(0, BODY_SCAN_CHARS);
+  const section = classifyBodyBySection(stripped);
+  const keyword = classifyBodyByKeyword(stripped);
+  // Earliest match across both modes wins. Each method already picks its own
+  // earliest within itself; here we just take the smaller pos.
+  if (section && keyword) {
+    return section.pos <= keyword.pos ? section.level : keyword.level;
+  }
+  return (section ?? keyword)?.level ?? null;
+}
+
+// Convenience: body-first now (the experience/qualifications section of the
+// description is more authoritative than the title regex - "Software Engineer"
+// might be junior or senior depending on the requirements). Title classifier
+// only runs as fallback.
+//
+// Off-IC titles (manager / director / executive) override the body. A
+// "Director of Engineering" posting with body text "5+ years of experience"
+// shouldn't classify as mid - the YOE there is the prerequisite for the
+// director role, not the role's own level. Same logic for managers and
+// executives.
+//
+// Used by both upsertJob (ingest time) and searchJobs (read time) so the
+// two paths stay in sync.
 export function classifyTitleOrBody(
   title: string,
   description: string | undefined,
   industry?: Industry,
 ): Level | null {
-  return classifyTitle(title, industry) ?? classifyBody(description);
+  const titleLevel = classifyTitle(title, industry);
+  if (titleLevel === "manager" || titleLevel === "director" || titleLevel === "executive") {
+    return titleLevel;
+  }
+  return classifyBody(description) ?? titleLevel;
 }

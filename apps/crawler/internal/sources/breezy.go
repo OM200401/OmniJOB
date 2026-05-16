@@ -149,7 +149,7 @@ func (b *Breezy) fetchOne(ctx context.Context, slug string, out chan<- pipeline.
 			Location:        loc.Name,
 			Country:         country,
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "breezy",
 			SourceURL:       jobURL,
 			ScrapedAt:       time.Now().UnixMilli(),

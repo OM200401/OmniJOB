@@ -157,7 +157,7 @@ func (p *Personio) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 			remote = "onsite"
 		}
 
-		level := classifyPersonioLevel(pos.Seniority, title)
+		level := classifyPersonioLevel(pos.Seniority, title, desc)
 
 		jobURL := fmt.Sprintf("%s/job/%s", usedHost, pos.ID)
 
@@ -215,7 +215,7 @@ func pickPersonioName(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func classifyPersonioLevel(seniority, title string) string {
+func classifyPersonioLevel(seniority, title, description string) string {
 	s := strings.ToLower(strings.TrimSpace(seniority))
 	switch s {
 	case "entry-level", "entry level", "junior":
@@ -235,5 +235,5 @@ func classifyPersonioLevel(seniority, title string) string {
 	case "intern", "internship", "student":
 		return "intern"
 	}
-	return classifyLevel(title)
+	return classifyLevelFromBody(title, description)
 }

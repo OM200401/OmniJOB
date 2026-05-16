@@ -200,7 +200,7 @@ func (w *WorkAtAStartup) toJob(j ycJob) (pipeline.JobJSON, bool) {
 		Location:        loc,
 		Country:         classifyCountry(loc),
 		RemoteStatus:    remote,
-		ExperienceLevel: classifyLevel(title),
+		ExperienceLevel: classifyLevelFromBody(title, desc),
 		Source:          "workatastartup",
 		SourceURL:       jobURL,
 		ScrapedAt:       time.Now().UnixMilli(),

@@ -194,7 +194,7 @@ func (r *RSS) fetchOne(ctx context.Context, feed RSSFeed, out chan<- pipeline.Jo
 				Location:        loc,
 				Country:         country,
 				RemoteStatus:    classifyRemote(loc, desc),
-				ExperienceLevel: classifyLevel(title),
+				ExperienceLevel: classifyLevelFromBody(title, desc),
 				Source:          "rss:" + feed.SourceLabel,
 				SourceURL:       strings.TrimSpace(it.Link),
 				ScrapedAt:       time.Now().UnixMilli(),

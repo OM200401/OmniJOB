@@ -103,7 +103,7 @@ func (g *Greenhouse) fetchOne(ctx context.Context, slug string, out chan<- pipel
 			Location:        loc,
 			Country:         classifyCountry(loc),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "greenhouse",
 			SourceURL:       j.AbsoluteURL,
 			ScrapedAt:       time.Now().UnixMilli(),

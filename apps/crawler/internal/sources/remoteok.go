@@ -116,7 +116,7 @@ func (r *RemoteOK) Fetch(ctx context.Context, out chan<- pipeline.JobJSON) error
 			Location:        e.Location,
 			Country:         classifyCountry(e.Location),
 			RemoteStatus:    "remote",
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "remoteok",
 			SourceURL:       jobURL,
 			ScrapedAt:       time.Now().UnixMilli(),

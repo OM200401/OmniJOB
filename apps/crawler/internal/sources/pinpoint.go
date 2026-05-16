@@ -148,7 +148,7 @@ func (p *Pinpoint) fetchOne(ctx context.Context, slug string, out chan<- pipelin
 			Location:        loc,
 			Country:         classifyCountry(loc),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "pinpoint",
 			SourceURL:       strings.TrimSpace(post.URL),
 			ScrapedAt:       time.Now().UnixMilli(),

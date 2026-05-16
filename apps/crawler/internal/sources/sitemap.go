@@ -433,7 +433,7 @@ func (s *Sitemap) scrapeJobPage(ctx context.Context, feed SitemapFeed, url strin
 			Location:        locStr,
 			Country:         country,
 			RemoteStatus:    classifyRemote(locStr, desc),
-			ExperienceLevel: classifyLevel(jp.Title),
+			ExperienceLevel: classifyLevelFromBody(jp.Title, desc),
 			Source:          "sitemap:" + feed.SourceLabel,
 			SourceURL:       url,
 			ScrapedAt:       time.Now().UnixMilli(),

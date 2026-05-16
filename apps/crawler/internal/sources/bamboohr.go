@@ -212,7 +212,7 @@ func (b *BambooHR) fetchDetail(ctx context.Context, slug string, e bambooListEnt
 		Location:        loc,
 		Country:         classifyCountry(loc),
 		RemoteStatus:    remote,
-		ExperienceLevel: classifyLevel(title),
+		ExperienceLevel: classifyLevelFromBody(title, desc),
 		Source:          "bamboohr",
 		SourceURL:       jobURL,
 		ScrapedAt:       time.Now().UnixMilli(),

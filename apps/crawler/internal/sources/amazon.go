@@ -210,7 +210,7 @@ func (a *Amazon) normalize(j amazonJob) pipeline.JobJSON {
 		Location:        loc,
 		Country:         country,
 		RemoteStatus:    classifyRemote(loc, fullDesc),
-		ExperienceLevel: classifyLevel(title),
+		ExperienceLevel: classifyLevelFromBody(title, fullDesc),
 		Source:          "amazon",
 		SourceURL:       sourceURL,
 		ScrapedAt:       time.Now().UnixMilli(),

@@ -155,7 +155,7 @@ func (r *Reed) fetchPage(ctx context.Context, query string, page int, out chan<-
 			Location:        loc,
 			Country:         "GB",
 			RemoteStatus:    classifyRemote(loc, desc),
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "reed",
 			SourceURL:       j.JobURL,
 			ScrapedAt:       time.Now().UnixMilli(),

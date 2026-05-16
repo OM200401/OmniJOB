@@ -247,7 +247,7 @@ func (h *HackerNews) parseComment(c hnItem, storyID int64) (pipeline.JobJSON, bo
 		Location:        location,
 		Country:         classifyCountry(location),
 		RemoteStatus:    remote,
-		ExperienceLevel: classifyLevel(role),
+		ExperienceLevel: classifyLevelFromBody(role, body),
 		Source:          "hackernews",
 		SourceURL:       url,
 		ScrapedAt:       time.Now().UnixMilli(),

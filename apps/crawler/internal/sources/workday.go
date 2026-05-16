@@ -224,7 +224,7 @@ func (w *Workday) fetchCompany(ctx context.Context, c WorkdayCompany, out chan<-
 			Location:        loc,
 			Country:         classifyCountry(loc),
 			RemoteStatus:    remote,
-			ExperienceLevel: classifyLevel(title),
+			ExperienceLevel: classifyLevelFromBody(title, desc),
 			Source:          "workday",
 			SourceURL:       jobURL,
 			ScrapedAt:       time.Now().UnixMilli(),
